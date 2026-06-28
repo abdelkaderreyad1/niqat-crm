@@ -2,15 +2,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const NAV = [
-  { href: "/", label: "الرئيسية" },
-  { href: "/pipeline", label: "المراحل" },
-  { href: "/customers", label: "العملاء" },
-  { href: "/support", label: "الدعم" },
-];
-
-export default function NavLinks() {
+export default function NavLinks({ canFinance }: { canFinance?: boolean }) {
   const path = usePathname() || "/";
+  const NAV = [
+    { href: "/", label: "الرئيسية" },
+    { href: "/pipeline", label: "المراحل" },
+    { href: "/customers", label: "العملاء" },
+    { href: "/support", label: "الدعم" },
+    ...(canFinance ? [{ href: "/finance", label: "المالية" }] : []),
+  ];
   return (
     <nav className="space-y-1">
       {NAV.map((n) => {

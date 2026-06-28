@@ -2,11 +2,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CustomerEdit from "./CustomerEdit";
+import FinancePanel from "./FinancePanel";
 
 export const dynamic = "force-dynamic";
 
 export default async function CustomerDetail({ params }: { params: { id: string } }) {
   const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: meProf } = await supabase
+    .from("profiles")
+    .select("can_see_finance")
+    .eq("id", user?.id || "")
+    .maybeSingle();
+  const canFinance = !!meProf?.can_see_finance;
 
   const { data: c } = await supabase
     .from("customers")
@@ -37,6 +48,50 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     closed: { label: "مغلقة", color: "#94A2BB" },
   };
 
+  let finEnrollments: any[] = [];
+  if (canFinance) {
+    const { data: enrs } = await supabase
+      .from("enrollments")
+      .select("id,diploma_id,status,free,free_reason")
+      .eq("customer_id", params.id);
+    const ids = (enrs || []).map((e) => e.id);
+    if (ids.length) {
+      const [{ data: fin }, { data: insts }, { data: dips }] = await Promise.all([
+        supabase.from("enrollment_finance").select("enrollment_id,agreed_amount,currency").in("enrollment_id", ids),
+        supabase
+          .from("installments")
+          .select("id,enrollment_id,amount,currency,due_date,paid_at,status")
+          .in("enrollment_id", ids)
+          .order("due_date", { ascending: true }),
+        supabase.from("diplomas").select("id,name_ar"),
+      ]);
+      const dName = new Map((dips || []).map((d) => [d.id, d.name_ar]));
+      const finMap = new Map((fin || []).map((f) => [f.enrollment_id, f]));
+      finEnrollments = (enrs || []).map((e) => {
+        const f: any = finMap.get(e.id);
+        return {
+          id: e.id,
+          diploma: dName.get(e.diploma_id || "") || "—",
+          status: e.status || "",
+          free: !!e.free,
+          freeReason: e.free_reason || "",
+          agreed: Number(f?.agreed_amount) || 0,
+          currency: f?.currency || "EGP",
+          installments: (insts || [])
+            .filter((i) => i.enrollment_id === e.id)
+            .map((i) => ({
+              id: i.id,
+              amount: Number(i.amount) || 0,
+              currency: i.currency || "EGP",
+              due: i.due_date ? String(i.due_date).slice(0, 10) : "",
+              status: i.status || "pending",
+              paidAt: i.paid_at || null,
+            })),
+        };
+      });
+    }
+  }
+
   return (
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-4">
@@ -47,6 +102,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       </div>
 
       <CustomerEdit customer={c} specialties={specs || []} />
+
+      {canFinance && <FinancePanel enrollments={finEnrollments} />}
 
       <div className="bg-white rounded-xl border border-line p-4 mt-4">
         <div className="flex items-center justify-between mb-3">
