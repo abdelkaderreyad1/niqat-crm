@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 const NAV = [
   { href: "/", label: "الرئيسية" },
+  { href: "/pipeline", label: "المراحل" },
   { href: "/customers", label: "العملاء" }
 ];
 
