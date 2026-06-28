@@ -3,37 +3,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Inst = {
-  id: string;
-  amount: number;
-  currency: string;
-  due: string;
-  status: string;
-  paidAt: string | null;
-};
-type Enr = {
-  id: string;
-  diploma: string;
-  status: string;
-  free: boolean;
-  freeReason: string;
-  agreed: number;
-  currency: string;
-  installments: Inst[];
-};
+type Inst = { id: string; amount: number; currency: string; due: string; status: string; paidAt: string | null };
+type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[] };
 
 function money(n: number, cur: string) {
   return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
 }
-function paidOf(e: Enr) {
-  return e.installments
-    .filter((i) => i.status === "paid" || i.paidAt)
-    .reduce((s, i) => s + (Number(i.amount) || 0), 0);
-}
-function isOverdue(i: Inst) {
-  if (i.status === "paid" || i.paidAt || !i.due) return false;
-  return new Date(i.due) < new Date(new Date().toDateString());
-}
+const paidOf = (e: Enr) => e.installments.filter((i) => i.status === "paid" || i.paidAt).reduce((s, i) => s + (Number(i.amount) || 0), 0);
+const isOverdue = (i: Inst) => !(i.status === "paid" || i.paidAt || !i.due) && new Date(i.due) < new Date(new Date().toDateString());
 
 export default function FinancePanel({ enrollments }: { enrollments: Enr[] }) {
   const supabase = createClient();
@@ -45,155 +22,69 @@ export default function FinancePanel({ enrollments }: { enrollments: Enr[] }) {
 
   async function markPaid(id: string) {
     setBusy(id);
-    const { error } = await supabase
-      .from("installments")
-      .update({ status: "paid", paid_at: new Date().toISOString() })
-      .eq("id", id);
+    const { error } = await supabase.from("installments").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
     setBusy(null);
     if (error) return alert("تعذّر التحديث: " + error.message);
     router.refresh();
   }
-
   async function addInstallment(e: Enr) {
     const a = Number(amt);
     if (!a || a <= 0) return alert("اكتب مبلغ صحيح.");
     setBusy("add");
-    const { error } = await supabase.from("installments").insert({
-      enrollment_id: e.id,
-      amount: a,
-      currency: e.currency || "EGP",
-      due_date: due || null,
-      status: "pending",
-    });
+    const { error } = await supabase.from("installments").insert({ enrollment_id: e.id, amount: a, currency: e.currency || "EGP", due_date: due || null, status: "pending" });
     setBusy(null);
     if (error) return alert("تعذّر إضافة القسط: " + error.message);
-    setAddFor(null);
-    setAmt("");
-    setDue("");
-    router.refresh();
+    setAddFor(null); setAmt(""); setDue(""); router.refresh();
   }
 
-  if (enrollments.length === 0)
-    return (
-      <div className="bg-white rounded-xl border border-line p-4 mt-4">
-        <h2 className="font-extrabold mb-2">المالية والأقساط</h2>
-        <div className="text-xs text-muted">لا توجد اشتراكات لهذا العميل.</div>
-      </div>
-    );
+  const badge = (txt: string, color: string) => (
+    <span className="stg" style={{ background: color + "1a", color }}>{txt}</span>
+  );
 
   return (
-    <div className="bg-white rounded-xl border border-line p-4 mt-4">
-      <h2 className="font-extrabold mb-3">المالية والأقساط</h2>
-      <div className="space-y-4">
+    <div className="card" style={{ padding: 18, marginBottom: 14 }}>
+      <div className="sec-t">المالية والأقساط 🔒</div>
+      {enrollments.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد اشتراكات لهذا العميل.</div>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {enrollments.map((e) => {
           const paid = paidOf(e);
           const remaining = (Number(e.agreed) || 0) - paid;
           return (
-            <div key={e.id} className="border border-line rounded-lg p-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="font-bold text-ink">
-                  {e.diploma}
-                  {e.free && <span className="text-xs text-brand mr-2">🎁 هدية</span>}
-                </div>
-                <div className="flex gap-3 text-xs">
-                  <span className="text-muted">
-                    المتفق: <b className="num text-ink">{money(e.agreed, e.currency)}</b>
-                  </span>
-                  <span className="text-green">
-                    المدفوع: <b className="num">{money(paid, e.currency)}</b>
-                  </span>
-                  <span className="text-amber">
-                    المتبقّي: <b className="num">{money(remaining, e.currency)}</b>
-                  </span>
+            <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                <b style={{ color: "var(--ink)" }}>{e.diploma}{e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 هدية</span>}</b>
+                <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
+                  <span style={{ color: "var(--muted)" }}>المتفق: <b className="num" style={{ color: "var(--ink)" }}>{money(e.agreed, e.currency)}</b></span>
+                  <span style={{ color: "var(--green)" }}>المدفوع: <b className="num">{money(paid, e.currency)}</b></span>
+                  <span style={{ color: "var(--amber)" }}>المتبقّي: <b className="num">{money(remaining, e.currency)}</b></span>
                 </div>
               </div>
-
-              <div className="mt-3 space-y-1.5">
-                {e.installments.length === 0 && (
-                  <div className="text-xs text-muted">لا توجد أقساط مسجّلة.</div>
-                )}
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                {e.installments.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>لا توجد أقساط مسجّلة.</div>}
                 {e.installments.map((i) => {
                   const paidNow = i.status === "paid" || i.paidAt;
                   const over = isOverdue(i);
                   return (
-                    <div
-                      key={i.id}
-                      className="flex items-center justify-between gap-2 text-sm border border-line rounded-md px-2.5 py-1.5"
-                    >
-                      <span className="num font-bold" dir="ltr">
-                        {money(i.amount, i.currency)}
-                      </span>
-                      <span className="num text-muted text-xs" dir="ltr">
-                        {i.due || "—"}
-                      </span>
-                      {paidNow ? (
-                        <span className="text-[11px] rounded-full px-2 py-0.5 font-bold" style={{ color: "#18A957", background: "#EAF7EF" }}>
-                          مدفوع
-                        </span>
-                      ) : over ? (
-                        <span className="text-[11px] rounded-full px-2 py-0.5 font-bold" style={{ color: "#E0483B", background: "#FDECEA" }}>
-                          متأخر
-                        </span>
-                      ) : (
-                        <span className="text-[11px] rounded-full px-2 py-0.5 font-bold" style={{ color: "#5B6B85", background: "#EEF1F6" }}>
-                          مستحق
-                        </span>
-                      )}
+                    <div key={i.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "6px 10px" }}>
+                      <span className="num" dir="ltr" style={{ fontWeight: 700 }}>{money(i.amount, i.currency)}</span>
+                      <span className="num" dir="ltr" style={{ color: "var(--muted)", fontSize: 12 }}>{i.due || "—"}</span>
+                      {paidNow ? badge("مدفوع", "#18A957") : over ? badge("متأخر", "#E0483B") : badge("مستحق", "#94A2BB")}
                       {!paidNow ? (
-                        <button
-                          onClick={() => markPaid(i.id)}
-                          disabled={busy === i.id}
-                          className="bg-green text-white text-[11px] font-bold rounded-md px-2.5 py-1 hover:opacity-90 disabled:opacity-50"
-                        >
-                          تم الدفع
-                        </button>
-                      ) : (
-                        <span className="w-[60px]" />
-                      )}
+                        <button onClick={() => markPaid(i.id)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>تم الدفع</button>
+                      ) : <span style={{ width: 70 }} />}
                     </div>
                   );
                 })}
               </div>
-
               {addFor === e.id ? (
-                <div className="flex gap-2 mt-3">
-                  <input
-                    className="border border-line rounded-md px-2 py-1 text-sm w-28 num"
-                    placeholder="المبلغ"
-                    value={amt}
-                    onChange={(ev) => setAmt(ev.target.value)}
-                  />
-                  <input
-                    type="date"
-                    className="border border-line rounded-md px-2 py-1 text-sm num"
-                    value={due}
-                    onChange={(ev) => setDue(ev.target.value)}
-                  />
-                  <button
-                    onClick={() => addInstallment(e)}
-                    disabled={busy === "add"}
-                    className="bg-brand text-white text-xs font-bold rounded-md px-3 py-1 hover:bg-brand-dark disabled:opacity-50"
-                  >
-                    حفظ
-                  </button>
-                  <button
-                    onClick={() => setAddFor(null)}
-                    className="text-xs text-muted px-2"
-                  >
-                    إلغاء
-                  </button>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <input className="inp num" style={{ width: 110 }} placeholder="المبلغ" value={amt} onChange={(ev) => setAmt(ev.target.value)} />
+                  <input type="date" className="inp num" style={{ width: 150 }} value={due} onChange={(ev) => setDue(ev.target.value)} />
+                  <button onClick={() => addInstallment(e)} disabled={busy === "add"} className="btn" style={{ height: 38 }}>حفظ</button>
+                  <button onClick={() => setAddFor(null)} className="btn ghost" style={{ height: 38 }}>إلغاء</button>
                 </div>
               ) : (
-                <button
-                  onClick={() => {
-                    setAddFor(e.id);
-                    setAmt("");
-                    setDue("");
-                  }}
-                  className="text-xs text-brand font-bold mt-3 hover:underline"
-                >
-                  + قسط
-                </button>
+                <button onClick={() => { setAddFor(e.id); setAmt(""); setDue(""); }} style={{ color: "var(--brand)", fontWeight: 700, fontSize: 12.5, marginTop: 10, background: "none" }}>+ قسط</button>
               )}
             </div>
           );

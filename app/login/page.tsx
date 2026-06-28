@@ -20,23 +20,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-line p-7">
-        <div className="text-center mb-6">
-          <div className="text-2xl font-extrabold text-brand">نقاط</div>
-          <div className="text-sm text-muted mt-1">نظام إدارة العملاء</div>
+    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16, background: "var(--bg)" }}>
+      <div className="card" style={{ width: "100%", maxWidth: 380, padding: 28 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 18 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="نقاط" style={{ width: 56, height: 56, objectFit: "contain", marginBottom: 10 }} />
+          <div className="appname">CRM-NIQAT</div>
+          <div className="appname-sub">نظام إدارة العملاء</div>
         </div>
-        <label className="block text-sm font-bold mb-1">البريد الإلكتروني</label>
-        <input className="w-full border border-line rounded-lg px-3 py-2 mb-3 outline-none focus:border-brand"
-          type="email" dir="ltr" value={email} onChange={e => setEmail(e.target.value)} />
-        <label className="block text-sm font-bold mb-1">كلمة المرور</label>
-        <input className="w-full border border-line rounded-lg px-3 py-2 mb-4 outline-none focus:border-brand"
-          type="password" dir="ltr" value={password} onChange={e => setPassword(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") signIn(); }} />
-        {err && <div className="text-red-600 text-sm mb-3">{err}</div>}
-        <button onClick={signIn} disabled={loading}
-          className="w-full bg-brand text-white rounded-lg py-2.5 font-bold hover:bg-brand-dark transition disabled:opacity-60">
-          {loading ? "..." : "دخول"}
+
+        <div className="fld">
+          <label>البريد الإلكتروني</label>
+          <input className="inp num" type="email" dir="ltr" value={email}
+            onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div className="fld">
+          <label>كلمة المرور</label>
+          <input className="inp" type="password" dir="ltr" value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") signIn(); }} />
+        </div>
+
+        {err && <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 10 }}>{err}</div>}
+
+        <button onClick={signIn} disabled={loading} className="btn" style={{ width: "100%", justifyContent: "center" }}>
+          {loading ? "..." : "تسجيل الدخول"}
         </button>
       </div>
     </div>
