@@ -1,7 +1,68 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-:root { color-scheme: light; }
-html, body { padding: 0; margin: 0; }
-body { background:#f6f8fb; color:#16202e; font-family:'Tajawal', system-ui, sans-serif; }
+
+:root{
+  --ink:#0F1B30; --bg:#EEF1F7; --surface:#fff; --line:#E2E7F0; --text:#16213a; --muted:#6B7790;
+  --brand:#F08A24; --brand-d:#d6741a; --teal:#0FA3A3; --green:#18A957; --wa:#25D366;
+  --amber:#E6A700; --red:#E0483B; --blue:#2F6BFF; --purple:#7B61FF;
+  --shadow:0 1px 2px rgba(16,27,48,.06),0 6px 20px rgba(16,27,48,.06);
+  --r:14px; --r-sm:10px;
+  --fa:'Tajawal','Segoe UI',system-ui,sans-serif;
+  --fe:'Inter','Segoe UI',system-ui,sans-serif;
+  color-scheme: light;
+}
+html,body{padding:0;margin:0}
+body{font-family:var(--fa);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+.num{font-family:var(--fe)}
+
+/* ===== board (pipe + columns) ===== */
+.pipe{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}
+.col{flex:0 0 270px;background:#f3f5fa;border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;max-height:calc(100vh - 230px)}
+.col.drag{background:#fff4e9;border-color:var(--brand);border-style:dashed}
+.col-h{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+.col-h .nm{font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;color:var(--ink)}
+.col-h .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.col-h .ct{background:#fff;border:1px solid var(--line);border-radius:20px;padding:1px 9px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.col-b{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:9px;min-height:60px}
+
+/* ===== ticket card ===== */
+.tk{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:13px 15px;box-shadow:0 1px 2px rgba(16,27,48,.05);position:relative;text-align:start}
+.tk .th{display:flex;align-items:center;gap:8px}
+.tk .pr{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.tk .tt{font-weight:700;color:var(--ink);font-size:14px}
+.tk .tm{color:var(--muted);font-size:12.5px;margin-top:5px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* ===== pipeline card ===== */
+.pc{background:#fff;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 12px;box-shadow:0 1px 2px rgba(16,27,48,.05);position:relative;text-align:start}
+.pc .pn{font-weight:700;color:var(--ink);font-size:13.5px}
+.pc .pm{color:var(--muted);font-size:12px;margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pc .pf{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+
+/* shared mini avatar + who */
+.who-mini{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);font-weight:600}
+.av-xs{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* ===== drag states + hover ===== */
+.tk[draggable],.pc[draggable]{cursor:grab}
+.tk[draggable]:active,.pc[draggable]:active{cursor:grabbing}
+.tk.ghost,.pc.ghost{opacity:.4}
+.pc,.tk{transition:transform .14s ease,box-shadow .14s ease}
+.pc:hover,.tk:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(16,27,48,.1)}
+
+/* ===== page header ===== */
+.page-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px}
+.page-h h1{font-size:21px;font-weight:800;color:var(--ink)}
+.page-h p{color:var(--muted);font-size:13px;margin-top:2px}
+
+/* ===== entry animation ===== */
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.enter>*{animation:fadeUp .2s ease both}
+.enter>*:nth-child(2){animation-delay:.03s}
+.enter>*:nth-child(3){animation-delay:.06s}
+.enter>*:nth-child(4){animation-delay:.09s}
+.enter>*:nth-child(5){animation-delay:.12s}
+.enter>*:nth-child(6){animation-delay:.15s}
+.enter>*:nth-child(7){animation-delay:.18s}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
