@@ -2,14 +2,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export default function NavLinks({ canFinance }: { canFinance?: boolean }) {
+type Perms = {
+  canFinance?: boolean;
+  canReports?: boolean;
+  canAffiliates?: boolean;
+  canSettings?: boolean;
+};
+
+export default function NavLinks(p: Perms) {
   const path = usePathname() || "/";
   const NAV = [
     { href: "/", label: "الرئيسية" },
     { href: "/pipeline", label: "المراحل" },
     { href: "/customers", label: "العملاء" },
     { href: "/support", label: "الدعم" },
-    ...(canFinance ? [{ href: "/finance", label: "المالية" }] : []),
+    ...(p.canFinance ? [{ href: "/finance", label: "المالية" }] : []),
+    ...(p.canReports ? [{ href: "/reports", label: "التقارير" }] : []),
+    ...(p.canAffiliates ? [{ href: "/affiliates", label: "الإحالات" }] : []),
+    ...(p.canSettings ? [{ href: "/settings", label: "الإعدادات" }] : []),
   ];
   return (
     <nav className="space-y-1">

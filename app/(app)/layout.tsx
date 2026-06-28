@@ -12,7 +12,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect("/login");
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, team, can_see_finance")
+    .select(
+      "full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users"
+    )
     .eq("id", user.id)
     .maybeSingle();
 
@@ -24,7 +26,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <img src="/logo.png" alt="نقاط" className="h-10 w-auto" />
           <span className="text-xs font-bold text-muted num">CRM</span>
         </div>
-        <NavLinks canFinance={!!profile?.can_see_finance} />
+        <NavLinks
+          canFinance={!!profile?.can_see_finance}
+          canReports={!!profile?.can_view_reports}
+          canAffiliates={!!profile?.can_manage_settings}
+          canSettings={!!profile?.can_manage_users}
+        />
       </aside>
       <div className="flex-1 flex flex-col">
         <header className="bg-white border-b border-line px-5 py-3 flex items-center justify-between">
