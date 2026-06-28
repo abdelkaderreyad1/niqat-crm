@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 const NAV = [
   { href: "/", label: "الرئيسية" },
   { href: "/pipeline", label: "المراحل" },
-  { href: "/customers", label: "العملاء" }
+  { href: "/customers", label: "العملاء" },
+  { href: "/support", label: "الدعم" }
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
