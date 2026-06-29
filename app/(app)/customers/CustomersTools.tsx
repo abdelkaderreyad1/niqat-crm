@@ -25,7 +25,7 @@ export default function CustomersTools({
   const cur = (k: string) => sp.get(k) || "";
 
   const Sel = (key: string, ph: string, opts: Opt[]) => (
-    <select className="inp" style={{ minWidth: 120, height: 36 }} value={cur(key)} onChange={(e) => setParam(key, e.target.value)}>
+    <select className="inp" style={{ width: "auto", minWidth: 150, height: 36, flex: "0 0 auto" }} value={cur(key)} onChange={(e) => setParam(key, e.target.value)}>
       <option value="">{ph}</option>
       {opts.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
     </select>

@@ -9,6 +9,7 @@ import FollowUpPanel from "./FollowUpPanel";
 import RefundPanel from "./RefundPanel";
 import WhatsAppPanel from "./WhatsAppPanel";
 import AddonsPanel from "./AddonsPanel";
+import SubscriptionsPanel from "./SubscriptionsPanel";
 import CopyNumbers from "./CopyNumbers";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,13 @@ const STAGE: Record<string, { label: string; color: string }> = {
   lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
 };
 const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
+
+const AUDIT_LABELS: Record<string, string> = {
+  batch_transfer: "نقل بين الباتشات", enrollment_add: "إضافة دبلومة",
+  installment_add: "إضافة قسط", installment_paid: "تأكيد دفع",
+  create: "إنشاء العميل", update: "تعديل بيانات", stage_change: "تغيير المرحلة",
+  refund_request: "طلب استرداد", refunded: "تم الاسترداد", handoff: "تحويل للدعم",
+};
 
 export default async function CustomerDetail({ params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -37,10 +45,16 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   // اشتراكات (دبلومة + باتش) — للكل
   const { data: enrRows } = await supabase.from("enrollments")
-    .select("id,status, diplomas(name_ar), batches(code)").eq("customer_id", params.id);
+    .select("id,status,diploma_id,batch_id, diplomas(name_ar), batches(code)").eq("customer_id", params.id);
   const enrolls = (enrRows || []).map((e: any) => ({
-    id: e.id, diploma: e.diplomas?.name_ar || "—", batch: e.batches?.code || "—", status: e.status || "",
+    id: e.id, diploma: e.diplomas?.name_ar || "—", batch: e.batches?.code || "—",
+    diplomaId: e.diploma_id || "", batchId: e.batch_id || "", status: e.status || "",
   }));
+  // قوايم للنقل وإضافة دبلومة
+  const { data: allDips } = await supabase.from("diplomas").select("id,name_ar").order("name_ar");
+  const { data: allBatches } = await supabase.from("batches").select("id,code,status").order("code");
+  const dipOpts = (allDips || []).map((d: any) => ({ v: d.id, label: d.name_ar }));
+  const batchOpts = (allBatches || []).map((b: any) => ({ v: b.id, label: b.code }));
 
   // مهام + ملاحظات + سجل
   const { data: profs } = await supabase.from("profiles").select("id,full_name");
@@ -49,7 +63,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const tasks = (taskRows || []).map((k) => ({ id: k.id as string, title: (k.title as string) || "", due: k.due_at ? String(k.due_at).slice(0, 10) : "", done: !!k.done }));
   const { data: commRows } = await supabase.from("communications").select("id,body,by_id,at").eq("customer_id", params.id).order("at", { ascending: false }).limit(50);
   const notes = (commRows || []).map((n: any) => ({ id: n.id as string, body: n.body || "", by: pMap.get(n.by_id || "") || "—", at: String(n.at || "").replace("T", " ").slice(0, 16) }));
-  const { data: auditRows } = await supabase.from("audit_log").select("action,detail,actor_id,at").eq("customer_id", params.id).order("at", { ascending: false }).limit(30);
+  const { data: auditRows } = await supabase.from("audit_log").select("action,detail,actor_id,at").eq("customer_id", params.id).order("at", { ascending: false }).limit(60);
 
   // تذاكر الدعم
   const { data: tickets } = await supabase.from("tickets").select("id,title,status").eq("customer_id", params.id).eq("archived", false).order("created_at", { ascending: false });
@@ -66,7 +80,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     if (ids.length) {
       const [{ data: fin }, { data: insts }, { data: dips }] = await Promise.all([
         supabase.from("enrollment_finance").select("enrollment_id,agreed_amount,currency").in("enrollment_id", ids),
-        supabase.from("installments").select("id,enrollment_id,amount,currency,due_date,paid_at,status").in("enrollment_id", ids).order("due_date", { ascending: true }),
+        supabase.from("installments").select("id,enrollment_id,amount,currency,due_date,paid_at,status,screenshot_url").in("enrollment_id", ids).order("due_date", { ascending: true }),
         supabase.from("diplomas").select("id,name_ar"),
       ]);
       const dName = new Map((dips || []).map((d) => [d.id, d.name_ar]));
@@ -80,6 +94,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           installments: (insts || []).filter((i) => i.enrollment_id === e.id).map((i) => ({
             id: i.id, amount: Number(i.amount) || 0, currency: i.currency || "EGP",
             due: i.due_date ? String(i.due_date).slice(0, 10) : "", status: i.status || "pending", paidAt: i.paid_at || null,
+            shot: (i as any).screenshot_url || null,
           })),
         };
       });
@@ -168,17 +183,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
       <CustomerEdit customer={c as any} specialties={specs || []} />
 
-      <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div className="sec-t">الاشتراكات (الدبلومة / الباتش)</div>
-        {enrolls.length === 0 ? (
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد اشتراكات.</div>
-        ) : enrolls.map((e) => (
-          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6 }}>
-            <b style={{ color: "var(--ink)" }}>{e.diploma}</b>
-            <span style={{ color: "var(--muted)", fontSize: 13 }}>باتش: <span className="num">{e.batch}</span></span>
-          </div>
-        ))}
-      </div>
+      <SubscriptionsPanel customerId={c.id as string} meId={user?.id || ""} enrolls={enrolls}
+        dipOpts={dipOpts} batchOpts={batchOpts} canFinance={canFinance} />
 
       <AddonsPanel customerId={c.id as string} initial={addons} accreditations={accredList} projects={projList} canFinance={canFinance} tableMissing={addonsMissing} />
 
@@ -187,7 +193,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
       <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
 
-      {canFinance && <FinancePanel enrollments={finEnrollments} />}
+      {canFinance && <FinancePanel enrollments={finEnrollments} customerId={c.id as string} meId={user?.id || ""} />}
 
       {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
 
@@ -218,7 +224,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       </div>
 
       <div className="card" style={{ padding: 18 }}>
-        <div className="sec-t">سجل التعديلات</div>
+        <div className="sec-t">سجل العميل (Timeline)</div>
         {(!auditRows || auditRows.length === 0) ? (
           <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد سجل.</div>
         ) : (auditRows || []).map((a: any, idx) => (
@@ -227,7 +233,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
               <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
             </div>
             <div>
-              <div style={{ fontSize: 13.5, color: "var(--ink)" }}>{a.action}{a.detail ? " — " + a.detail : ""}</div>
+              <div style={{ fontSize: 13.5, color: "var(--ink)" }}>{AUDIT_LABELS[a.action] || a.action}{a.detail ? " — " + a.detail : ""}</div>
               <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
                 <b>{pMap.get(a.actor_id || "") || "—"}</b> • <span className="num">{String(a.at || "").replace("T", " ").slice(0, 16)}</span>
               </div>
