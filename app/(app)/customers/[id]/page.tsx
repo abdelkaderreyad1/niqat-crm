@@ -189,7 +189,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       <AddonsPanel customerId={c.id as string} initial={addons} accreditations={accredList} projects={projList} canFinance={canFinance} tableMissing={addonsMissing} />
 
       <AccessPanel customerId={c.id as string} handoff={handoff} items={accessItems}
-        accessOptions={accOpts || []} meId={user?.id || ""} meName="" />
+        accessOptions={[...(accOpts || []), ...enrolls.map((e, i) => ({ id: "dip-" + i, label: "تفعيل: " + e.diploma }))]} meId={user?.id || ""} meName="" />
 
       <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
 

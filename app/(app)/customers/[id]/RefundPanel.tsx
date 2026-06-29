@@ -2,18 +2,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 
-type Refund = {
-  id: string; amount: number; currency: string; reason: string;
-  shot_url: string; status: string; created_at: string;
-} | null;
+type Refund = { id: string; amount: number; currency: string; reason: string; shot_url: string; status: string; created_at: string } | null;
 
 function money(n: number, cur: string) {
   return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
 }
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  requested: { label: "في انتظار الريفند", color: "#B8860B", bg: "#FEF6E0" },
+  requested: { label: "طلب ريفند — منتظر التحويل", color: "#E6A700", bg: "#FFF6E0" },
   refunded: { label: "تم الريفند — بانتظار إغلاق الأكسس", color: "#2F6BFF", bg: "#E8F0FF" },
   closed: { label: "مؤرشف (تم الإغلاق)", color: "#94A2BB", bg: "#EEF1F6" },
 };
@@ -23,13 +21,22 @@ export default function RefundPanel({
 }: {
   customerId: string; refund: Refund; meId: string; tableMissing: boolean;
 }) {
-  const router = useRouter();
   const supabase = createClient();
+  const router = useRouter();
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("EGP");
   const [reason, setReason] = useState("");
-  const [shot, setShot] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+
+  async function uploadShot(): Promise<string> {
+    if (!file) return "";
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `${customerId}/refund-${Date.now()}.${ext}`;
+    const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
+    if (up.error) { toast("تعذّر رفع الصورة"); return ""; }
+    return supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || "";
+  }
 
   async function request() {
     const a = Number(amount) || 0;
@@ -37,22 +44,30 @@ export default function RefundPanel({
     setBusy(true);
     const { error } = await supabase.from("refunds").insert({
       customer_id: customerId, amount: a, currency, reason: reason.trim(),
-      shot_url: shot.trim(), status: "requested", requested_by: meId,
+      shot_url: "", status: "requested", requested_by: meId,
     });
+    if (!error) await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_request", detail: `طلب استرداد ${money(a, currency)}` });
     setBusy(false);
     if (error) { alert("تعذّر تسجيل الطلب: " + error.message); return; }
-    setAmount(""); setReason(""); setShot("");
-    router.refresh();
+    setAmount(""); setReason("");
+    toast("اتسجّل طلب الريفند"); router.refresh();
   }
 
-  async function setStatus(status: string, archive = false) {
+  async function setStatus(status: string, archive = false, withShot = false) {
     if (!refund) return;
     setBusy(true);
-    const { error } = await supabase.from("refunds").update({ status }).eq("id", refund.id);
+    const patch: any = { status };
+    if (withShot) { const u = await uploadShot(); if (u) patch.shot_url = u; }
+    const { error } = await supabase.from("refunds").update(patch).eq("id", refund.id);
     if (!error && archive) await supabase.from("customers").update({ archived: true }).eq("id", customerId);
+    if (!error) await supabase.from("audit_log").insert({
+      customer_id: customerId, actor_id: meId || null,
+      action: archive ? "refunded" : "refund_request",
+      detail: status === "refunded" ? "تم تحويل الاسترداد" : status === "closed" ? "قفل الأكسس وأرشفة العميل" : status,
+    });
     setBusy(false);
     if (error) { alert("تعذّر التحديث: " + error.message); return; }
-    router.refresh();
+    toast("اتحدّث"); router.refresh();
   }
 
   if (tableMissing) {
@@ -89,8 +104,6 @@ export default function RefundPanel({
           </div>
           <div className="fld"><label>سبب الاسترداد</label>
             <textarea className="inp" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
-          <div className="fld"><label>رابط صورة تحويل الاسترداد (اختياري)</label>
-            <input className="inp num" dir="ltr" value={shot} onChange={(e) => setShot(e.target.value)} placeholder="https://…" /></div>
           <button onClick={request} disabled={busy} className="btn danger">{busy ? "..." : "طلب ريفند"}</button>
         </div>
       ) : (
@@ -104,10 +117,20 @@ export default function RefundPanel({
           )}
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             {refund.status === "requested" && (
-              <button onClick={() => setStatus("refunded")} disabled={busy} className="btn">تم الريفند</button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>منتظر التحويل (أول 10 أيام بالشهر). بعد التحويل ارفع السكرين وعلّم تم.</div>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
+                  🖼️ {file ? file.name : "صورة تحويل الاسترداد"}
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                </label>
+                <button onClick={() => setStatus("refunded", false, true)} disabled={busy} className="btn">{busy ? "..." : "تم التحويل + رفع السكرين"}</button>
+              </div>
             )}
             {refund.status === "refunded" && (
-              <button onClick={() => setStatus("closed", true)} disabled={busy} className="btn ghost">أغلق الأكسس وأرشفة العميل</button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>الدعم: اقفل الأكسس من «التفعيل والاعتمادات» ثم اضغط أرشفة.</div>
+                <button onClick={() => setStatus("closed", true)} disabled={busy} className="btn ghost">تم قفل الأكسس — أرشفة العميل</button>
+              </div>
             )}
           </div>
         </div>

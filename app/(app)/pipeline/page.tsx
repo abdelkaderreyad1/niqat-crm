@@ -7,13 +7,24 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
   const supabase = createClient();
   const q = (searchParams?.q || "").trim().toLowerCase();
 
-  const { data: rows } = await supabase
+  let rowsRes = await supabase
     .from("customers")
     .select("id,name,company,phone1,phone2,email,stage,owner_id")
     .eq("deleted", false)
     .eq("archived", false)
+    .eq("board_done", false)
     .order("created_at", { ascending: false })
     .limit(500);
+  if (rowsRes.error) {
+    rowsRes = await supabase
+      .from("customers")
+      .select("id,name,company,phone1,phone2,email,stage,owner_id")
+      .eq("deleted", false)
+      .eq("archived", false)
+      .order("created_at", { ascending: false })
+      .limit(500);
+  }
+  const rows = rowsRes.data;
 
   const { data: profs } = await supabase.from("profiles").select("id,full_name");
   const pName = new Map((profs || []).map((p) => [p.id, p.full_name]));

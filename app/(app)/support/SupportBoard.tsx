@@ -136,7 +136,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
                       }}
                       style={{ cursor: "pointer" }}
                     >
-                      <button className="cardx" title="أرشفة التذكرة" onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
+                      <button className="cardx" title="تم — إخفاء من البورد" onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
                         <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
                       </button>
                       <div className="th">

@@ -64,7 +64,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
   async function archive(id: string) {
     const prev = custs;
     setCusts((l) => l.filter((x) => x.id !== id));
-    const { error } = await supabase.from("customers").update({ archived: true }).eq("id", id);
+    const { error } = await supabase.from("customers").update({ board_done: true }).eq("id", id);
     if (error) {
       setCusts(prev);
       alert("تعذّر الأرشفة: " + error.message);

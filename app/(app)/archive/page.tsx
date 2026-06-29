@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
+import RestoreBtn from "./RestoreBtn";
 export const dynamic = "force-dynamic";
 
 export default async function Archive() {
@@ -11,6 +12,13 @@ export default async function Archive() {
     .eq("archived", true)
     .order("updated_at", { ascending: false })
     .limit(300);
+  // سبب الأرشفة = ريفند
+  const ids = (rows || []).map((r: any) => r.id);
+  const reasonMap = new Map<string, string>();
+  if (ids.length) {
+    const rf = await supabase.from("refunds").select("customer_id,reason,status").in("customer_id", ids);
+    if (!rf.error) for (const r of (rf.data as any[]) || []) reasonMap.set(r.customer_id, r.reason || "ريفند");
+  }
 
   return (
     <div>
@@ -25,7 +33,7 @@ export default async function Archive() {
       ) : (
         <div className="tbl-wrap">
           <table>
-            <thead><tr><th>الاسم</th><th>الموبايل / الإيميل</th></tr></thead>
+            <thead><tr><th>الاسم</th><th>الموبايل / الإيميل</th><th>سبب الأرشفة</th><th></th></tr></thead>
             <tbody>
               {(rows || []).map((c) => (
                 <tr key={c.id as string}>
@@ -35,6 +43,8 @@ export default async function Archive() {
                     </Link>
                   </td>
                   <td className="num" dir="ltr">{c.phone1 || c.email || "—"}</td>
+                  <td><span className="stg" style={{ background: "#FBE9E7", color: "#E0483B" }}>ريفند{reasonMap.get(c.id as string) && reasonMap.get(c.id as string) !== "ريفند" ? " — " + reasonMap.get(c.id as string) : ""}</span></td>
+                  <td><RestoreBtn id={c.id as string} /></td>
                 </tr>
               ))}
             </tbody>

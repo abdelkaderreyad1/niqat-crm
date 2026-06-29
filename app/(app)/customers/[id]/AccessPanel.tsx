@@ -54,14 +54,14 @@ export default function AccessPanel({
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div className="sec-t" style={{ margin: 0 }}>الأكسس / التفعيل</div>
+        <div className="sec-t" style={{ margin: 0 }}>التفعيل والاعتمادات</div>
         {handoff && (
           <span className="stg" style={
             handoff.status === "done"
               ? { background: "#18A95722", color: "#18A957" }
               : { background: "#E6A70022", color: "#B8860B" }
           }>
-            {handoff.status === "done" ? "مكتمل ✓" : "في انتظار التفعيل"}
+            {handoff.status === "done" ? "مكتمل ✓" : "في انتظار التفعيل والاعتماد"}
           </span>
         )}
       </div>
@@ -69,7 +69,7 @@ export default function AccessPanel({
       {!handoff ? (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>
-            العميل لسه ماتسلّمش للدعم. اختر بنود الأكسس المطلوبة وحوّله.
+            العميل لسه ماتسلّمش للدعم. علّم الدبلومة اللي هتتفعّل وبنود التفعيل والاعتماد المطلوبة وحوّله.
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
             {accessOptions.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>مفيش خيارات أكسس معرّفة (تتضاف من الإعدادات).</div>}
