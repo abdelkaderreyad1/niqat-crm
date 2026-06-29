@@ -8,7 +8,7 @@ type C = {
   id: string; name: string; phone1: string | null; phone2: string | null;
   email: string | null; company: string | null; residency: string | null;
   grad_year: number | null; stage: string; specialty_id: string | null;
-  lms_status: string | null; source: string | null; created_at: string;
+  lms_status: string | null; source: string | null; affiliate_code: string | null; created_at: string;
 };
 
 const STAGES = [
@@ -36,6 +36,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
     email: customer.email || "", company: customer.company || "", residency: customer.residency || "",
     grad_year: customer.grad_year ? String(customer.grad_year) : "",
     specialty_id: customer.specialty_id || "", stage: customer.stage || "new",
+    affiliate_code: customer.affiliate_code || "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -53,6 +54,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
       residency: f.residency.trim() || null,
       grad_year: f.grad_year ? Number(f.grad_year) : null,
       specialty_id: f.specialty_id || null, stage: f.stage,
+      affiliate_code: f.affiliate_code.trim(),
     }).eq("id", customer.id);
     setBusy(false);
     if (error) {
@@ -97,8 +99,12 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
         <div className="fld"><label>سنة التخرج</label>
           <input className="inp num" dir="ltr" inputMode="numeric" value={f.grad_year} onChange={(e) => set("grad_year", e.target.value)} /></div>
       </div>
-      <div className="fld"><label>محل الإقامة</label>
-        <input className="inp" value={f.residency} onChange={(e) => set("residency", e.target.value)} /></div>
+      <div className="frow">
+        <div className="fld"><label>محل الإقامة</label>
+          <input className="inp" value={f.residency} onChange={(e) => set("residency", e.target.value)} /></div>
+        <div className="fld"><label>كود الأفيلييت</label>
+          <input className="inp num" dir="ltr" value={f.affiliate_code} onChange={(e) => set("affiliate_code", e.target.value)} placeholder="اختياري" /></div>
+      </div>
 
       <div style={{ fontSize: 12, color: "var(--muted)", borderTop: "1px solid var(--line)", paddingTop: 10, display: "flex", flexWrap: "wrap", gap: "4px 20px" }}>
         <span>المصدر: {customer.source || "—"}</span>

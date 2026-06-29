@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import CustomerEdit from "./CustomerEdit";
 import FinancePanel from "./FinancePanel";
 import CustomerActivity from "./CustomerActivity";
+import AccessPanel from "./AccessPanel";
+import FollowUpPanel from "./FollowUpPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const canFinance = !!meProf?.can_see_finance;
 
   const { data: c } = await supabase.from("customers")
-    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,created_at")
+    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,created_at")
     .eq("id", params.id).maybeSingle();
   if (!c) notFound();
 
@@ -79,6 +81,34 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     }
   }
 
+  // الأكسس / handoff
+  const { data: hoRows } = await supabase.from("handoffs")
+    .select("id,status,note,assignee_id,created_by,created_at")
+    .eq("customer_id", params.id).order("created_at", { ascending: false }).limit(1);
+  const ho: any = (hoRows || [])[0] || null;
+  let accessItems: any[] = [];
+  if (ho) {
+    const { data: it } = await supabase.from("handoff_items")
+      .select("id,label,done,done_by,done_at").eq("handoff_id", ho.id).order("id");
+    accessItems = (it || []).map((x: any) => ({
+      id: x.id, label: x.label, done: !!x.done,
+      done_by: pMap.get(x.done_by || "") || null, done_at: x.done_at || null,
+    }));
+  }
+  const handoff = ho ? {
+    id: ho.id, status: ho.status || "pending", note: ho.note || "",
+    assignee: pMap.get(ho.assignee_id || "") || "", by: pMap.get(ho.created_by || "") || "",
+    at: String(ho.created_at || "").replace("T", " ").slice(0, 16),
+  } : null;
+  const { data: accOpts } = await supabase.from("access_options").select("id,label").order("label");
+
+  // متابعات
+  const { data: fuRows } = await supabase.from("follow_ups")
+    .select("id,due_at,note,done").eq("customer_id", params.id).order("due_at", { ascending: false });
+  const fuAll = (fuRows || []).map((x: any) => ({ id: x.id, due_at: x.due_at, note: x.note || "", done: !!x.done }));
+  const fuOpen = fuAll.find((x) => !x.done) || null;
+  const fuHistory = fuAll.filter((x) => x.done).slice(0, 5);
+
   const st = STAGE[c.stage as string] || STAGE.new;
 
   return (
@@ -112,6 +142,11 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           </div>
         ))}
       </div>
+
+      <AccessPanel customerId={c.id as string} handoff={handoff} items={accessItems}
+        accessOptions={accOpts || []} meId={user?.id || ""} meName="" />
+
+      <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
 
       {canFinance && <FinancePanel enrollments={finEnrollments} />}
 
