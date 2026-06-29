@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import PermissionsManager from "./PermissionsManager";
+import AddMemberForm from "./AddMemberForm";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ export default async function Settings() {
           <p>تحكّم في صلاحيات كل عضو في الفريق</p>
         </div>
       </div>
+      <AddMemberForm />
       <PermissionsManager profiles={profiles || []} />
     </div>
   );

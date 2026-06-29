@@ -6,6 +6,7 @@ import FinancePanel from "./FinancePanel";
 import CustomerActivity from "./CustomerActivity";
 import AccessPanel from "./AccessPanel";
 import FollowUpPanel from "./FollowUpPanel";
+import RefundPanel from "./RefundPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -109,6 +110,17 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const fuOpen = fuAll.find((x) => !x.done) || null;
   const fuHistory = fuAll.filter((x) => x.done).slice(0, 5);
 
+  // الاسترداد (محصّن لو الجدول لسه مش متعمل)
+  let refund: any = null;
+  let refundTableMissing = false;
+  if (canFinance) {
+    const { data: rf, error: rfErr } = await supabase.from("refunds")
+      .select("id,amount,currency,reason,shot_url,status,created_at")
+      .eq("customer_id", params.id).order("created_at", { ascending: false }).limit(1);
+    if (rfErr) refundTableMissing = true;
+    else refund = (rf || [])[0] || null;
+  }
+
   const st = STAGE[c.stage as string] || STAGE.new;
 
   return (
@@ -149,6 +161,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
 
       {canFinance && <FinancePanel enrollments={finEnrollments} />}
+
+      {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
 
       <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
 

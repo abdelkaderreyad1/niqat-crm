@@ -13,14 +13,15 @@ const STAGES: Record<string, { label: string; color: string }> = {
   lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
 };
 
-export default async function Customers() {
+export default async function Customers({ searchParams }: { searchParams: { q?: string } }) {
+  const q = (searchParams?.q || "").trim();
   const supabase = createClient();
-  const { data: rows } = await supabase
+  let cq = supabase
     .from("customers")
     .select("id,name,phone1,email,company,stage,owner_id")
-    .eq("deleted", false)
-    .order("created_at", { ascending: false })
-    .limit(200);
+    .eq("deleted", false);
+  if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
+  const { data: rows } = await cq.order("created_at", { ascending: false }).limit(200);
 
   const { data: profs } = await supabase.from("profiles").select("id,full_name");
   const pName = new Map((profs || []).map((p) => [p.id, p.full_name]));
@@ -70,7 +71,7 @@ export default async function Customers() {
       <div className="page-h">
         <div>
           <h1>العملاء</h1>
-          <p>{(rows || []).length} عميل</p>
+          <p>{(rows || []).length} عميل{q ? <> · نتائج بحث: «{q}»</> : null}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
