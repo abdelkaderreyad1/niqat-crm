@@ -43,5 +43,5 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
     ownerName: pName.get(c.owner_id || "") || "",
   }));
 
-  return <PipelineBoard initial={items} />;
+  return <PipelineBoard key={q || "all"} initial={items} />;
 }
