@@ -5,6 +5,8 @@ import Burger from "./Burger";
 import TopSearch from "./TopSearch";
 import NotificationsBell from "./NotificationsBell";
 import LangToggle from "./LangToggle";
+import Toaster from "./Toaster";
+import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
 import { getLang, tFor } from "@/lib/i18n";
 
@@ -136,8 +138,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <LangToggle />
           <NotificationsBell items={notif} />
         </header>
-        <main className="content enter">{children}</main>
+        <main className="content"><AnimatedMain>{children}</AnimatedMain></main>
       </div>
+    <Toaster />
     </div>
     </LangProvider>
   );

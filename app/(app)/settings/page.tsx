@@ -1,49 +1,25 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
-import PermissionsManager from "./PermissionsManager";
-import AddMemberForm from "./AddMemberForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function Settings() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: prof } = await supabase
-    .from("profiles")
-    .select("can_manage_users")
-    .eq("id", user?.id || "")
-    .maybeSingle();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: prof } = await supabase.from("profiles").select("can_manage_settings").eq("id", user?.id || "").maybeSingle();
 
-  if (!prof?.can_manage_users) {
+  if (!prof?.can_manage_settings) {
     return (
-      <div className="page-h">
-        <div>
-          <h1>{tr("settings")}</h1>
-          <p>مالكش صلاحية إدارة المستخدمين.</p>
-        </div>
-      </div>
+      <div className="page-h"><div><h1>{tr("settings")}</h1><p>مالكش صلاحية إدارة الإعدادات.</p></div></div>
     );
   }
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select(
-      "id, full_name, team, can_edit_customers, can_see_finance, can_view_reports, can_manage_tickets, can_manage_batches, can_manage_settings, can_manage_users, can_grant_access, can_message, can_export"
-    )
-    .order("created_at", { ascending: true });
-
   return (
     <div>
-      <div className="page-h">
-        <div>
-          <h1>{tr("settings")}</h1>
-          <p>تحكّم في صلاحيات كل عضو في الفريق</p>
-        </div>
+      <div className="page-h"><div><h1>{tr("settings")}</h1><p>تحكّم في خيارات النظام والتكاملات</p></div></div>
+      <div className="card" style={{ padding: 22, fontSize: 14, color: "var(--muted)" }}>
+        خيارات النظام (واتساب WATI · قوالب الرسائل · الأفيلييت · خيارات الأكسس · التخصصات · الدبلومات · الاعتمادات · المشاريع · الجامعات) — قيد التجهيز في التحديث الجاي.
       </div>
-      <AddMemberForm />
-      <PermissionsManager profiles={profiles || []} />
     </div>
   );
 }
