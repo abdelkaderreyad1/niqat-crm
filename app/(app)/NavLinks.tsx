@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useT } from "@/lib/i18n/client";
 
 type Perms = {
   canReports?: boolean;
@@ -28,30 +29,31 @@ const I: Record<string, string> = {
   cog: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h13M3 12h18M3 18h9"/><circle cx="18" cy="6" r="2.2"/><circle cx="15" cy="18" r="2.2"/></svg>',
 };
 
-type Item = { href: string; key: string; label: string; badge?: number };
+type Item = { href: string; key: string; tk: string; badge?: number };
 
 export default function NavLinks(p: Perms) {
   const path = usePathname() || "/";
+  const t = useT();
   const closeSb = () => document.getElementById("sb")?.classList.remove("open");
 
   const main: Item[] = [
-    { href: "/", key: "dash", label: "لوحة المعلومات" },
-    { href: "/customers", key: "users", label: "العملاء" },
-    { href: "/pipeline", key: "pipe", label: "مسار المبيعات" },
-    { href: "/my-tasks", key: "task", label: "مهامي", badge: p.dueCount },
-    { href: "/batches", key: "batch", label: "الباتشات" },
-    { href: "/universities", key: "uni2", label: "الجامعات والكليات" },
+    { href: "/", key: "dash", tk: "dash" },
+    { href: "/customers", key: "users", tk: "customers" },
+    { href: "/pipeline", key: "pipe", tk: "pipeline" },
+    { href: "/my-tasks", key: "task", tk: "myTasks", badge: p.dueCount },
+    { href: "/batches", key: "batch", tk: "batches" },
+    { href: "/universities", key: "uni2", tk: "universities" },
   ];
 
-  const teams: Item[] = [{ href: "/support", key: "support", label: "الدعم" }];
-  if (p.canGrant) teams.push({ href: "/onboarding", key: "onb", label: "تفعيل المنصة", badge: p.handoffCount });
-  teams.push({ href: "/refunds", key: "refund", label: "المستردات (ريفند)", badge: p.refundCount });
-  teams.push({ href: "/archive", key: "archive", label: "الأرشيف" });
-  if (p.canReports) teams.push({ href: "/reports", key: "report", label: "التقارير" });
+  const teams: Item[] = [{ href: "/support", key: "support", tk: "support" }];
+  if (p.canGrant) teams.push({ href: "/onboarding", key: "onb", tk: "onboarding", badge: p.handoffCount });
+  teams.push({ href: "/refunds", key: "refund", tk: "refunds", badge: p.refundCount });
+  teams.push({ href: "/archive", key: "archive", tk: "archive" });
+  if (p.canReports) teams.push({ href: "/reports", key: "report", tk: "reports" });
 
   const admin: Item[] = [];
-  if (p.canUsers) admin.push({ href: "/users", key: "settings", label: "المستخدمون والصلاحيات" });
-  if (p.canSettings) admin.push({ href: "/settings", key: "cog", label: "الإعدادات" });
+  if (p.canUsers) admin.push({ href: "/users", key: "settings", tk: "users" });
+  if (p.canSettings) admin.push({ href: "/settings", key: "cog", tk: "settings" });
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
@@ -63,18 +65,18 @@ export default function NavLinks(p: Perms) {
       className={isActive(n.href) ? "on" : ""}
     >
       <span dangerouslySetInnerHTML={{ __html: I[n.key] }} />
-      <span>{n.label}</span>
+      <span>{t(n.tk)}</span>
       {n.badge ? <span className="badge num">{n.badge}</span> : null}
     </Link>
   );
 
   return (
     <nav className="nav">
-      <div className="sect">الرئيسية</div>
+      <div className="sect">{t("MAIN")}</div>
       {main.map(Btn)}
-      <div className="sect">الفرق</div>
+      <div className="sect">{t("TEAMS")}</div>
       {teams.map(Btn)}
-      {admin.length > 0 && <div className="sect">الإدارة</div>}
+      {admin.length > 0 && <div className="sect">{t("ADMIN")}</div>}
       {admin.map(Btn)}
     </nav>
   );

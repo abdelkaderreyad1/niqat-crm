@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function Archive() {
     <div>
       <div className="page-h">
         <div>
-          <h1>الأرشيف</h1>
+          <h1>{tr("archive")}</h1>
           <p>{(rows || []).length} عميل مؤرشف</p>
         </div>
       </div>

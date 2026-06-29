@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import NewTicketForm from "./NewTicketForm";
 
@@ -21,7 +22,7 @@ export default async function NewTicketPage({
       <div style={{ marginBottom: 12 }}>
         <Link href="/support" style={{ fontSize: 13, color: "var(--muted)" }}>← رجوع للدعم</Link>
       </div>
-      <div className="page-h"><h1>تذكرة جديدة</h1></div>
+      <div className="page-h"><h1>{tr("newTicket")}</h1></div>
       <NewTicketForm
         customers={(customers as any) || []}
         presetCustomer={searchParams.customer || ""}

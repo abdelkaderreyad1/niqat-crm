@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { t as tr } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function Reports() {
     return (
       <div className="page-h">
         <div>
-          <h1>التقارير</h1>
+          <h1>{tr("reports")}</h1>
           <p>مالكش صلاحية رؤية التقارير.</p>
         </div>
       </div>
@@ -118,7 +119,7 @@ export default async function Reports() {
     <div>
       <div className="page-h">
         <div>
-          <h1>التقارير</h1>
+          <h1>{tr("reports")}</h1>
           <p>نظرة سريعة على المبيعات والتحصيل والإحالات</p>
         </div>
       </div>

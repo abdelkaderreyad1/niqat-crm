@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { t as tr } from "@/lib/i18n";
 import AffiliatesManager from "./AffiliatesManager";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function Affiliates() {
     return (
       <div className="page-h">
         <div>
-          <h1>إدارة الإحالات / الأفيلييت</h1>
+          <h1>{tr("manageAff")}</h1>
           <p>مالكش صلاحية إدارة الإحالات.</p>
         </div>
       </div>
@@ -37,7 +38,7 @@ export default async function Affiliates() {
     <div className="max-w-2xl">
       <div className="page-h">
         <div>
-          <h1>إدارة الإحالات / الأفيلييت</h1>
+          <h1>{tr("manageAff")}</h1>
           <p>الأكواد المتاحة ونسبة الخصم لكل واحد. أي كود مش في القائمة هيترفض عند التسجيل.</p>
         </div>
       </div>

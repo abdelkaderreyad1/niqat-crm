@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { t as tr } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 const TEAM = { admin: "الإدارة", sales: "فريق المبيعات", support: "فريق الدعم" } as Record<string, string>;
@@ -57,7 +58,7 @@ export default async function Users() {
     <div>
       <div className="page-h">
         <div>
-          <h1>المستخدمون والصلاحيات</h1>
+          <h1>{tr("users")}</h1>
           <p>{users.length} مستخدم</p>
         </div>
       </div>

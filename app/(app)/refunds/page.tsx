@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export default async function Refunds() {
 
   if (!prof?.can_see_finance) {
     return (
-      <div className="page-h"><div><h1>المستردات (ريفند)</h1><p>مالكش صلاحية رؤية البيانات المالية.</p></div></div>
+      <div className="page-h"><div><h1>{tr("refunds")}</h1><p>مالكش صلاحية رؤية البيانات المالية.</p></div></div>
     );
   }
 
@@ -31,7 +32,7 @@ export default async function Refunds() {
   if (error) {
     return (
       <div>
-        <div className="page-h"><div><h1>المستردات (ريفند)</h1></div></div>
+        <div className="page-h"><div><h1>{tr("refunds")}</h1></div></div>
         <div className="card" style={{ padding: 20, fontSize: 14, color: "var(--muted)" }}>
           جدول الاسترداد لسه مش متعمل في قاعدة البيانات. شغّل SQL الـ refunds مرة واحدة في Supabase وهتشتغل الشاشة.
         </div>
@@ -45,7 +46,7 @@ export default async function Refunds() {
 
   return (
     <div>
-      <div className="page-h"><div><h1>المستردات (ريفند)</h1><p>{rows.length} طلب</p></div></div>
+      <div className="page-h"><div><h1>{tr("refunds")}</h1><p>{rows.length} طلب</p></div></div>
 
       {rows.length === 0 ? (
         <div className="empty"><b>لا توجد طلبات استرداد</b></div>

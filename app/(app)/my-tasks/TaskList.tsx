@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,6 +12,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const waLink = (p: string) => "https://wa.me/" + (p || "").replace(/[^\d]/g, "");
 
 export default function TaskList({ initial }: { initial: T[] }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [tasks, setTasks] = useState<T[]>(initial);
@@ -77,7 +79,7 @@ export default function TaskList({ initial }: { initial: T[] }) {
     <div>
       <div className="page-h">
         <div>
-          <h1>مهامي</h1>
+          <h1>{tr("myTasks")}</h1>
           <p>{openCount} مهمة مفتوحة</p>
         </div>
       </div>

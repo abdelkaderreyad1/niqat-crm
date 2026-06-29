@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function NewCustomer() {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [f, setF] = useState({ name: "", phone1: "", phone2: "", email: "", company: "" });
@@ -42,7 +44,7 @@ export default function NewCustomer() {
 
   return (
     <div style={{ maxWidth: 560 }}>
-      <div className="page-h"><h1>إضافة عميل</h1></div>
+      <div className="page-h"><h1>{tr("addCust")}</h1></div>
       <div className="card" style={{ padding: 20 }}>
         {Field("الاسم *", "name")}
         {Field("موبايل ١", "phone1", true)}

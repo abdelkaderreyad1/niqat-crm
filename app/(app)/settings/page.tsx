@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { t as tr } from "@/lib/i18n";
 import PermissionsManager from "./PermissionsManager";
 import AddMemberForm from "./AddMemberForm";
 
@@ -19,7 +20,7 @@ export default async function Settings() {
     return (
       <div className="page-h">
         <div>
-          <h1>الإعدادات والصلاحيات</h1>
+          <h1>{tr("settings")}</h1>
           <p>مالكش صلاحية إدارة المستخدمين.</p>
         </div>
       </div>
@@ -37,7 +38,7 @@ export default async function Settings() {
     <div>
       <div className="page-h">
         <div>
-          <h1>الإعدادات والصلاحيات</h1>
+          <h1>{tr("settings")}</h1>
           <p>تحكّم في صلاحيات كل عضو في الفريق</p>
         </div>
       </div>

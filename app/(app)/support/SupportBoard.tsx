@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -41,6 +42,7 @@ function initials(name: string) {
 }
 
 export default function SupportBoard({ initial }: { initial: Ticket[] }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [tickets, setTickets] = useState<Ticket[]>(initial);
@@ -77,7 +79,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
     <div>
       <div className="page-h">
         <div>
-          <h1>الدعم</h1>
+          <h1>{tr("support")}</h1>
           <p>{tickets.length} تذكرة — اسحب التذكرة بين الأعمدة</p>
         </div>
         <Link href="/support/new" className="btn">

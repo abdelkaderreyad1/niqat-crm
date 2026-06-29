@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { t as tr } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 const STAGES = [
@@ -40,7 +41,7 @@ export default async function Dashboard() {
     <div>
       <div className="page-h">
         <div>
-          <h1>لوحة المعلومات</h1>
+          <h1>{tr("dash")}</h1>
           <p>ملخّص حيّ من قاعدة البيانات</p>
         </div>
       </div>

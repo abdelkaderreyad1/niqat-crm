@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import ExportButton from "./ExportButton";
 export const dynamic = "force-dynamic";
@@ -70,7 +71,7 @@ export default async function Customers({ searchParams }: { searchParams: { q?: 
     <div>
       <div className="page-h">
         <div>
-          <h1>العملاء</h1>
+          <h1>{tr("customers")}</h1>
           <p>{(rows || []).length} عميل{q ? <> · نتائج بحث: «{q}»</> : null}</p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

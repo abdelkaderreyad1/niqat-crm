@@ -4,6 +4,9 @@ import NavLinks from "./NavLinks";
 import Burger from "./Burger";
 import TopSearch from "./TopSearch";
 import NotificationsBell from "./NotificationsBell";
+import LangToggle from "./LangToggle";
+import { LangProvider } from "@/lib/i18n/client";
+import { getLang, tFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -78,10 +81,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
+  const lang = getLang();
+  const t = tFor(lang);
   const name = profile?.full_name || user.email || "مستخدم";
   const teamLabel = TEAM_AR[(profile?.team || "").toLowerCase()] || profile?.team || "—";
 
   return (
+    <LangProvider lang={lang}>
     <div className="app">
       <aside className="sb" id="sb">
         <div className="sb-logo">
@@ -89,7 +95,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <img src="/icon.png" alt="N" />
           <div>
             <b>CRM-NIQAT</b>
-            <span>نظام إدارة العملاء</span>
+            <span>{t("appsub")}</span>
           </div>
         </div>
 
@@ -113,7 +119,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <form action="/auth/signout" method="post">
-            <button className="logout" type="submit" title="تسجيل الخروج">
+            <button className="logout" type="submit" title={t("logout")}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M16 17l5-5-5-5M21 12H9" />
               </svg>
@@ -127,10 +133,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Burger />
           <TopSearch />
           <div className="spacer" />
+          <LangToggle />
           <NotificationsBell items={notif} />
         </header>
         <main className="content enter">{children}</main>
       </div>
     </div>
+    </LangProvider>
   );
 }

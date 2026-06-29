@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -36,6 +37,7 @@ function initials(name: string) {
 }
 
 export default function PipelineBoard({ initial }: { initial: Cust[] }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [custs, setCusts] = useState<Cust[]>(initial);
@@ -72,7 +74,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
     <div>
       <div className="page-h">
         <div>
-          <h1>مسار المبيعات</h1>
+          <h1>{tr("pipeline")}</h1>
           <p>{custs.length} عميل — اسحب العميل بين المراحل</p>
         </div>
         <Link className="btn" href="/customers/new">

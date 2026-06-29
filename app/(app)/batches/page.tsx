@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { t as tr } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 export default async function Batches() {
@@ -19,7 +20,7 @@ export default async function Batches() {
     <div>
       <div className="page-h">
         <div>
-          <h1>الباتشات</h1>
+          <h1>{tr("batches")}</h1>
           <p>{(batches || []).length} باتش</p>
         </div>
       </div>
