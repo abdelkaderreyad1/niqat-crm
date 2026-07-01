@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
-import BatchDoneBtn from "./batches/BatchDoneBtn";
 
 export const dynamic = "force-dynamic";
 
@@ -139,13 +138,16 @@ export default async function Dashboard() {
   ];
 
   // مبيعات النهاردة (محصّل فعلي اليوم) — بصلاحية منفصلة
-  let todaySales = 0;
+  let todayEGP = 0, todayUSD = 0;
   if (canDailySales) {
     const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
     const { data: paidToday } = await supabase.from("installments")
       .select("amount,currency,paid_at,status").gte("paid_at", startToday.toISOString());
     for (const i of (paidToday || []) as any[]) {
-      if ((i.status === "paid" || i.paid_at) && i.currency === "EGP") todaySales += Number(i.amount) || 0;
+      if (i.status === "paid" || i.paid_at) {
+        if (i.currency === "USD") todayUSD += Number(i.amount) || 0;
+        else todayEGP += Number(i.amount) || 0;
+      }
     }
   }
 
@@ -169,7 +171,8 @@ export default async function Dashboard() {
         {canDailySales && (
           <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A310,#18A95710)" }}>
             <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("salesToday")}</div>
-            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todaySales)} <span style={{ fontSize: 15 }}>ج</span></div>
+            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todayEGP)} <span style={{ fontSize: 15 }}>ج</span></div>
+            {todayUSD > 0 && <div className="num" style={{ fontSize: 20, fontWeight: 700, color: "#0FA3A3", marginTop: 4 }}>{fmtMoney(todayUSD)} <span style={{ fontSize: 13 }}>$</span></div>}
           </div>
         )}
       </div>
@@ -208,7 +211,7 @@ export default async function Dashboard() {
               <div key={b.id} className="sch">
                 <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
                 <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
-                {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
+
                 <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
               </div>
             );

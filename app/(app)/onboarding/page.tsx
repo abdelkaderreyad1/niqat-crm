@@ -11,66 +11,116 @@ export default async function Onboarding() {
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
-  const { data: custs } = await supabase.from("customers").select("id,name,stage");
-  const cMap = new Map((custs || []).map((c) => [c.id, c.name]));
-  const cStage = new Map((custs || []).map((c) => [c.id, c.stage]));
+  const { data: custs } = await supabase.from("customers").select("id,name,stage,phone1");
+  const cMap = new Map((custs || []).map((c: any) => [c.id, c]));
+
   const { data: profs } = await supabase.from("profiles").select("id,full_name");
-  const pMap = new Map((profs || []).map((p) => [p.id, p.full_name]));
+  const pMap = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
 
   const { data: items } = await supabase.from("handoff_items").select("handoff_id,id,done");
-  const itemCount = new Map<string, number>();
-  const doneCount = new Map<string, number>();
+  const itemList = new Map<string, any[]>();
   for (const it of (items || []) as any[]) {
-    const hid = it.handoff_id;
-    itemCount.set(hid, (itemCount.get(hid) || 0) + 1);
-    if (it.done) doneCount.set(hid, (doneCount.get(hid) || 0) + 1);
+    const list = itemList.get(it.handoff_id) || [];
+    list.push(it);
+    itemList.set(it.handoff_id, list);
+  }
+
+  const { data: enrData } = await supabase.from("enrollments").select("customer_id,diploma_id");
+  const { data: dipData } = await supabase.from("diplomas").select("id,name_ar");
+  const dNameMap = new Map((dipData || []).map((d: any) => [d.id, d.name_ar]));
+  const custDips = new Map<string, string[]>();
+  for (const enr of (enrData || []) as any[]) {
+    const list = custDips.get(enr.customer_id) || [];
+    const dn = dNameMap.get(enr.diploma_id);
+    if (dn && !list.includes(dn)) list.push(dn);
+    custDips.set(enr.customer_id, list);
   }
 
   function fmtDate(d: string) {
     try { return new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }); } catch { return d; }
   }
 
+  const initials = (name: string) => {
+    if (!name) return "?";
+    const parts = name.trim().split(/\s+/);
+    return parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0][0].toUpperCase();
+  };
+
   return (
     <div>
       <div className="page-h">
         <div>
           <h1>{tr("onboarding")}</h1>
-          <p>{(rows || []).length} تسليم في الانتظار</p>
+          <p>{(rows || []).length} في الانتظار</p>
         </div>
       </div>
       {(!rows || rows.length === 0) ? (
-        <div className="empty"><b>لا توجد عمليات تسليم معلّقة</b></div>
+        <div className="empty"><b>لا توجد طلبات تفعيل معلّقة</b></div>
       ) : (
-        <div className="grid2" style={{ marginTop: 4 }}>
+        <div className="onb-grid">
           {(rows || []).map((h: any) => {
-            const total = itemCount.get(h.id) || 0;
-            const done = doneCount.get(h.id) || 0;
+            const customer = cMap.get(h.customer_id) || {};
+            const custName = customer.name || "—";
+            const custPhone = customer.phone1 || "";
+            const stage = customer.stage || "";
+            const dips = custDips.get(h.customer_id) || [];
+            const hItems = itemList.get(h.id) || [];
+            const done = hItems.filter((it: any) => it.done).length;
+            const total = hItems.length;
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-            const stage = cStage.get(h.customer_id) || "";
+
             return (
-              <Link key={h.id} href={`/customers/${h.customer_id}`} className="card" style={{ padding: 16, display: "block", textDecoration: "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <b style={{ color: "var(--ink)", fontSize: 15 }}>{cMap.get(h.customer_id) || "—"}</b>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                      {stage === "enrolled" ? <span style={{ color: "#18A957" }}>مسجّل</span> : <span style={{ color: "#F08A24" }}>{stage}</span>}
-                      {h.created_at ? <> · {fmtDate(h.created_at)}</> : null}
+              <div key={h.id} className="onb-card">
+                <div className="oh">
+                  <div className="av" style={{ background: "var(--brand)", width: 44, height: 44, fontSize: 16 }}>{initials(custName)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>{custName}</div>
+                    {custPhone && <div style={{ fontSize: 12.5, color: "var(--muted)", direction: "ltr", textAlign: "start" }}>{custPhone}</div>}
+                    <div style={{ marginTop: 4 }}>
+                      <span className="chip">{stage === "enrolled" ? "مسجّل / دفع" : stage}</span>
                     </div>
                   </div>
-                  <span className="stg" style={{ background: "#F08A241a", color: "#F08A24", whiteSpace: "nowrap" }}>
-                    {total > 0 ? `${done}/${total}` : "بانتظار"}
-                  </span>
                 </div>
-                {h.note && <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 8, lineHeight: 1.5 }}>📝 {h.note}</div>}
-                {total > 0 && (
-                  <div style={{ marginTop: 10, height: 6, background: "#eef2f8", borderRadius: 10, overflow: "hidden" }}>
-                    <div style={{ width: pct + "%", height: "100%", background: pct === 100 ? "#18A957" : "#F08A24", borderRadius: 10 }} />
+                <div className="ob">
+                  {dips.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                      {dips.map((d: string) => <span key={d} className="chip">{d}</span>)}
+                    </div>
+                  )}
+                  {h.note && <div className="onb-note" style={{ marginBottom: 10 }}>📝 {h.note}</div>}
+                  {total > 0 && (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 5 }}>
+                        <span style={{ fontWeight: 700 }}>التفعيل</span>
+                        <span className="num">{done}/{total}</span>
+                      </div>
+                      <div className="prog" style={{ marginBottom: 10 }}>
+                        <i style={{ width: pct + "%", background: pct === 100 ? "var(--green)" : "var(--brand)" }} />
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+                        {hItems.map((it: any) => (
+                          <div key={it.id} className={`task ${it.done ? "done" : ""}`} style={{ padding: "7px 10px" }}>
+                            <div className={`cb ${it.done ? "on" : ""}`}>
+                              {it.done && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><polyline points="20 6 9 17 4 12" /></svg>}
+                            </div>
+                            <div className="tt" style={{ fontSize: 12.5 }}>بند {hItems.indexOf(it) + 1}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {custPhone && (
+                      <a href={`https://wa.me/${custPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="btn wa sm">واتساب</a>
+                    )}
+                    <Link href={`/customers/${h.customer_id}`} className="btn sm">{tr("profile")}</Link>
                   </div>
-                )}
-                <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 8 }}>
-                  المسؤول: {pMap.get(h.assignee_id || "") || "غير معيّن"}
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
+                    {pMap.get(h.assignee_id || "") ? `المسؤول: ${pMap.get(h.assignee_id)}` : ""}
+                    {h.created_at ? ` · ${fmtDate(h.created_at)}` : ""}
+                  </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

@@ -21,6 +21,8 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
   const [amt, setAmt] = useState("");
   const [due, setDue] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [editAgreedId, setEditAgreedId] = useState<string | null>(null);
+  const [editAgreedVal, setEditAgreedVal] = useState("");
 
   async function logAudit(action: string, detail: string) {
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action, detail });
@@ -54,6 +56,18 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
     setBusy(null); setAddFor(null); setAmt(""); setDue(""); setFile(null);
     toast("اتضاف القسط"); router.refresh();
   }
+  async function saveAgreed(e: Enr) {
+    const amt = Number(editAgreedVal);
+    if (isNaN(amt) || amt < 0) return alert("أدخل مبلغ صحيح");
+    setBusy("agreed");
+    const { error } = await supabase.from("enrollments").update({ agreed: amt }).eq("id", e.id);
+    setBusy(null);
+    if (error) return alert("تعذّر التحديث: " + error.message);
+    await logAudit("agreed_edit", `تعديل المبلغ المتفق من ${money(e.agreed, e.currency)} إلى ${money(amt, e.currency)}`);
+    setEditAgreedId(null);
+    toast("تم تعديل المبلغ المتفق عليه");
+    router.refresh();
+  }
 
   const badge = (txt: string, color: string) => (
     <span className="stg" style={{ background: color + "1a", color }}>{txt}</span>
@@ -72,7 +86,15 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                 <b style={{ color: "var(--ink)" }}>{e.diploma}{e.free && <span style={{ color: "var(--brand)", fontSize: 12, marginInlineStart: 6 }}>🎁 هدية</span>}</b>
                 <div style={{ display: "flex", gap: 12, fontSize: 12.5 }}>
-                  <span style={{ color: "var(--muted)" }}>المتفق: <b className="num" style={{ color: "var(--ink)" }}>{money(e.agreed, e.currency)}</b></span>
+                  <span style={{ color: "var(--muted)" }}>المتفق: {editAgreedId === e.id ? (
+                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                      <input className="inp num" style={{ width: 100, height: 32, fontSize: 13 }} value={editAgreedVal} onChange={ev => setEditAgreedVal(ev.target.value)} />
+                      <button onClick={() => saveAgreed(e)} disabled={busy === "agreed"} className="btn" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>حفظ</button>
+                      <button onClick={() => setEditAgreedId(null)} className="btn ghost" style={{ height: 32, padding: "0 10px", fontSize: 12 }}>إلغاء</button>
+                    </span>
+                  ) : (
+                    <b className="num" style={{ color: "var(--ink)", cursor: "pointer" }} onClick={() => { setEditAgreedId(e.id); setEditAgreedVal(String(e.agreed)); }}>{money(e.agreed, e.currency)}</b>
+                  )}</span>
                   <span style={{ color: "var(--green)" }}>المدفوع: <b className="num">{money(paid, e.currency)}</b></span>
                   <span style={{ color: "var(--amber)" }}>المتبقّي: <b className="num">{money(remaining, e.currency)}</b></span>
                 </div>
