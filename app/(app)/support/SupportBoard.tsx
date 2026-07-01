@@ -50,6 +50,20 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colQ, setColQ] = useState<Record<string, string>>({});
+  const [colSort, setColSort] = useState<Record<string, string>>({});
+
+  function sortItems(items: Ticket[], colKey: string): Ticket[] {
+    const mode = colSort[colKey] || "";
+    if (!mode) return items;
+    const sorted = [...items];
+    if (mode === "name") sorted.sort((a, b) => a.title.localeCompare(b.title));
+    else if (mode === "new") sorted.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    else if (mode === "pri") sorted.sort((a, b) => {
+      const ord: Record<string, number> = { high: 0, medium: 1, low: 2, normal: 3 };
+      return (ord[a.priority] ?? 3) - (ord[b.priority] ?? 3);
+    });
+    return sorted;
+  }
 
   async function drop(status: string) {
     const id = dragId;
@@ -82,7 +96,7 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
       <div className="page-h">
         <div>
           <h1>{tr("support")}</h1>
-          <p>{tickets.length} تذكرة — اسحب التذكرة بين الأعمدة</p>
+          <p>{tickets.length} {tr("support")} — {tr("supportDesc")}</p>
         </div>
         <Link href="/support/new" className="btn">
           <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
@@ -93,8 +107,8 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
       <div className="pipe">
         {STATUSES.map((s) => {
           const cq = (colQ[s.key] || "").trim().toLowerCase();
-          const items = tickets.filter((t) => (t.status || "open") === s.key)
-            .filter((t) => !cq || ((t.title || "") + " " + ((t as any).customerName || "") + " " + ((t as any).phone || "")).toLowerCase().includes(cq));
+          const items = sortItems(tickets.filter((t) => (t.status || "open") === s.key)
+            .filter((t) => !cq || ((t.title || "") + " " + ((t as any).customerName || "") + " " + ((t as any).phone || "")).toLowerCase().includes(cq)), s.key);
           return (
             <div
               key={s.key}
@@ -116,6 +130,12 @@ export default function SupportBoard({ initial }: { initial: Ticket[] }) {
                   <span className="dot" style={{ background: s.color }} />
                   {s.label}
                 </span>
+                <select className="sortsel" value={colSort[s.key] || ""} onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
+                  <option value="">ترتيب</option>
+                  <option value="name">بالموضوع</option>
+                  <option value="new">الأحدث</option>
+                  <option value="pri">الأولوية</option>
+                </select>
                 <span className="ct">{items.length}</span>
               </div>
               <input className="inp" placeholder="فلترة العمود…" value={colQ[s.key] || ""}

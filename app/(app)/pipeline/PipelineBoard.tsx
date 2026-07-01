@@ -12,6 +12,7 @@ type Cust = {
   stage: string;
   ownerId: string;
   ownerName: string;
+  createdAt: string;
 };
 
 // مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
@@ -45,6 +46,16 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colQ, setColQ] = useState<Record<string, string>>({});
+  const [colSort, setColSort] = useState<Record<string, string>>({});
+
+  function sortItems(items: Cust[], colKey: string): Cust[] {
+    const mode = colSort[colKey] || "";
+    if (!mode) return items;
+    const sorted = [...items];
+    if (mode === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (mode === "new") sorted.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+    return sorted;
+  }
 
   async function drop(stage: string) {
     const id = dragId;
@@ -77,7 +88,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
       <div className="page-h">
         <div>
           <h1>{tr("pipeline")}</h1>
-          <p>{custs.length} عميل — اسحب العميل بين المراحل</p>
+          <p>{custs.length} {tr("customers")} — {tr("pipelineDesc")}</p>
         </div>
         <Link className="btn" href="/customers/new">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
@@ -90,8 +101,8 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
       <div className="pipe">
         {STAGES.map((s) => {
           const cq = (colQ[s.key] || "").trim().toLowerCase();
-          const items = custs.filter((c) => (c.stage || "new") === s.key)
-            .filter((c) => !cq || ((c.name || "") + " " + ((c as any).phone1 || "") + " " + ((c as any).company || "")).toLowerCase().includes(cq));
+          const items = sortItems(custs.filter((c) => (c.stage || "new") === s.key)
+            .filter((c) => !cq || ((c.name || "") + " " + ((c as any).phone1 || "") + " " + ((c as any).company || "")).toLowerCase().includes(cq)), s.key);
           return (
             <div
               key={s.key}
@@ -114,6 +125,11 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                   <span className="dot" style={{ background: s.color }} />
                   {s.label}
                 </span>
+                <select className="sortsel" value={colSort[s.key] || ""} onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
+                  <option value="">ترتيب</option>
+                  <option value="name">بالاسم</option>
+                  <option value="new">الأحدث</option>
+                </select>
                 <span className="ct">{items.length}</span>
               </div>
               <input className="inp" placeholder="فلترة العمود…" value={colQ[s.key] || ""}

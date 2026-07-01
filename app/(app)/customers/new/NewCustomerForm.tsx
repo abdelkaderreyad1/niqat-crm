@@ -20,29 +20,71 @@ export default function NewCustomerForm({
   const [f, setF] = useState({
     name: "", phone1: "", phone2: "", email: "", company: "", affiliate_code: "",
     specialty_id: "", stage: "new", residency: "", grad_year: "", source: "",
-    follow: "", diploma_id: "", batch_id: "", free: false, note: "",
-    amount: "", currency: "EGP",
+    follow: "", diploma_id: "", batch_id: "", note: "",
+    curMode: "EGP",
+    amount: "", free_reason: "",
+    firstPay: "", firstPayDate: "", dueDate: "",
   });
+  const [firstPayFile, setFirstPayFile] = useState<File | null>(null);
+  const [specs, setSpecs] = useState<Opt[]>(specialties);
+  const [dips, setDips] = useState<Opt[]>(diplomas);
+  const [addSpecOpen, setAddSpecOpen] = useState(false);
+  const [addSpecVal, setAddSpecVal] = useState("");
+  const [addDipOpen, setAddDipOpen] = useState(false);
+  const [addDipVal, setAddDipVal] = useState("");
   const [saving, setSaving] = useState(false);
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
-  // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
   const setName = (v: string) => set("name", /[A-Za-z]/.test(v) ? v.toUpperCase() : v);
 
-  // الافييليت + الخصم
+  const freeMode = f.curMode === "FREE";
   const affMatch = affiliates.find((a) => a.code.toUpperCase() === f.affiliate_code.trim().toUpperCase());
   const affUnknown = f.affiliate_code.trim() !== "" && !affMatch;
   const gross = Number(f.amount) || 0;
   const discPct = affMatch ? Number(affMatch.discount) || 0 : 0;
   const net = Math.max(0, Math.round(gross - (gross * discPct) / 100));
 
+  async function addSpecialty() {
+    const val = addSpecVal.trim();
+    if (!val) return;
+    const { data } = await supabase.from("specialties").insert({ name_ar: val }).select("id").maybeSingle();
+    if (data) {
+      const newOpt = { id: data.id, name: val };
+      setSpecs((s) => [...s, newOpt]);
+      set("specialty_id", data.id);
+    }
+    setAddSpecVal("");
+    setAddSpecOpen(false);
+  }
+
+  async function addDiploma() {
+    const val = addDipVal.trim();
+    if (!val) return;
+    const { data } = await supabase.from("diplomas").insert({ name_ar: val }).select("id").maybeSingle();
+    if (data) {
+      const newOpt = { id: data.id, name: val };
+      setDips((s) => [...s, newOpt]);
+      set("diploma_id", data.id);
+    }
+    setAddDipVal("");
+    setAddDipOpen(false);
+  }
+
+  async function uploadFirstPayShot(): Promise<string> {
+    if (!firstPayFile) return "";
+    const ext = (firstPayFile.name.split(".").pop() || "jpg").toLowerCase();
+    const path = `firstpay-${Date.now()}.${ext}`;
+    const up = await supabase.storage.from("receipts").upload(path, firstPayFile, { upsert: false });
+    if (up.error) { toast("تعذّر رفع صورة الدفعة"); return ""; }
+    return supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || "";
+  }
+
   async function save() {
     if (!f.name.trim()) { toast("الاسم مطلوب"); return; }
-    if (affUnknown) { toast("كود الأفيلييت غير موجود في القائمة — راجعه أو سيبه فاضي"); return; }
+    if (affUnknown) { toast("كود الأفيلييت غير موجود — راجعه أو سيبه فاضي"); return; }
     setSaving(true);
     setDup(null);
 
-    // منع التكرار: نفس الاسم أو الموبايل أو الإيميل
     const ors: string[] = [`name.eq.${f.name.trim()}`];
     if (f.phone1.trim()) ors.push(`phone1.eq.${f.phone1.trim()}`, `phone2.eq.${f.phone1.trim()}`);
     if (f.phone2.trim()) ors.push(`phone1.eq.${f.phone2.trim()}`, `phone2.eq.${f.phone2.trim()}`);
@@ -69,26 +111,46 @@ export default function NewCustomerForm({
       return;
     }
     const cid = cust.id;
-    // اشتراك
+
     if (f.diploma_id) {
       const { data: enr } = await supabase.from("enrollments").insert({
         customer_id: cid, diploma_id: f.diploma_id, batch_id: f.batch_id || null,
-        status: "active", free: f.free,
+        status: "active", free: freeMode, free_reason: freeMode ? f.free_reason.trim() : "",
       }).select("id").maybeSingle();
-      // المالية: المبلغ المستحق بعد الخصم
-      if (enr && !f.free && net > 0) {
-        await supabase.from("enrollment_finance").insert({
-          enrollment_id: enr.id, agreed_amount: net, currency: f.currency,
-        });
+
+      if (enr) {
+        if (!freeMode && net > 0) {
+          await supabase.from("enrollment_finance").insert({
+            enrollment_id: enr.id, agreed_amount: net, currency: f.curMode,
+          });
+        }
+
+        const shotUrl = await uploadFirstPayShot();
+        if (f.firstPay && Number(f.firstPay) > 0) {
+          await supabase.from("installments").insert({
+            enrollment_id: enr.id, amount: Number(f.firstPay), currency: f.curMode,
+            paid_at: f.firstPayDate ? new Date(f.firstPayDate).toISOString() : new Date().toISOString(),
+            screenshot_url: shotUrl || null, status: "paid",
+          });
+        }
+
+        if (!freeMode && f.dueDate) {
+          const remaining = Math.max(0, net - (Number(f.firstPay) || 0));
+          if (remaining > 0) {
+            await supabase.from("installments").insert({
+              enrollment_id: enr.id, amount: remaining, currency: f.curMode,
+              due_date: f.dueDate || null, status: "due",
+            });
+          }
+        }
       }
     }
-    // متابعة
+
     if (f.follow) {
       await supabase.from("follow_ups").insert({
         customer_id: cid, owner_id: meId, due_at: new Date(f.follow).toISOString(), note: "", done: false,
       });
     }
-    // ملاحظة أولية
     if (f.note.trim()) {
       await supabase.from("communications").insert({
         customer_id: cid, channel: "note", direction: "out", body: f.note.trim(), by_id: meId,
@@ -104,8 +166,14 @@ export default function NewCustomerForm({
       <input className={"inp" + (ltr ? " num" : "")} dir={ltr ? "ltr" : "rtl"} value={(f as any)[k]} onChange={(e) => set(k, e.target.value)} /></div>
   );
 
+  const curModes = [
+    { key: "EGP", label: "ج" },
+    { key: "USD", label: "$" },
+    { key: "FREE", label: "🎁" },
+  ];
+
   return (
-    <div className="card" style={{ padding: 20 }}>
+    <div className="card" style={{ padding: 20, maxWidth: 600 }}>
       <div className="sec-t" style={{ marginTop: 0 }}>البيانات الأساسية</div>
       <div className="fld"><label>الاسم *</label>
         <input className="inp" value={f.name} onChange={(e) => setName(e.target.value)} placeholder="عربي أو English" /></div>
@@ -127,15 +195,30 @@ export default function NewCustomerForm({
       <div className="sec-t">بيانات المبيعات</div>
       <div className="frow">
         <div className="fld"><label>التخصص الهندسي</label>
-          <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
-            <option value="">— اختر —</option>
-            {specialties.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select></div>
+          <div className="withadd">
+            <select className="inp" value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
+              <option value="">— اختر —</option>
+              {specs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+            <button type="button" className="addbtn" onClick={() => setAddSpecOpen(true)} title="إضافة تخصص جديد">
+              <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </div>
+        </div>
         <div className="fld"><label>المرحلة</label>
           <select className="inp" value={f.stage} onChange={(e) => set("stage", e.target.value)}>
             {STAGES.map((s) => <option key={s[0]} value={s[0]}>{s[1]}</option>)}
           </select></div>
       </div>
+
+      {addSpecOpen && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+          <input className="inp" style={{ flex: 1, height: 36 }} placeholder="اسم التخصص الجديد" value={addSpecVal} onChange={(e) => setAddSpecVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addSpecialty()} />
+          <button className="btn sm" onClick={addSpecialty}>إضافة</button>
+          <button className="btn ghost sm" onClick={() => { setAddSpecOpen(false); setAddSpecVal(""); }}>إلغاء</button>
+        </div>
+      )}
+
       <div className="frow">{I("محل الإقامة", "residency")}{I("سنة التخرج", "grad_year", true)}</div>
       <div className="frow">
         {I("المصدر", "source")}
@@ -146,30 +229,74 @@ export default function NewCustomerForm({
       <div className="sec-t">الاشتراك (اختياري)</div>
       <div className="frow">
         <div className="fld"><label>الدبلومة</label>
-          <select className="inp" value={f.diploma_id} onChange={(e) => set("diploma_id", e.target.value)}>
-            <option value="">— بدون —</option>
-            {diplomas.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select></div>
+          <div className="withadd">
+            <select className="inp" value={f.diploma_id} onChange={(e) => set("diploma_id", e.target.value)}>
+              <option value="">— بدون —</option>
+              {dips.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+            <button type="button" className="addbtn" onClick={() => setAddDipOpen(true)} title="إضافة دبلومة جديدة">
+              <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </div>
+        </div>
         <div className="fld"><label>الباتش</label>
           <select className="inp" value={f.batch_id} onChange={(e) => set("batch_id", e.target.value)}>
             <option value="">— بدون —</option>
             {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select></div>
       </div>
-      <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> هدية / مجاني</label>
-      {!f.free && (
-        <div className="frow" style={{ marginTop: 8 }}>
+
+      {addDipOpen && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
+          <input className="inp" style={{ flex: 1, height: 36 }} placeholder="اسم الدبلومة الجديدة" value={addDipVal} onChange={(e) => setAddDipVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addDiploma()} />
+          <button className="btn sm" onClick={addDiploma}>إضافة</button>
+          <button className="btn ghost sm" onClick={() => { setAddDipOpen(false); setAddDipVal(""); }}>إلغاء</button>
+        </div>
+      )}
+
+      <div className="fld"><label>العملة</label>
+        <div className="curtog">
+          {curModes.map((m) => (
+            <button key={m.key} type="button" className={f.curMode === m.key ? "on" : ""} onClick={() => set("curMode", m.key)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {freeMode ? (
+        <div className="fld"><label>سبب المجانية (هدية / خصم تسويقي / شراكة…)</label>
+          <input className="inp" value={f.free_reason} onChange={(e) => set("free_reason", e.target.value)} placeholder="اختياري" /></div>
+      ) : (
+        <div className="frow">
           <div className="fld"><label>المبلغ المتفق عليه</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input className="inp num" dir="ltr" inputMode="numeric" value={f.amount} onChange={(e) => set("amount", e.target.value)} />
-              <select className="inp" style={{ width: 80 }} value={f.currency} onChange={(e) => set("currency", e.target.value)}>
-                <option value="EGP">ج</option><option value="USD">$</option>
-              </select>
-            </div>
-          </div>
+            <input className="inp num" dir="ltr" inputMode="numeric" value={f.amount} onChange={(e) => set("amount", e.target.value)} /></div>
           <div className="fld"><label>المستحق بعد الخصم</label>
             <input className="inp num" dir="ltr" readOnly value={discPct > 0 ? `${net} (خصم ${discPct}%)` : (gross || "")} style={{ background: "#f4f6fa", fontWeight: 700 }} /></div>
         </div>
+      )}
+
+      {!freeMode && (
+        <div className="frow">
+          <div className="fld"><label>الدفعة الأولى (اختياري)</label>
+            <input className="inp num" dir="ltr" inputMode="numeric" value={f.firstPay} onChange={(e) => set("firstPay", e.target.value)} /></div>
+          <div className="fld"><label>تاريخ الدفعة</label>
+            <input className="inp num" type="date" dir="ltr" value={f.firstPayDate} onChange={(e) => set("firstPayDate", e.target.value)} /></div>
+        </div>
+      )}
+      {!freeMode && (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12 }}>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--blue)", fontWeight: 700, cursor: "pointer" }}>
+            🖼️ صورة التحويل
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFirstPayFile(e.target.files?.[0] || null)} />
+          </label>
+          {firstPayFile && <span style={{ fontSize: 12, color: "var(--green)" }}>✓ {firstPayFile.name}</span>}
+        </div>
+      )}
+
+      {!freeMode && (
+        <div className="fld"><label>تاريخ استحقاق المتبقّي (اختياري)</label>
+          <input className="inp num" type="date" dir="ltr" value={f.dueDate} onChange={(e) => set("dueDate", e.target.value)} /></div>
       )}
 
       <div className="sec-t">ملاحظة أولية</div>

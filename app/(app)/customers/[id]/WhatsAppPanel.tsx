@@ -54,7 +54,7 @@ export default function WhatsAppPanel({
             {t.name}
           </button>
         ))}
-        <a className="btn" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}
+        <a className="btn wa" style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}
           href={waLink(ctx.phone1, "")} target="_blank" rel="noreferrer">فتح محادثة فارغة</a>
       </div>
       {preview && (

@@ -9,7 +9,7 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
 
   let rowsRes = await supabase
     .from("customers")
-    .select("id,name,company,phone1,phone2,email,stage,owner_id")
+    .select("id,name,company,phone1,phone2,email,stage,owner_id,created_at")
     .eq("deleted", false)
     .eq("archived", false)
     .eq("board_done", false)
@@ -18,7 +18,7 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
   if (rowsRes.error) {
     rowsRes = await supabase
       .from("customers")
-      .select("id,name,company,phone1,phone2,email,stage,owner_id")
+      .select("id,name,company,phone1,phone2,email,stage,owner_id,created_at")
       .eq("deleted", false)
       .eq("archived", false)
       .order("created_at", { ascending: false })
@@ -52,6 +52,7 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
     stage: (c.stage as string) || "new",
     ownerId: (c.owner_id as string) || "",
     ownerName: pName.get(c.owner_id || "") || "",
+    createdAt: (c.created_at as string) || "",
   }));
 
   return <PipelineBoard key={q || "all"} initial={items} />;
