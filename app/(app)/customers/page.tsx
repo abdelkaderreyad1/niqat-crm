@@ -125,7 +125,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   return (
     <div>
       <div className="page-h">
-        <div><h1>{tr("customers")}</h1><p>{customers.length} عميل{q ? <> · بحث: «{q}»</> : null}</p></div>
+        <div><h1>{tr("customers")}</h1><p>{customers.length} {tr("customers")}{q ? <> · {tr("search")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
           {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
           <Link className="btn" href="/customers/new">
@@ -179,16 +179,16 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                   <td><span className="stg" style={{ background: st.color + "1a", color: st.color }}>{st.label}</span></td>
                   {canFinance && (
                     <td className="num" dir="ltr" style={{ fontWeight: 700 }}>
-                      {rem > 0 ? money(rem) + " ج" : "—"}
-                      {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>متأخر</span>}
+                      {rem > 0 ? money(rem) + " " + tr("dailySalesEGP") : "—"}
+                      {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>{tr("overdueTag")}</span>}
                     </td>
                   )}
-                  <td>{pName.get(r.owner_id) || "غير معيّن"}</td>
+                  <td>{pName.get(r.owner_id) || tr("unassigned")}</td>
                 </tr>
               );
             })}
             {customers.length === 0 && (
-              <tr><td colSpan={canFinance ? 6 : 5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>لا يوجد عملاء مطابقين.</td></tr>
+              <tr><td colSpan={canFinance ? 6 : 5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noResultsTable")}</td></tr>
             )}
           </tbody>
         </table>

@@ -4,14 +4,14 @@ import { t as tr } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
-const STAGES = [
-  { key: "new", label: "جديد", color: "#2F6BFF" },
-  { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
-  { key: "interested", label: "مهتم", color: "#7B61FF" },
-  { key: "negotiation", label: "تفاوض", color: "#F08A24" },
-  { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
-  { key: "onhold", label: "معلّق", color: "#E6A700" },
-  { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
+const STAGES: { key: string; label: string; color: string }[] = [
+  { key: "new", label: "dashStageNew", color: "#2F6BFF" },
+  { key: "contacted", label: "dashStageContacted", color: "#0FA3A3" },
+  { key: "interested", label: "dashStageInterested", color: "#7B61FF" },
+  { key: "negotiation", label: "dashStageNegotiation", color: "#F08A24" },
+  { key: "enrolled", label: "dashStageEnrolled", color: "#18A957" },
+  { key: "onhold", label: "dashStageOnhold", color: "#E6A700" },
+  { key: "lost", label: "dashStageLost", color: "#94A2BB" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 const fmtMoney = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
@@ -109,10 +109,10 @@ export default async function Dashboard() {
       </div>
     ) : null;
 
-  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || "عميل", `قسط متأخر · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
-  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || "عميل", `يستحق ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
-  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || "عميل", f.note || "متابعة مستحقة", "#2F6BFF"));
-  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || "عميل", "بانتظار تفعيل الأكسس", "#F08A24"));
+  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customers"), `${tr("overdue")} · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
+  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customers"), `يستحق ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
+  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customers"), f.note || tr("followDue"), "#2F6BFF"));
+  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customers"), tr("pendingAccessT"), "#F08A24"));
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
 
   // by diploma donut
@@ -159,7 +159,9 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
+      <div className="page-h">        <div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p>
+          {canDailySales && todayEGP + todayUSD > 0 && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{tr("salesToday")}: {fmtMoney(todayEGP)} {tr("dailySalesEGP")}{todayUSD > 0 ? ` · ${fmtMoney(todayUSD)} $` : ""}</p>}
+        </div></div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14 }}>
         {kpis.map((k) => (
@@ -171,7 +173,7 @@ export default async function Dashboard() {
         {canDailySales && (
           <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A310,#18A95710)" }}>
             <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("salesToday")}</div>
-            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todayEGP)} <span style={{ fontSize: 15 }}>ج</span></div>
+            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todayEGP)} <span style={{ fontSize: 15 }}>{tr("dailySalesEGP")}</span></div>
             {todayUSD > 0 && <div className="num" style={{ fontSize: 20, fontWeight: 700, color: "#0FA3A3", marginTop: 4 }}>{fmtMoney(todayUSD)} <span style={{ fontSize: 13 }}>$</span></div>}
           </div>
         )}
@@ -204,7 +206,7 @@ export default async function Dashboard() {
         <div style={{ marginTop: 8 }}>
           {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
           {batches.map((b) => {
-            const st = b.status === "closed" ? { l: "منتهية", c: "#94A2BB" } : b.status === "full" ? { l: "مكتملة", c: "#E0483B" } : { l: "متاحة", c: "#18A957" };
+            const st = b.status === "closed" ? { l: tr("endedLabel"), c: "#94A2BB" } : b.status === "full" ? { l: tr("completeLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
             const end = endMap.get(b.id);
             const range = (b.start_date || "—") + (end ? " → " + end : "");
             return (
@@ -229,7 +231,7 @@ export default async function Dashboard() {
               return (
                 <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 96, fontSize: 12.5, fontWeight: 700 }}>
-                    <span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{s.label}
+                    <span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{tr(s.label)}
                   </span>
                   <div style={{ flex: 1, height: 9, background: "#eef2f8", borderRadius: 20, overflow: "hidden" }}>
                     <div style={{ width: pct + "%", height: "100%", background: s.color }} />

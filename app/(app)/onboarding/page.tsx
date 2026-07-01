@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
+import ChecklistToggle from "./ChecklistToggle";
 export const dynamic = "force-dynamic";
 
 export default async function Onboarding() {
@@ -65,9 +66,7 @@ export default async function Onboarding() {
             const stage = customer.stage || "";
             const dips = custDips.get(h.customer_id) || [];
             const hItems = itemList.get(h.id) || [];
-            const done = hItems.filter((it: any) => it.done).length;
             const total = hItems.length;
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
             return (
               <div key={h.id} className="onb-card">
@@ -88,27 +87,7 @@ export default async function Onboarding() {
                     </div>
                   )}
                   {h.note && <div className="onb-note" style={{ marginBottom: 10 }}>📝 {h.note}</div>}
-                  {total > 0 && (
-                    <>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 5 }}>
-                        <span style={{ fontWeight: 700 }}>التفعيل</span>
-                        <span className="num">{done}/{total}</span>
-                      </div>
-                      <div className="prog" style={{ marginBottom: 10 }}>
-                        <i style={{ width: pct + "%", background: pct === 100 ? "var(--green)" : "var(--brand)" }} />
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
-                        {hItems.map((it: any) => (
-                          <div key={it.id} className={`task ${it.done ? "done" : ""}`} style={{ padding: "7px 10px" }}>
-                            <div className={`cb ${it.done ? "on" : ""}`}>
-                              {it.done && <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}><polyline points="20 6 9 17 4 12" /></svg>}
-                            </div>
-                            <div className="tt" style={{ fontSize: 12.5 }}>بند {hItems.indexOf(it) + 1}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                  {total > 0 && <ChecklistToggle items={hItems as any} handoffId={h.id} />}
                   <div style={{ display: "flex", gap: 8 }}>
                     {custPhone && (
                       <a href={`https://wa.me/${custPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="btn wa sm">واتساب</a>

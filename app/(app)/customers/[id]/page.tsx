@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import CustomerEdit from "./CustomerEdit";
 import FinancePanel from "./FinancePanel";
@@ -203,11 +204,11 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="sec-t" style={{ margin: 0 }}>تذاكر الدعم</div>
-          <Link href={`/support/new?customer=${c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>+ تذكرة</Link>
+          <div className="sec-t" style={{ margin: 0 }}>{tr("supportTickets")}</div>
+          <Link href={`/support/new?customer=${c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>{tr("openTicket")}</Link>
         </div>
         {(!tickets || tickets.length === 0) ? (
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>لا توجد تذاكر.</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>{tr("noTickets")}</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
             {(tickets || []).map((t) => {
@@ -224,9 +225,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       </div>
 
       <div className="card" style={{ padding: 18 }}>
-        <div className="sec-t">سجل العميل (Timeline)</div>
+        <div className="sec-t">{tr("customerTimeline")}</div>
         {(!auditRows || auditRows.length === 0) ? (
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد سجل.</div>
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noTimeline")}</div>
         ) : (auditRows || []).map((a: any, idx) => (
           <div key={idx} className="comm">
             <div className="ci" style={{ background: "#eef2f8", color: "var(--muted)" }}>
