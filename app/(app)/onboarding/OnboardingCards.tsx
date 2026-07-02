@@ -35,7 +35,7 @@ const CardView = memo(function CardView({
           <b style={{ color: "var(--ink)" }}>{c.name}</b>
           <div style={{ fontSize: 11.5, color: "var(--muted)", fontFamily: "var(--fe)", direction: "ltr" }}>{c.phone || "—"}</div>
         </div>
-        <span className="chip" style={{ background: allDone ? "#eaf7ef" : "#fff4e9", color: allDone ? "var(--green)" : "var(--brand)" }}>
+        <span className="chip" style={{ background: allDone ? "rgba(24,169,87,.12)" : "var(--brand-soft)", color: allDone ? "var(--green)" : "var(--brand)" }}>
           {allDone ? "جاهز للإتمام" : "محتاج تفعيل"}
         </span>
       </div>

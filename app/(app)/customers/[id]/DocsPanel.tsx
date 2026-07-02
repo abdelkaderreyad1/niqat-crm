@@ -17,6 +17,7 @@ export default function DocsPanel({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<Doc | null>(null);
+  const isImg = (n: string) => /\.(png|jpe?g|gif|webp|bmp|heic)$/i.test(n) || /image/i.test(n);
 
   const upload = useCallback(async () => {
     if (!file) return;
@@ -42,8 +43,6 @@ export default function DocsPanel({
     if (error) { toast("تعذّر الحذف"); router.refresh(); }
   }
 
-  const isImage = (name: string) => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(name);
-
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>
       <div className="sec-t" style={{ margin: 0 }}>المستندات</div>
@@ -54,7 +53,7 @@ export default function DocsPanel({
       ) : (
         <>
           <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0" }}>
-            <label className="addshot" style={{ borderColor: "var(--line)", color: "var(--brand)" }}>
+            <label className="addshot">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
               {file ? file.name : "اختر ملف / صورة"}
               <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
@@ -66,12 +65,17 @@ export default function DocsPanel({
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {docs.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد مستندات بعد.</div>}
             {docs.map((d) => (
-              <div key={d.id} className="bg-surface" style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px" }}>
-                <button onClick={() => setPreview(d)} style={{ flex: 1, fontWeight: 600, color: "var(--blue)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "start", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit" }}>
-                  {isImage(d.name) ? "🖼" : "📎"} {d.name}
-                </button>
-                <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--fe)", flexShrink: 0 }}>{d.at}</span>
-                <button type="button" onClick={() => del(d.id)} title="حذف" style={{ border: "none", background: "none", color: "var(--muted)", cursor: "pointer", flexShrink: 0, padding: 4 }}>✕</button>
+              <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px" }}>
+                {isImg(d.name) ? (
+                  <button type="button" onClick={() => setPreview(d)} style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, background: "none", border: "none", cursor: "pointer", padding: 0, textAlign: "start" }}>
+                    <img src={d.url} alt={d.name} style={{ width: 34, height: 34, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)", flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, color: "var(--blue)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🖼️ {d.name}</span>
+                  </button>
+                ) : (
+                  <a href={d.url} target="_blank" rel="noreferrer" style={{ flex: 1, fontWeight: 600, color: "var(--blue)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📎 {d.name}</a>
+                )}
+                <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--fe)" }}>{d.at}</span>
+                <button className="x" type="button" onClick={() => del(d.id)} title="حذف" style={{ border: "none", background: "none", color: "var(--muted)", cursor: "pointer" }}>✕</button>
               </div>
             ))}
           </div>
@@ -80,15 +84,18 @@ export default function DocsPanel({
 
       {preview && (
         <>
-          <div className="scrim show" onClick={() => setPreview(null)} style={{ zIndex: 70 }} />
-          <div className="shotview show" onClick={() => setPreview(null)} style={{ zIndex: 80, cursor: "pointer" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: "90%", maxHeight: "90%", position: "relative" }}>
-              <button onClick={() => setPreview(null)} style={{ position: "absolute", top: -12, insetInlineEnd: -12, width: 32, height: 32, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--line)", color: "var(--muted)", cursor: "pointer", display: "grid", placeItems: "center", zIndex: 10, fontSize: 16 }}>✕</button>
-              {isImage(preview.name) ? (
-                <img src={preview.url} alt={preview.name} style={{ maxWidth: "100%", maxHeight: "85vh", borderRadius: 12, boxShadow: "0 20px 60px rgba(0,0,0,.5)" }} />
-              ) : (
-                <iframe src={preview.url} style={{ width: "min(800px,80vw)", height: "80vh", borderRadius: 12, border: "none", background: "#fff" }} title={preview.name} />
-              )}
+          <div className="scrim show" onClick={() => setPreview(null)} />
+          <div className="modal show" role="dialog" aria-modal="true" style={{ width: "min(680px,94%)" }}>
+            <div className="modal-h">
+              <h3 style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{preview.name}</h3>
+              <button className="x" onClick={() => setPreview(null)}>✕</button>
+            </div>
+            <div className="modal-b" style={{ textAlign: "center" }}>
+              <img src={preview.url} alt={preview.name} style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: 10 }} />
+            </div>
+            <div className="modal-f">
+              <a href={preview.url} target="_blank" rel="noreferrer" className="btn ghost" style={{ textDecoration: "none" }}>فتح بالحجم الكامل</a>
+              <button className="btn" type="button" style={{ marginInlineStart: "auto" }} onClick={() => setPreview(null)}>تمام</button>
             </div>
           </div>
         </>

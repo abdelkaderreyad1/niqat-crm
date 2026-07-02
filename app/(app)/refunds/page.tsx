@@ -1,9 +1,19 @@
 import Link from "next/link";
+import RefundTable from "./RefundTable";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
-import RefundTable from "./RefundTable";
 
 export const dynamic = "force-dynamic";
+
+function money(n: number, cur: string) {
+  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
+}
+
+const STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  requested: { label: "في انتظار الريفند", color: "#B8860B", bg: "#FEF6E0" },
+  refunded: { label: "تم الريفند — بانتظار الإغلاق", color: "#2F6BFF", bg: "#E8F0FF" },
+  closed: { label: "مؤرشف", color: "#94A2BB", bg: "#EEF1F6" },
+};
 
 export default async function Refunds() {
   const supabase = createClient();
@@ -16,10 +26,40 @@ export default async function Refunds() {
     );
   }
 
+  const { data: rf, error } = await supabase.from("refunds")
+    .select("id,customer_id,amount,currency,reason,status,created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return (
+      <div>
+        <div className="page-h"><div><h1>{tr("refunds")}</h1></div></div>
+        <div className="card" style={{ padding: 20, fontSize: 14, color: "var(--muted)" }}>
+          جدول الاسترداد لسه مش متعمل في قاعدة البيانات. شغّل SQL الـ refunds مرة واحدة في Supabase وهتشتغل الشاشة.
+        </div>
+      </div>
+    );
+  }
+
+  const rows = rf || [];
+  const { data: custs } = await supabase.from("customers").select("id,name");
+  const cName = new Map((custs || []).map((c) => [c.id, c.name]));
+
   return (
     <div>
-      <div className="page-h"><div><h1>{tr("refunds")}</h1></div></div>
-      <RefundTable />
+      <div className="page-h"><div><h1>{tr("refunds")}</h1><p>{rows.length} طلب</p></div></div>
+
+      {rows.length === 0 ? (
+        <div className="empty"><b>لا توجد طلبات استرداد</b></div>
+      ) : (
+        <RefundTable rows={rows.map((r) => ({
+          id: r.id as string, customer_id: r.customer_id as string,
+          customerName: cName.get(r.customer_id) || "—",
+          amount: Number(r.amount), currency: r.currency as string,
+          reason: (r.reason as string) || "", status: r.status as string,
+          created_at: String(r.created_at || ""),
+        }))} />
+      )}
     </div>
   );
 }

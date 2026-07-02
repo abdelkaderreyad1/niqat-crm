@@ -158,7 +158,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                   {canFinance && (
                     <td className="num" dir="ltr" style={{ fontWeight: 700 }}>
                       {rem > 0 ? money(rem) + " ج" : "—"}
-                      {od && <span className="stg" style={{ background: "var(--red-soft)", color: "var(--red)", marginInlineStart: 6, fontSize: 10 }}>متأخر</span>}
+                      {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>متأخر</span>}
                     </td>
                   )}
                   <td>{pName.get(r.owner_id) || "غير معيّن"}</td>
