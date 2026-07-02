@@ -4,20 +4,7 @@ import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-<<<<<<< HEAD
-const STAGES = [
-  { key: "new", label: "جديد" },
-  { key: "contacted", label: "تم التواصل" },
-  { key: "interested", label: "مهتم" },
-  { key: "negotiation", label: "تفاوض" },
-  { key: "quote", label: "عرض سعر مُرسل" },
-  { key: "enrolled", label: "مشترك" },
-  { key: "onhold", label: "معلّق" },
-  { key: "lost", label: "خسارة" },
-];
 
-=======
->>>>>>> df6500c (ترجمة كاملة + دارك مود مونوكروم + أونبوردينج كارد + إصلاح dashboard + تنظيف CSS)
 export default function StageMover({ id, current }: { id: string; current: string }) {
   const tr = useT();
   const STAGES = [

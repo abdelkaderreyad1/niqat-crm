@@ -15,21 +15,7 @@ type Cust = {
   createdAt: string;
 };
 
-<<<<<<< HEAD
-// مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
-const STAGES = [
-  { key: "new", label: "جديد", color: "#2F6BFF" },
-  { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
-  { key: "interested", label: "مهتم", color: "#7B61FF" },
-  { key: "negotiation", label: "تفاوض", color: "#F08A24" },
-  { key: "quote", label: "عرض سعر مُرسل", color: "#E6A700" },
-  { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
-  { key: "onhold", label: "معلّق", color: "#7C8AA5" },
-  { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
-];
 
-=======
->>>>>>> df6500c (ترجمة كاملة + دارك مود مونوكروم + أونبوردينج كارد + إصلاح dashboard + تنظيف CSS)
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
 function avColor(id: string) {
   let h = 0;

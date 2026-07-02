@@ -7,13 +7,8 @@ import { toast } from "@/lib/toast";
 
 type Opt = { id: string; name: string };
 const STAGES = [
-<<<<<<< HEAD
   ["new", "جديد"], ["contacted", "تم التواصل"], ["interested", "مهتم"],
   ["negotiation", "تفاوض"], ["quote", "عرض سعر مُرسل"], ["enrolled", "مسجّل / دفع"], ["onhold", "معلّق"], ["lost", "مؤجل / مرفوض"],
-=======
-  ["new", "new"], ["contacted", "contacted"], ["interested", "interested"],
-  ["negotiation", "negotiation"], ["enrolled", "enrolled"], ["onhold", "onhold"], ["lost", "lost"],
->>>>>>> df6500c (ترجمة كاملة + دارك مود مونوكروم + أونبوردينج كارد + إصلاح dashboard + تنظيف CSS)
 ];
 
 type Aff = { name: string; code: string; discount: number };
