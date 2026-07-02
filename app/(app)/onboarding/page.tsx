@@ -1,131 +1,81 @@
-import Link from "next/link";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
-import ChecklistToggle from "./ChecklistToggle";
+import OnboardingCards from "./OnboardingCards";
 export const dynamic = "force-dynamic";
 
 export default async function Onboarding() {
   const supabase = createClient();
-  const { data: rows } = await supabase
+  const { data: hRows } = await supabase
     .from("handoffs")
     .select("id,customer_id,assignee_id,note,status,created_at")
     .eq("status", "pending")
     .order("created_at", { ascending: false });
 
-  const { data: completedRows } = await supabase
-    .from("handoffs")
-    .select("id,customer_id,assignee_id,note,status,created_at")
-    .eq("status", "completed")
-    .order("created_at", { ascending: false });
+  const rows = hRows || [];
+  const custIds = Array.from(new Set(rows.map((h: any) => h.customer_id).filter(Boolean)));
 
-  const { data: custs } = await supabase.from("customers").select("id,name,stage,phone1");
+  const { data: custs } = custIds.length
+    ? await supabase.from("customers").select("id,name,phone1").in("id", custIds)
+    : { data: [] as any[] };
   const cMap = new Map((custs || []).map((c: any) => [c.id, c]));
 
   const { data: profs } = await supabase.from("profiles").select("id,full_name");
   const pMap = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
 
-  const { data: items } = await supabase.from("handoff_items").select("handoff_id,id,done");
-  const itemList = new Map<string, any[]>();
-  for (const it of (items || []) as any[]) {
-    const list = itemList.get(it.handoff_id) || [];
-    list.push(it);
-    itemList.set(it.handoff_id, list);
+  const dipMap = new Map<string, string[]>();
+  if (custIds.length) {
+    const { data: enr } = await supabase
+      .from("enrollments")
+      .select("customer_id, diplomas(name_ar)")
+      .in("customer_id", custIds);
+    for (const e of enr || []) {
+      const cid = (e as any).customer_id as string;
+      const nm = (e as any).diplomas?.name_ar as string | undefined;
+      if (cid && nm) dipMap.set(cid, [...(dipMap.get(cid) || []), nm]);
+    }
   }
 
-  const { data: enrData } = await supabase.from("enrollments").select("customer_id,diploma_id");
-  const { data: dipData } = await supabase.from("diplomas").select("id,name_ar");
-  const dNameMap = new Map((dipData || []).map((d: any) => [d.id, d.name_ar]));
-  const custDips = new Map<string, string[]>();
-  for (const enr of (enrData || []) as any[]) {
-    const list = custDips.get(enr.customer_id) || [];
-    const dn = dNameMap.get(enr.diploma_id);
-    if (dn && !list.includes(dn)) list.push(dn);
-    custDips.set(enr.customer_id, list);
+  const hIds = rows.map((h: any) => h.id);
+  const itemsMap = new Map<string, any[]>();
+  if (hIds.length) {
+    const { data: its } = await supabase
+      .from("handoff_items")
+      .select("id,handoff_id,label,done,done_by,done_at")
+      .in("handoff_id", hIds)
+      .order("id");
+    for (const it of its || []) {
+      const hid = (it as any).handoff_id as string;
+      itemsMap.set(hid, [...(itemsMap.get(hid) || []), {
+        id: it.id, label: it.label, done: !!it.done,
+        by: pMap.get((it as any).done_by || "") || null,
+        at: String((it as any).done_at || "").replace("T", " ").slice(0, 16),
+      }]);
+    }
   }
 
-  function fmtDate(d: string) {
-    try { return new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }); } catch { return d; }
-  }
+  const cards = rows.map((h: any) => ({
+    handoffId: h.id as string,
+    custId: h.customer_id as string,
+    name: cMap.get(h.customer_id)?.name || "—",
+    phone: cMap.get(h.customer_id)?.phone1 || "",
+    status: h.status || "pending",
+    note: h.note || "",
+    assignee: pMap.get(h.assignee_id || "") || "",
+    diplomas: dipMap.get(h.customer_id) || [],
+    items: itemsMap.get(h.id) || [],
+  }));
 
-  const initials = (name: string) => {
-    if (!name) return "?";
-    const parts = name.trim().split(/\s+/);
-    return parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0][0].toUpperCase();
-  };
-
-  function card(h: any, completed: boolean) {
-    const customer = cMap.get(h.customer_id) || {};
-    const custName = customer.name || "—";
-    const custPhone = customer.phone1 || "";
-    const stage = customer.stage || "";
-    const dips = custDips.get(h.customer_id) || [];
-    const hItems = itemList.get(h.id) || [];
-    const total = hItems.length;
-
-    return (
-      <div key={h.id} className={`onb-card${completed ? " onb-card--completed" : ""}`}>
-        <div className="oh">
-          <div className="av" style={{ background: "var(--brand)", width: 44, height: 44, fontSize: 16 }}>{initials(custName)}</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>{custName}</div>
-            {custPhone && <div style={{ fontSize: 12.5, color: "var(--muted)", direction: "ltr", textAlign: "start" }}>{custPhone}</div>}
-            <div style={{ marginTop: 4 }}>
-              <span className="chip">{stage === "enrolled" ? tr("dashStageEnrolled") : stage}</span>
-            </div>
-          </div>
-        </div>
-        <div className="ob">
-          {dips.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
-              {dips.map((d: string) => <span key={d} className="chip">{d}</span>)}
-            </div>
-          )}
-          {h.note && <div className="onb-note" style={{ marginBottom: 10 }}>📝 {h.note}</div>}
-          {total > 0 && <ChecklistToggle items={hItems as any} handoffId={h.id} />}
-          <div style={{ display: "flex", gap: 8 }}>
-            {custPhone && (
-              <a href={`https://wa.me/${custPhone.replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer" className="btn wa sm">{tr("whatsapp")}</a>
-            )}
-            <Link href={`/customers/${h.customer_id}`} className="btn sm">{tr("profile")}</Link>
-            <Link href={`/customers/${h.customer_id}`} className="btn sm">{tr("editAccess")}</Link>
-          </div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 8 }}>
-            {pMap.get(h.assignee_id || "") ? `${tr("owner")}: ${pMap.get(h.assignee_id)}` : ""}
-            {h.created_at ? ` · ${fmtDate(h.created_at)}` : ""}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const pendCount = cards.filter((c) => c.status === "pending").length;
 
   return (
     <div>
       <div className="page-h">
         <div>
           <h1>{tr("onboarding")}</h1>
-          <p>{(rows || []).length} {tr("pending")}</p>
+          <p>{pendCount} عميل محتاج تفعيل</p>
         </div>
       </div>
-      {(!rows || rows.length === 0) ? (
-        <div className="empty"><b>{tr("noPendingHandoffs")}</b></div>
-      ) : (
-        <div className="onb-grid">
-          {(rows || []).map((h: any) => card(h, false))}
-        </div>
-      )}
-      {(completedRows && completedRows.length > 0) && (
-        <div style={{ marginTop: 32 }}>
-          <div className="page-h">
-            <div>
-              <h2 style={{ fontSize: 18, margin: 0 }}>{tr("completedHandoffs")}</h2>
-              <p style={{ margin: 0 }}>{(completedRows || []).length} {tr("completedHandoffs")}</p>
-            </div>
-          </div>
-          <div className="onb-grid">
-            {(completedRows || []).map((h: any) => card(h, true))}
-          </div>
-        </div>
-      )}
+      <OnboardingCards cards={cards} />
     </div>
   );
 }

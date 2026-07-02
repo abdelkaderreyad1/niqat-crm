@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
+import BatchDoneBtn from "./batches/BatchDoneBtn";
 
 export const dynamic = "force-dynamic";
 
-const STAGES: { key: string; label: string; color: string }[] = [
-  { key: "new", label: "dashStageNew", color: "#2F6BFF" },
-  { key: "contacted", label: "dashStageContacted", color: "#0FA3A3" },
-  { key: "interested", label: "dashStageInterested", color: "#7B61FF" },
-  { key: "negotiation", label: "dashStageNegotiation", color: "#F08A24" },
-  { key: "quote", label: "dashStageQuote", color: "#E6A700" },
-  { key: "enrolled", label: "dashStageEnrolled", color: "#18A957" },
-  { key: "onhold", label: "dashStageOnhold", color: "#7C8AA5" },
-  { key: "lost", label: "dashStageLost", color: "#94A2BB" },
+const STAGES = [
+  { key: "new", label: "جديد", color: "#2F6BFF" },
+  { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
+  { key: "interested", label: "مهتم", color: "#7B61FF" },
+  { key: "quote", label: "عرض سعر مُرسل", color: "#E6A700" },
+  { key: "negotiation", label: "تفاوض", color: "#F08A24" },
+  { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
+  { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 const fmtMoney = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
@@ -110,10 +110,10 @@ export default async function Dashboard() {
       </div>
     ) : null;
 
-  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customers"), `${tr("overdue")} · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
-  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || tr("customers"), `${tr("dueSoon")} ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
-  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || tr("customers"), f.note || tr("followDue"), "#2F6BFF"));
-  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || tr("customers"), tr("pendingAccessT"), "#F08A24"));
+  const overdueRows = overdueInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || "عميل", `قسط متأخر · ${fmtDate(i.due_date)}`, "#E5484D") : null; }).filter(Boolean);
+  const soonRows = soonInst.map((i) => { const cid = enrCust.get(i.enrollment_id); return cid ? actionRow(cid, cName.get(cid) || "عميل", `يستحق ${fmtDate(i.due_date)}`, "#F5A623") : null; }).filter(Boolean);
+  const followRows = followItems.map((f) => actionRow(f.customer_id, cName.get(f.customer_id) || "عميل", f.note || "متابعة مستحقة", "#2F6BFF"));
+  const handoffRows = handoffItems.map((h) => actionRow(h.customer_id, cName.get(h.customer_id) || "عميل", "بانتظار تفعيل الأكسس", "#F08A24"));
   const actionCount = overdueRows.length + soonRows.length + followRows.length + handoffRows.length;
 
   // by diploma donut
@@ -126,18 +126,8 @@ export default async function Dashboard() {
   const byBatch = batches.map((b) => ({ code: b.code, n: enrollments.filter((e) => e.batch_id === b.id).length })).filter((x) => x.n).sort((a, b) => b.n - a.n);
   const bMax = Math.max(...byBatch.map((x) => x.n), 1);
 
-  // اتجاه حقيقي: عملاء آخر 30 يوم مقابل الـ 30 اللي قبلهم
-  const _now = Date.now();
-  const _d30 = new Date(_now - 30 * 864e5).toISOString();
-  const _d60 = new Date(_now - 60 * 864e5).toISOString();
-  const [{ count: last30 }, { count: prev30 }] = await Promise.all([
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("deleted", false).gte("created_at", _d30),
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("deleted", false).gte("created_at", _d60).lt("created_at", _d30),
-  ]);
-  const custTrend = prev30 ? Math.round((((last30 || 0) - prev30) / prev30) * 100) : ((last30 || 0) > 0 ? 100 : null);
-
   const kpis = [
-    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥", trend: custTrend },
+    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥" },
     { label: tr("newLeads"), value: leads, color: "#F08A24", emoji: "🎯" },
     { label: tr("convRate"), value: conv + "%", color: "#18A957", emoji: "📈" },
     { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", emoji: "✅" },
@@ -149,16 +139,13 @@ export default async function Dashboard() {
   ];
 
   // مبيعات النهاردة (محصّل فعلي اليوم) — بصلاحية منفصلة
-  let todayEGP = 0, todayUSD = 0;
+  let todaySales = 0;
   if (canDailySales) {
     const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
     const { data: paidToday } = await supabase.from("installments")
       .select("amount,currency,paid_at,status").gte("paid_at", startToday.toISOString());
     for (const i of (paidToday || []) as any[]) {
-      if (i.status === "paid" || i.paid_at) {
-        if (i.currency === "USD") todayUSD += Number(i.amount) || 0;
-        else todayEGP += Number(i.amount) || 0;
-      }
+      if ((i.status === "paid" || i.paid_at) && i.currency === "EGP") todaySales += Number(i.amount) || 0;
     }
   }
 
@@ -170,32 +157,19 @@ export default async function Dashboard() {
 
   return (
     <div>
-      <div className="page-h">        <div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p>
-          {canDailySales && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{tr("salesToday")}: {todayEGP + todayUSD === 0 ? "—" : `${fmtMoney(todayEGP)} ${tr("dailySalesEGP")}${todayUSD > 0 ? ` · ${fmtMoney(todayUSD)} $` : ""}`}</p>}
-        </div></div>
+      <div className="page-h"><div><h1>{tr("dash")}</h1><p>ملخّص حيّ من قاعدة البيانات</p></div></div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14 }}>
         {kpis.map((k) => (
           <div key={k.label} className="card" style={{ padding: 18 }}>
             <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>{(k as any).emoji}</span>{k.label}</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <div className="num" style={{ fontSize: 28, fontWeight: 800, color: k.color }}>{k.value}</div>
-              {(k as any).trend != null && (
-                <span className={`kpi-trend ${(k as any).trend >= 0 ? "up" : "down"}`}>
-                  <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.5}>
-                    <path d={(k as any).trend >= 0 ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} />
-                  </svg>
-                  {Math.abs((k as any).trend)}%
-                </span>
-              )}
-            </div>
+            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: k.color }}>{k.value}</div>
           </div>
         ))}
         {canDailySales && (
-          <div className="card sales-card">
-            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("salesToday")}</div>
-            <div className="num sales-amount">{fmtMoney(todayEGP)} <span style={{ fontSize: 15 }}>{tr("dailySalesEGP")}</span></div>
-            {todayUSD > 0 && <div className="num sales-amount" style={{ fontSize: 20, marginTop: 4 }}>{fmtMoney(todayUSD)} <span style={{ fontSize: 13 }}>$</span></div>}
+          <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A310,#18A95710)" }}>
+            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>مبيعات النهاردة</div>
+            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: "#0FA3A3" }}>{fmtMoney(todaySales)} <span style={{ fontSize: 15 }}>ج</span></div>
           </div>
         )}
       </div>
@@ -207,13 +181,13 @@ export default async function Dashboard() {
         </div>
         <div style={{ marginTop: 10 }}>
           {actionCount === 0 ? (
-            <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 14 }}>{tr("noAlerts")} 🎉</div>
+            <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 14 }}>مفيش حاجة مطلوبة دلوقتي 🎉</div>
           ) : (
             <>
-              {canFinance && grp(tr("overdueInst"), "#E5484D", overdueRows)}
-              {canFinance && grp(tr("dueSoon"), "#F5A623", soonRows)}
-              {grp(tr("followDue"), "#2F6BFF", followRows)}
-              {grp(tr("pendingAccessT"), "#F08A24", handoffRows)}
+              {canFinance && grp("أقساط متأخرة", "#E5484D", overdueRows)}
+              {canFinance && grp("تستحق خلال ٧ أيام", "#F5A623", soonRows)}
+              {grp("متابعات مستحقة", "#2F6BFF", followRows)}
+              {grp("تسليمات معلّقة", "#F08A24", handoffRows)}
             </>
           )}
         </div>
@@ -225,16 +199,16 @@ export default async function Dashboard() {
           <h3>{tr("schedule")}</h3><span className="chip">{batches.length}</span>
         </div>
         <div style={{ marginTop: 8 }}>
-          {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
+          {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا توجد باتشات.</div>}
           {batches.map((b) => {
-            const st = b.status === "closed" ? { l: tr("endedLabel"), c: "#94A2BB" } : b.status === "full" ? { l: tr("completeLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
+            const st = b.status === "closed" ? { l: "منتهية", c: "#94A2BB" } : b.status === "full" ? { l: "مكتملة", c: "#E0483B" } : { l: "متاحة", c: "#18A957" };
             const end = endMap.get(b.id);
             const range = (b.start_date || "—") + (end ? " → " + end : "");
             return (
               <div key={b.id} className="sch">
                 <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
                 <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
-
+                {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
                 <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
               </div>
             );
@@ -252,7 +226,7 @@ export default async function Dashboard() {
               return (
                 <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 96, fontSize: 12.5, fontWeight: 700 }}>
-                    <span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{tr(s.label)}
+                    <span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{s.label}
                   </span>
                   <div style={{ flex: 1, height: 9, background: "#eef2f8", borderRadius: 20, overflow: "hidden" }}>
                     <div style={{ width: pct + "%", height: "100%", background: s.color }} />
@@ -267,7 +241,7 @@ export default async function Dashboard() {
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("byDiploma")}</h3></div>
           {byDip.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>{tr("noEnrolls")}</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>لا توجد اشتراكات.</div>
           ) : (
             <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
               <div style={{ width: 120, height: 120, borderRadius: "50%", background: `conic-gradient(${segs})`, flexShrink: 0 }} />
@@ -288,10 +262,10 @@ export default async function Dashboard() {
       {/* التخصصات الهندسية (المسجّلين الدافعين) */}
       <div className="card" style={{ padding: 18, marginTop: 16 }}>
         <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>{tr("specDist")}</h3><span className="chip">{spRows.length}</span>
+          <h3>التخصصات الهندسية (مسجّلين / دافعين)</h3><span className="chip">{spRows.length}</span>
         </div>
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9 }}>
-          {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolls")}</div>}
+          {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد مسجّلون بعد.</div>}
           {spRows.map((x, i) => {
             const pct = Math.round((x.n / spMax) * 100);
             return (
@@ -328,7 +302,7 @@ export default async function Dashboard() {
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("recentAct")}</h3></div>
           <div style={{ marginTop: 8 }}>
-            {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
+            {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد نشاط بعد.</div>}
             {((logRes.data as any[]) || []).map((l, idx) => (
               <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
                 <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />

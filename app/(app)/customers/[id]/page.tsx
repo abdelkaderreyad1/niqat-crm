@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import CustomerEdit from "./CustomerEdit";
 import FinancePanel from "./FinancePanel";
 import CustomerActivity from "./CustomerActivity";
+import DocsPanel from "./DocsPanel";
 import AccessPanel from "./AccessPanel";
 import FollowUpPanel from "./FollowUpPanel";
 import RefundPanel from "./RefundPanel";
@@ -12,16 +12,14 @@ import WhatsAppPanel from "./WhatsAppPanel";
 import AddonsPanel from "./AddonsPanel";
 import SubscriptionsPanel from "./SubscriptionsPanel";
 import CopyNumbers from "./CopyNumbers";
-import AccordionSection from "./AccordionSection";
-import DrawerFooter from "./DrawerFooter";
 
 export const dynamic = "force-dynamic";
 
 const STAGE: Record<string, { label: string; color: string }> = {
   new: { label: "جديد", color: "#2F6BFF" }, contacted: { label: "تم التواصل", color: "#0FA3A3" },
-  interested: { label: "مهتم", color: "#7B61FF" }, negotiation: { label: "تفاوض", color: "#F08A24" },
-  quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
-  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#7C8AA5" },
+  interested: { label: "مهتم", color: "#7B61FF" }, quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
+  negotiation: { label: "تفاوض", color: "#F08A24" },
+  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#E6A700" },
   lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
 };
 const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
@@ -41,7 +39,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const canMessage = !!meProf?.can_message;
 
   const { data: c } = await supabase.from("customers")
-    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at")
+    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,created_at")
     .eq("id", params.id).maybeSingle();
   if (!c) notFound();
 
@@ -125,6 +123,15 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     at: String(ho.created_at || "").replace("T", " ").slice(0, 16),
   } : null;
   const { data: accOpts } = await supabase.from("access_options").select("id,label").order("label");
+  const { data: libOpts } = await supabase.from("libraries").select("id,name").order("name");
+
+  // المستندات (آمن لو الجدول لسه مش متعمل)
+  const docsRes = await supabase.from("customer_docs")
+    .select("id,url,name,created_at").eq("customer_id", params.id).order("created_at", { ascending: false });
+  const docsMissing = !!docsRes.error;
+  const docs = (docsRes.data || []).map((d: any) => ({
+    id: d.id, url: d.url, name: d.name || "مستند", at: String(d.created_at || "").slice(0, 10),
+  }));
 
   // متابعات
   const { data: fuRows } = await supabase.from("follow_ups")
@@ -138,17 +145,10 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   let refundTableMissing = false;
   if (canFinance) {
     const { data: rf, error: rfErr } = await supabase.from("refunds")
-      .select("id,reason,status,created_at")
+      .select("id,amount,currency,reason,shot_url,status,created_at")
       .eq("customer_id", params.id).order("created_at", { ascending: false }).limit(1);
     if (rfErr) refundTableMissing = true;
-    else {
-      const r0 = (rf || [])[0] || null;
-      if (r0) {
-        const { data: rfin } = await supabase.from("refund_finance")
-          .select("amount,currency,shot_url").eq("refund_id", r0.id).maybeSingle();
-        refund = { ...r0, amount: Number(rfin?.amount) || 0, currency: rfin?.currency || "EGP", shot_url: rfin?.shot_url || "" };
-      }
-    }
+    else refund = (rf || [])[0] || null;
   }
 
   // قوالب واتساب
@@ -162,17 +162,8 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   // الإضافات + قوائمها
   let addons: any[] = []; let addonsMissing = false;
   const { data: adRows, error: adErr } = await supabase.from("customer_addons")
-    .select("id,type,name,free,note,paid").eq("customer_id", params.id).order("created_at");
-  if (adErr) addonsMissing = true;
-  else {
-    let afMap = new Map<string, any>();
-    if (canFinance && (adRows || []).length) {
-      const { data: afin } = await supabase.from("addon_finance")
-        .select("customer_addon_id,amount,currency").in("customer_addon_id", (adRows as any[]).map((a) => a.id));
-      afMap = new Map((afin || []).map((x: any) => [x.customer_addon_id, x]));
-    }
-    addons = (adRows || []).map((a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(afMap.get(a.id)?.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid }));
-  }
+    .select("id,type,name,amount,free,note,paid").eq("customer_id", params.id).order("created_at");
+  if (adErr) addonsMissing = true; else addons = (adRows || []).map((a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid }));
   const [{ data: accredRows }, { data: projRows }] = await Promise.all([
     supabase.from("accreditations").select("name").order("name"),
     supabase.from("projects").select("name").order("name"),
@@ -192,9 +183,6 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             <h2>{c.name}</h2>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{st.label}</span>
-              {c.stage === "onhold" && (c as any).onhold_reason && (
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>⏸️ {(c as any).onhold_reason}</span>
-              )}
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>
@@ -206,42 +194,34 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
       <CustomerEdit customer={c as any} specialties={specs || []} />
 
-      <AccordionSection title="الاشتراكات والإضافات">
       <SubscriptionsPanel customerId={c.id as string} meId={user?.id || ""} enrolls={enrolls}
         dipOpts={dipOpts} batchOpts={batchOpts} canFinance={canFinance} />
 
       <AddonsPanel customerId={c.id as string} initial={addons} accreditations={accredList} projects={projList} canFinance={canFinance} tableMissing={addonsMissing} />
-      </AccordionSection>
 
-      <AccordionSection title="التفعيل والمتابعة">
       <AccessPanel customerId={c.id as string} handoff={handoff} items={accessItems}
-        accessOptions={[...(accOpts || []), ...enrolls.map((e, i) => ({ id: "dip-" + i, label: "تفعيل: " + e.diploma }))]} meId={user?.id || ""} meName="" />
+        accessOptions={[...(accOpts || []), ...enrolls.map((e, i) => ({ id: "dip-" + i, label: "تفعيل: " + e.diploma }))]}
+        libraries={(libOpts || []).map((l: any) => ({ id: l.id, name: l.name }))} meId={user?.id || ""} meName="" />
 
       <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
-      </AccordionSection>
 
-      {canFinance && (
-        <AccordionSection title="المالية والأقساط 🔒">
-          <FinancePanel enrollments={finEnrollments} customerId={c.id as string} meId={user?.id || ""} />
-          <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />
-        </AccordionSection>
-      )}
+      {canFinance && <FinancePanel enrollments={finEnrollments} customerId={c.id as string} meId={user?.id || ""} />}
 
-      <AccordionSection title="التواصل والنشاط">
+      {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
+
       {canMessage && <WhatsAppPanel customerId={c.id as string} meId={user?.id || ""} ctx={waCtx} templates={templates as any} />}
 
-      <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
-      </AccordionSection>
+      <DocsPanel customerId={c.id as string} initial={docs} tableMissing={docsMissing} />
 
-      <AccordionSection title="الدعم والسجل">
+      <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
 
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="sec-t" style={{ margin: 0 }}>{tr("supportTickets")}</div>
-          <Link href={`/support/new?customer=${c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>{tr("openTicket")}</Link>
+          <div className="sec-t" style={{ margin: 0 }}>تذاكر الدعم</div>
+          <Link href={`/support/new?customer=${c.id}`} className="btn" style={{ height: 32, padding: "0 12px", fontSize: 13 }}>+ تذكرة</Link>
         </div>
         {(!tickets || tickets.length === 0) ? (
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>{tr("noTickets")}</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8 }}>لا توجد تذاكر.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
             {(tickets || []).map((t) => {
@@ -258,9 +238,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
       </div>
 
       <div className="card" style={{ padding: 18 }}>
-        <div className="sec-t">{tr("customerTimeline")}</div>
+        <div className="sec-t">سجل العميل (Timeline)</div>
         {(!auditRows || auditRows.length === 0) ? (
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noTimeline")}</div>
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>لا يوجد سجل.</div>
         ) : (auditRows || []).map((a: any, idx) => (
           <div key={idx} className="comm">
             <div className="ci" style={{ background: "#eef2f8", color: "var(--muted)" }}>
@@ -275,9 +255,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           </div>
         ))}
       </div>
-        </AccordionSection>
         </div>
-        <DrawerFooter phone={c.phone1 as string} canMessage={canMessage} />
       </aside>
     </>
   );

@@ -23,7 +23,7 @@ export default async function Settings() {
   }
 
   // كله بالتوازي للأداء
-  const [watiRow, affRow, tplRes, access, spec, dip, accred, proj, uni] = await Promise.all([
+  const [watiRow, affRow, tplRes, access, spec, dip, accred, proj, uni, lib] = await Promise.all([
     supabase.from("app_settings").select("value").eq("key", "wati").maybeSingle(),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
     supabase.from("wa_templates").select("id,name,body").order("created_at"),
@@ -33,6 +33,7 @@ export default async function Settings() {
     safeList(supabase, "accreditations", "name"),
     safeList(supabase, "projects", "name"),
     safeList(supabase, "universities", "name"),
+    safeList(supabase, "libraries", "name"),
   ]);
 
   const wati = (watiRow.data?.value as any) || { endpoint: "https://live-server.wati.io/api/v1", token: "", sender: "" };
@@ -66,6 +67,7 @@ export default async function Settings() {
       <OptionsList title="إدارة الدبلومات" hint="الدبلومات المتاحة للتسجيل" table="diplomas" labelCol="name_ar" initial={dip.items} />
       <OptionsList title="إدارة الاعتمادات" hint="اعتمادات مدفوعة ممكن العميل ياخدها" table="accreditations" labelCol="name" initial={accred.items} />
       <OptionsList title="إدارة المشاريع" hint="مشاريع مدفوعة ممكن العميل ينضم لها" table="projects" labelCol="name" initial={proj.items} />
+      <OptionsList title="إدارة المكتبات" hint="المكتبات اللي بتظهر كبنود تفعيل للدعم" table="libraries" labelCol="name" initial={lib.items} />
       <OptionsList title="إدارة الجامعات والكليات" hint="الجامعات والكليات الشريكة" table="universities" labelCol="name" initial={uni.items} />
     </div>
   );

@@ -12,9 +12,19 @@ type Cust = {
   stage: string;
   ownerId: string;
   ownerName: string;
-  createdAt: string;
+  createdAt?: string;
 };
 
+// مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
+const STAGES = [
+  { key: "new", label: "جديد", color: "#2F6BFF" },
+  { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
+  { key: "interested", label: "مهتم", color: "#7B61FF" },
+  { key: "quote", label: "عرض سعر مُرسل", color: "#E6A700" },
+  { key: "negotiation", label: "تفاوض", color: "#F08A24" },
+  { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
+  { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
+];
 
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
 function avColor(id: string) {
@@ -29,32 +39,13 @@ function initials(name: string) {
 
 export default function PipelineBoard({ initial }: { initial: Cust[] }) {
   const tr = useT();
-  const STAGES = [
-    { key: "new", label: tr("dashStageNew"), color: "#2F6BFF" },
-    { key: "contacted", label: tr("dashStageContacted"), color: "#0FA3A3" },
-    { key: "interested", label: tr("dashStageInterested"), color: "#7B61FF" },
-    { key: "negotiation", label: tr("dashStageNegotiation"), color: "#F08A24" },
-    { key: "enrolled", label: tr("dashStageEnrolled"), color: "#18A957" },
-    { key: "onhold", label: tr("dashStageOnhold"), color: "#E6A700" },
-    { key: "lost", label: tr("dashStageLost"), color: "#94A2BB" },
-  ];
   const router = useRouter();
   const downRef = useRef<{ x: number; y: number } | null>(null);
   const supabase = createClient();
   const [custs, setCusts] = useState<Cust[]>(initial);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
-  const [colQ, setColQ] = useState<Record<string, string>>({});
   const [colSort, setColSort] = useState<Record<string, string>>({});
-
-  function sortItems(items: Cust[], colKey: string): Cust[] {
-    const mode = colSort[colKey] || "";
-    if (!mode) return items;
-    const sorted = [...items];
-    if (mode === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
-    else if (mode === "new") sorted.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-    return sorted;
-  }
 
   async function drop(stage: string) {
     const id = dragId;
@@ -64,15 +55,8 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
     const c = custs.find((x) => x.id === id);
     if (!c || c.stage === stage) return;
     const prev = custs;
-    const patch: { stage: string; onhold_reason?: string | null } = { stage };
-    if (stage === "onhold") {
-      const r = window.prompt("سبب التعليق؟ (مثلاً: عملية الدفع معلّقة من البنك)", "");
-      if (r !== null) patch.onhold_reason = r.trim() || null;
-    } else {
-      patch.onhold_reason = null;
-    }
     setCusts((list) => list.map((x) => (x.id === id ? { ...x, stage } : x)));
-    const { error } = await supabase.from("customers").update(patch).eq("id", id);
+    const { error } = await supabase.from("customers").update({ stage }).eq("id", id);
     if (error) {
       setCusts(prev);
       alert("تعذّر نقل العميل: " + error.message);
@@ -94,21 +78,22 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
       <div className="page-h">
         <div>
           <h1>{tr("pipeline")}</h1>
-          <p>{custs.length} {tr("customers")} — {tr("pipelineDesc")}</p>
+          <p>{custs.length} عميل — اسحب العميل بين المراحل</p>
         </div>
         <Link className="btn" href="/customers/new">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
             <path d="M12 5v14M5 12h14" />
           </svg>
-          {tr("addCust")}
+          إضافة عميل
         </Link>
       </div>
 
       <div className="pipe">
         {STAGES.map((s) => {
-          const cq = (colQ[s.key] || "").trim().toLowerCase();
-          const items = sortItems(custs.filter((c) => (c.stage || "new") === s.key)
-            .filter((c) => !cq || ((c.name || "") + " " + ((c as any).phone1 || "") + " " + ((c as any).company || "")).toLowerCase().includes(cq)), s.key);
+          const sortKey = colSort[s.key] || "";
+          let items = custs.filter((c) => (c.stage || "new") === s.key);
+          if (sortKey === "name") items = [...items].sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
+          else if (sortKey === "new") items = [...items].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
           return (
             <div
               key={s.key}
@@ -131,16 +116,17 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                   <span className="dot" style={{ background: s.color }} />
                   {s.label}
                 </span>
-                <select className="sortsel" value={colSort[s.key] || ""} onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
-                  <option value="">{tr("sortLabel")}</option>
-                  <option value="name">{tr("sortName")}</option>
-                  <option value="new">{tr("sortNew")}</option>
-                </select>
-                <span className="ct">{items.length}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <select className="sortsel" value={colSort[s.key] || ""}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>
+                    <option value="">ترتيب</option>
+                    <option value="name">بالاسم</option>
+                    <option value="new">الأحدث</option>
+                  </select>
+                  <span className="ct">{items.length}</span>
+                </div>
               </div>
-              <input className="inp" placeholder={tr("filterColumn")} value={colQ[s.key] || ""}
-                onChange={(e) => setColQ((q) => ({ ...q, [s.key]: e.target.value }))}
-                style={{ height: 30, fontSize: 12, margin: "0 0 8px" }} />
               <div className="col-b enter">
                 {items.map((c) => (
                   <div
@@ -162,7 +148,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                   >
                     <button
                       className="cardx"
-                      title={tr("archiveCard")}
+                      title="أرشفة الكارت"
                       onMouseDown={(ev) => ev.stopPropagation()}
                       onClick={(ev) => { ev.stopPropagation(); archive(c.id); }}
                     >
@@ -175,7 +161,7 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
                         <span className="av-xs" style={{ background: avColor(c.ownerId) }}>
                           {initials(c.ownerName || "؟")}
                         </span>
-                        {c.ownerName || tr("unassigned")}
+                        {c.ownerName || "غير معيّن"}
                       </span>
                     </div>
                   </div>
