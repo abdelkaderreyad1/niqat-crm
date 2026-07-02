@@ -32,7 +32,7 @@ const lbl = "text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 b
 const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[] }>(({ customer, specialties }, ref) => {
   const router = useRouter();
   const supabase = createClient();
-  const [tab, setTab] = useState<"basic" | "sales" | "terms">("basic");
+  const [activeTab, setActiveTab] = useState<string>("basic");
   const [f, setF] = useState({
     name: customer.name || "", phone1: customer.phone1 || "", phone2: customer.phone2 || "",
     email: customer.email || "", company: customer.company || "", residency: customer.residency || "",
@@ -76,10 +76,10 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
 
   useImperativeHandle(ref, () => ({ save }), [save]);
 
-  const TabBtn = ({ val, label }: { val: typeof tab; label: string }) => (
-    <button type="button" onClick={() => setTab(val)}
+  const TabBtn = ({ val, label }: { val: string; label: string }) => (
+    <button type="button" onClick={() => setActiveTab(val)}
       className={"pb-3 px-1 text-[13px] font-bold transition-all duration-150 border-b-2 " +
-        (tab === val ? "border-orange-500 text-orange-500" : "border-transparent text-gray-500 hover:text-gray-300")}>
+        (activeTab === val ? "border-orange-500 text-orange-500" : "border-transparent text-gray-500 hover:text-gray-300")}>
       {label}
     </button>
   );
@@ -96,7 +96,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
       </div>
 
       <div className="flex-1 space-y-5">
-        {tab === "basic" && (
+        {activeTab === "basic" && (
           <>
             <div className={fld}>
               <label className={lbl}>الاسم <span className="text-orange-400/50 font-normal">(إنجليزي)</span></label>
@@ -136,7 +136,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
           </>
         )}
 
-        {tab === "sales" && (
+        {activeTab === "sales" && (
           <>
             <div className={fld}>
               <label className={lbl}>التخصص الهندسي</label>
@@ -174,7 +174,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
           </>
         )}
 
-        {tab === "terms" && (
+        {activeTab === "terms" && (
           <div className="flex items-center gap-4 p-5 rounded-xl border border-slate-700 bg-slate-800/50">
             <button type="button" onClick={toggleTerms}
               className={"relative w-[44px] h-[24px] rounded-full transition-colors flex-shrink-0 " +
