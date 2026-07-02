@@ -42,11 +42,14 @@ export default function RefundPanel({
     const a = Number(amount) || 0;
     if (a <= 0) { alert("اكتب مبلغ الاسترداد."); return; }
     setBusy(true);
-    const { error } = await supabase.from("refunds").insert({
-      customer_id: customerId, amount: a, currency, reason: reason.trim(),
-      shot_url: "", status: "requested", requested_by: meId,
-    });
-    if (!error) await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_request", detail: `طلب استرداد ${money(a, currency)}` });
+    const { data: rf, error } = await supabase.from("refunds").insert({
+      customer_id: customerId, reason: reason.trim(),
+      status: "requested", requested_by: meId,
+    }).select("id").single();
+    if (!error && rf) {
+      await supabase.from("refund_finance").insert({ refund_id: rf.id, amount: a, currency });
+      await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "refund_request", detail: "طلب استرداد" });
+    }
     setBusy(false);
     if (error) { alert("تعذّر تسجيل الطلب: " + error.message); return; }
     setAmount(""); setReason("");
@@ -56,9 +59,8 @@ export default function RefundPanel({
   async function setStatus(status: string, archive = false, withShot = false) {
     if (!refund) return;
     setBusy(true);
-    const patch: any = { status };
-    if (withShot) { const u = await uploadShot(); if (u) patch.shot_url = u; }
-    const { error } = await supabase.from("refunds").update(patch).eq("id", refund.id);
+    if (withShot) { const u = await uploadShot(); if (u) await supabase.from("refund_finance").update({ shot_url: u }).eq("refund_id", refund.id); }
+    const { error } = await supabase.from("refunds").update({ status }).eq("id", refund.id);
     if (!error && archive) await supabase.from("customers").update({ archived: true }).eq("id", customerId);
     if (!error) await supabase.from("audit_log").insert({
       customer_id: customerId, actor_id: meId || null,

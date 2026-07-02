@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 const STAGES: Record<string, { label: string; color: string }> = {
   new: { label: "جديد", color: "#2F6BFF" }, contacted: { label: "تم التواصل", color: "#0FA3A3" },
   interested: { label: "مهتم", color: "#7B61FF" }, negotiation: { label: "تفاوض", color: "#F08A24" },
-  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#E6A700" },
+  quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
+  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#7C8AA5" },
   lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
 };
 const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: x.label }));

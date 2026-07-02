@@ -60,7 +60,8 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
     const amt = Number(editAgreedVal);
     if (isNaN(amt) || amt < 0) return alert("أدخل مبلغ صحيح");
     setBusy("agreed");
-    const { error } = await supabase.from("enrollments").update({ agreed: amt }).eq("id", e.id);
+    const { error } = await supabase.from("enrollment_finance")
+      .upsert({ enrollment_id: e.id, agreed_amount: amt, currency: e.currency || "EGP" }, { onConflict: "enrollment_id" });
     setBusy(null);
     if (error) return alert("تعذّر التحديث: " + error.message);
     await logAudit("agreed_edit", `تعديل المبلغ المتفق من ${money(e.agreed, e.currency)} إلى ${money(amt, e.currency)}`);

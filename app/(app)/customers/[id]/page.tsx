@@ -18,7 +18,8 @@ export const dynamic = "force-dynamic";
 const STAGE: Record<string, { label: string; color: string }> = {
   new: { label: "جديد", color: "#2F6BFF" }, contacted: { label: "تم التواصل", color: "#0FA3A3" },
   interested: { label: "مهتم", color: "#7B61FF" }, negotiation: { label: "تفاوض", color: "#F08A24" },
-  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#E6A700" },
+  quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
+  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#7C8AA5" },
   lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
 };
 const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
@@ -38,7 +39,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const canMessage = !!meProf?.can_message;
 
   const { data: c } = await supabase.from("customers")
-    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,created_at")
+    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at")
     .eq("id", params.id).maybeSingle();
   if (!c) notFound();
 
@@ -135,10 +136,17 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   let refundTableMissing = false;
   if (canFinance) {
     const { data: rf, error: rfErr } = await supabase.from("refunds")
-      .select("id,amount,currency,reason,shot_url,status,created_at")
+      .select("id,reason,status,created_at")
       .eq("customer_id", params.id).order("created_at", { ascending: false }).limit(1);
     if (rfErr) refundTableMissing = true;
-    else refund = (rf || [])[0] || null;
+    else {
+      const r0 = (rf || [])[0] || null;
+      if (r0) {
+        const { data: rfin } = await supabase.from("refund_finance")
+          .select("amount,currency,shot_url").eq("refund_id", r0.id).maybeSingle();
+        refund = { ...r0, amount: Number(rfin?.amount) || 0, currency: rfin?.currency || "EGP", shot_url: rfin?.shot_url || "" };
+      }
+    }
   }
 
   // قوالب واتساب
@@ -152,8 +160,17 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   // الإضافات + قوائمها
   let addons: any[] = []; let addonsMissing = false;
   const { data: adRows, error: adErr } = await supabase.from("customer_addons")
-    .select("id,type,name,amount,free,note,paid").eq("customer_id", params.id).order("created_at");
-  if (adErr) addonsMissing = true; else addons = (adRows || []).map((a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(a.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid }));
+    .select("id,type,name,free,note,paid").eq("customer_id", params.id).order("created_at");
+  if (adErr) addonsMissing = true;
+  else {
+    let afMap = new Map<string, any>();
+    if (canFinance && (adRows || []).length) {
+      const { data: afin } = await supabase.from("addon_finance")
+        .select("customer_addon_id,amount,currency").in("customer_addon_id", (adRows as any[]).map((a) => a.id));
+      afMap = new Map((afin || []).map((x: any) => [x.customer_addon_id, x]));
+    }
+    addons = (adRows || []).map((a: any) => ({ id: a.id, type: a.type, name: a.name, amount: Number(afMap.get(a.id)?.amount) || 0, free: !!a.free, note: a.note || "", paid: !!a.paid }));
+  }
   const [{ data: accredRows }, { data: projRows }] = await Promise.all([
     supabase.from("accreditations").select("name").order("name"),
     supabase.from("projects").select("name").order("name"),
@@ -173,6 +190,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             <h2>{c.name}</h2>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{st.label}</span>
+              {c.stage === "onhold" && (c as any).onhold_reason && (
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>⏸️ {(c as any).onhold_reason}</span>
+              )}
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>

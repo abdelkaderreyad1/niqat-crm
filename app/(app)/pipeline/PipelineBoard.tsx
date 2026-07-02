@@ -21,8 +21,9 @@ const STAGES = [
   { key: "contacted", label: "تم التواصل", color: "#0FA3A3" },
   { key: "interested", label: "مهتم", color: "#7B61FF" },
   { key: "negotiation", label: "تفاوض", color: "#F08A24" },
+  { key: "quote", label: "عرض سعر مُرسل", color: "#E6A700" },
   { key: "enrolled", label: "مسجّل / دفع", color: "#18A957" },
-  { key: "onhold", label: "معلّق", color: "#E6A700" },
+  { key: "onhold", label: "معلّق", color: "#7C8AA5" },
   { key: "lost", label: "مؤجل / مرفوض", color: "#94A2BB" },
 ];
 
@@ -65,8 +66,15 @@ export default function PipelineBoard({ initial }: { initial: Cust[] }) {
     const c = custs.find((x) => x.id === id);
     if (!c || c.stage === stage) return;
     const prev = custs;
+    const patch: { stage: string; onhold_reason?: string | null } = { stage };
+    if (stage === "onhold") {
+      const r = window.prompt("سبب التعليق؟ (مثلاً: عملية الدفع معلّقة من البنك)", "");
+      if (r !== null) patch.onhold_reason = r.trim() || null;
+    } else {
+      patch.onhold_reason = null;
+    }
     setCusts((list) => list.map((x) => (x.id === id ? { ...x, stage } : x)));
-    const { error } = await supabase.from("customers").update({ stage }).eq("id", id);
+    const { error } = await supabase.from("customers").update(patch).eq("id", id);
     if (error) {
       setCusts(prev);
       alert("تعذّر نقل العميل: " + error.message);

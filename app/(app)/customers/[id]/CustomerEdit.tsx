@@ -9,6 +9,7 @@ type C = {
   email: string | null; company: string | null; residency: string | null;
   grad_year: number | null; stage: string; specialty_id: string | null;
   lms_status: string | null; source: string | null; affiliate_code: string | null; created_at: string;
+  onhold_reason?: string | null;
 };
 
 const STAGES = [
@@ -16,6 +17,7 @@ const STAGES = [
   { key: "contacted", label: "تم التواصل" },
   { key: "interested", label: "مهتم" },
   { key: "negotiation", label: "تفاوض" },
+  { key: "quote", label: "عرض سعر مُرسل" },
   { key: "enrolled", label: "مسجّل / دفع" },
   { key: "onhold", label: "معلّق" },
   { key: "lost", label: "مؤجل / مرفوض" },
@@ -38,6 +40,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
     specialty_id: customer.specialty_id || "", stage: customer.stage || "new",
     affiliate_code: customer.affiliate_code || "",
     source: customer.source || "", lms_status: customer.lms_status || "",
+    onhold_reason: customer.onhold_reason || "",
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -57,6 +60,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
       specialty_id: f.specialty_id || null, stage: f.stage,
       affiliate_code: f.affiliate_code.trim(),
       source: f.source.trim(), lms_status: f.lms_status,
+      onhold_reason: f.stage === "onhold" ? (f.onhold_reason.trim() || null) : null,
     }).eq("id", customer.id);
     setBusy(false);
     if (error) {
@@ -78,6 +82,11 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
             {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select></div>
       </div>
+      {f.stage === "onhold" && (
+        <div className="fld"><label>سبب التعليق</label>
+          <input className="inp" value={f.onhold_reason} onChange={(e) => set("onhold_reason", e.target.value)}
+            placeholder="مثلاً: عملية الدفع معلّقة من البنك" /></div>
+      )}
       <div className="frow">
         <div className="fld"><label>الموبايل 1</label>
           <input className="inp num" dir="ltr" value={f.phone1} onChange={(e) => set("phone1", e.target.value)} /></div>

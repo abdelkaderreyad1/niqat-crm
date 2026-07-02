@@ -9,8 +9,9 @@ const STAGES: { key: string; label: string; color: string }[] = [
   { key: "contacted", label: "dashStageContacted", color: "#0FA3A3" },
   { key: "interested", label: "dashStageInterested", color: "#7B61FF" },
   { key: "negotiation", label: "dashStageNegotiation", color: "#F08A24" },
+  { key: "quote", label: "dashStageQuote", color: "#E6A700" },
   { key: "enrolled", label: "dashStageEnrolled", color: "#18A957" },
-  { key: "onhold", label: "dashStageOnhold", color: "#E6A700" },
+  { key: "onhold", label: "dashStageOnhold", color: "#7C8AA5" },
   { key: "lost", label: "dashStageLost", color: "#94A2BB" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];

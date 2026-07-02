@@ -34,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users")
+    .select("full_name, team, can_see_finance, can_view_reports, can_manage_settings, can_manage_users, can_grant_access")
     .eq("id", user.id).maybeSingle();
 
   const tomorrow = new Date(); tomorrow.setHours(0, 0, 0, 0); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -99,7 +99,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canReports={!!profile?.can_view_reports}
           canUsers={!!profile?.can_manage_users}
           canSettings={!!profile?.can_manage_settings}
-          canGrant={!!profile?.can_manage_settings}
+          canGrant={!!profile?.can_grant_access}
           dueCount={dueCount}
           handoffCount={handoffCount}
         />

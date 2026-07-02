@@ -30,12 +30,16 @@ export default function AddonsPanel({
     const nm = name || names[0];
     if (!nm) { toast("اختر العنصر"); return; }
     setBusy(true);
+    const amt = free ? 0 : Number(amount) || 0;
     const { data, error } = await supabase.from("customer_addons").insert({
-      customer_id: customerId, type, name: nm, amount: free ? 0 : Number(amount) || 0, free, note: note.trim(), paid,
+      customer_id: customerId, type, name: nm, free, note: note.trim(), paid,
     }).select("id").single();
+    if (!error && data && canFinance && !free && amt > 0) {
+      await supabase.from("addon_finance").insert({ customer_addon_id: data.id, amount: amt, currency: "EGP" });
+    }
     setBusy(false);
     if (error) { toast("تعذّر الإضافة"); return; }
-    setList((s) => [...s, { id: data!.id, type, name: nm, amount: free ? 0 : Number(amount) || 0, free, note: note.trim(), paid }]);
+    setList((s) => [...s, { id: data!.id, type, name: nm, amount: amt, free, note: note.trim(), paid }]);
     setName(""); setAmount(""); setFree(false); setNote(""); setPaid(false); setOpen(false);
     toast("اتضافت الإضافة");
   }

@@ -26,7 +26,7 @@ export default async function Refunds() {
   }
 
   const { data: rf, error } = await supabase.from("refunds")
-    .select("id,customer_id,amount,currency,reason,status,created_at")
+    .select("id,customer_id,reason,status,created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -43,6 +43,8 @@ export default async function Refunds() {
   const rows = rf || [];
   const { data: custs } = await supabase.from("customers").select("id,name");
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));
+  const { data: fin } = await supabase.from("refund_finance").select("refund_id,amount,currency");
+  const finMap = new Map((fin || []).map((x: any) => [x.refund_id, x]));
 
   return (
     <div>
@@ -59,6 +61,7 @@ export default async function Refunds() {
             <tbody>
               {rows.map((r) => {
                 const st = STATUS[r.status as string] || STATUS.requested;
+                const f = finMap.get(r.id);
                 return (
                   <tr key={r.id as string}>
                     <td>
@@ -66,7 +69,7 @@ export default async function Refunds() {
                         {cName.get(r.customer_id) || "—"}
                       </Link>
                     </td>
-                    <td className="num" dir="ltr" style={{ fontWeight: 700 }}>{money(Number(r.amount), r.currency as string)}</td>
+                    <td className="num" dir="ltr" style={{ fontWeight: 700 }}>{money(Number(f?.amount) || 0, (f?.currency as string) || "EGP")}</td>
                     <td style={{ color: "var(--muted)", maxWidth: 260 }}>{r.reason || "—"}</td>
                     <td><span className="stg" style={{ background: st.bg, color: st.color }}>{st.label}</span></td>
                     <td className="num" dir="ltr" style={{ color: "var(--muted)" }}>{String(r.created_at || "").slice(0, 10)}</td>

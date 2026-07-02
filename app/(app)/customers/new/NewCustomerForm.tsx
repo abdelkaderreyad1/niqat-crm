@@ -7,7 +7,7 @@ import { toast } from "@/lib/toast";
 type Opt = { id: string; name: string };
 const STAGES = [
   ["new", "جديد"], ["contacted", "تم التواصل"], ["interested", "مهتم"],
-  ["negotiation", "تفاوض"], ["enrolled", "مسجّل / دفع"], ["onhold", "معلّق"], ["lost", "مؤجل / مرفوض"],
+  ["negotiation", "تفاوض"], ["quote", "عرض سعر مُرسل"], ["enrolled", "مسجّل / دفع"], ["onhold", "معلّق"], ["lost", "مؤجل / مرفوض"],
 ];
 
 type Aff = { name: string; code: string; discount: number };
@@ -19,7 +19,7 @@ export default function NewCustomerForm({
   const supabase = createClient();
   const [f, setF] = useState({
     name: "", phone1: "", phone2: "", email: "", company: "", affiliate_code: "",
-    specialty_id: "", stage: "new", residency: "", grad_year: "", source: "",
+    specialty_id: "", stage: "new", residency: "", grad_year: "", source: "", onhold_reason: "",
     follow: "", diploma_id: "", batch_id: "", note: "",
     curMode: "EGP",
     amount: "", free_reason: "",
@@ -103,6 +103,7 @@ export default function NewCustomerForm({
       email: f.email.trim() || null, company: f.company.trim(), affiliate_code: f.affiliate_code.trim(),
       specialty_id: f.specialty_id || null, stage: f.stage, residency: f.residency.trim(),
       grad_year: f.grad_year.trim() || null, source: f.source.trim(),
+      onhold_reason: f.stage === "onhold" ? (f.onhold_reason.trim() || null) : null,
     }).select("id").single();
 
     if (error || !cust) {
@@ -210,6 +211,12 @@ export default function NewCustomerForm({
             {STAGES.map((s) => <option key={s[0]} value={s[0]}>{s[1]}</option>)}
           </select></div>
       </div>
+
+      {f.stage === "onhold" && (
+        <div className="fld"><label>سبب التعليق</label>
+          <input className="inp" value={f.onhold_reason} onChange={(e) => set("onhold_reason", e.target.value)}
+            placeholder="مثلاً: عملية الدفع معلّقة من البنك" /></div>
+      )}
 
       {addSpecOpen && (
         <div style={{ display: "flex", gap: 6, marginBottom: 10, alignItems: "center" }}>
