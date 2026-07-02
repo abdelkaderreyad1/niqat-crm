@@ -96,14 +96,7 @@ export default function CustomerDrawer(props: {
           ))}
         </div>
       </>}
-      footer={(tab: string) => tab === "basic" ? (
-        <div className="drawer-footer">
-          <button onClick={() => editRef.current?.save()}
-            className="flex-1 h-[46px] rounded-xl bg-brand text-white font-extrabold text-[14px] tracking-wide hover:bg-brand-dark active:scale-[.98] transition-all duration-150 shadow-lg shadow-brand/20">
-            حفظ التعديلات
-          </button>
-        </div>
-      ) : null}
+      footer={() => null}
     />
   );
 }

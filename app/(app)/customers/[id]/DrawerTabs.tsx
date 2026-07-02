@@ -21,7 +21,7 @@ export default function DrawerTabs({ basic, sales, docs, footer }: {
         <TabBtn val="sales" label="مبيعات واشتراكات" />
         <TabBtn val="docs" label="مستندات وتواصل" />
       </div>
-      <div className="tab-pane" key={tab}>
+      <div className="tab-pane flex flex-col flex-1 min-h-0" key={tab}>
         {tab === "basic" && basic}
         {tab === "sales" && sales}
         {tab === "docs" && docs}

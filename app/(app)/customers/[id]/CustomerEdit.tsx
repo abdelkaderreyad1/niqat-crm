@@ -23,21 +23,16 @@ const STAGES = [
   { key: "lost", label: "مؤجل / مرفوض" },
 ];
 
-function engUpper(v: string) { return v.replace(/[\u0600-\u06FF]/g, "").toUpperCase(); }
-const hasAr = (v: string) => /[\u0600-\u06FF]/.test(v);
-
 export type CustomerEditHandle = { save: () => Promise<void> };
 
-const fld = "flex flex-col gap-1.5";
-const lbl = "text-[11px] font-bold text-muted uppercase tracking-wide";
-const inp = "w-full h-[42px] px-3.5 rounded-xl border border-line bg-surface text-ink text-[14px] font-num transition-all duration-150 focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10";
+const inp = "w-full bg-slate-900 border border-slate-700 rounded-lg p-3.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all duration-150 text-[14px]";
 const sel = inp + " appearance-none cursor-pointer";
-const errCls = "text-[13px] text-red bg-red/5 rounded-xl px-4 py-2.5 border border-red/10";
-const okCls = "text-[13px] text-green bg-green/5 rounded-xl px-4 py-2.5 border border-green/10";
+const lbl = "text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 block";
 
 const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[] }>(({ customer, specialties }, ref) => {
   const router = useRouter();
   const supabase = createClient();
+  const [tab, setTab] = useState<"basic" | "sales" | "terms">("basic");
   const [f, setF] = useState({
     name: customer.name || "", phone1: customer.phone1 || "", phone2: customer.phone2 || "",
     email: customer.email || "", company: customer.company || "", residency: customer.residency || "",
@@ -52,7 +47,6 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
   const [msg, setMsg] = useState("");
 
   const set = useCallback((k: string, v: string) => setF((s) => ({ ...s, [k]: v })), []);
-  const onName = useCallback((v: string) => setF((s) => ({ ...s, name: engUpper(v) })), []);
 
   const toggleTerms = useCallback(async () => {
     const next = !terms;
@@ -64,7 +58,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
   const save = useCallback(async () => {
     setErr(""); setMsg("");
     if (!f.name.trim()) { setErr("الاسم مطلوب"); return; }
-    if (hasAr(f.name)) { setErr("اسم العميل لازم يكون إنجليزي فقط."); return; }
+    if (/[\u0600-\u06FF]/.test(f.name)) { setErr("اسم العميل لازم يكون إنجليزي فقط."); return; }
     const { error } = await supabase.from("customers").update({
       name: f.name.trim().toUpperCase(), phone1: f.phone1.trim() || null, phone2: f.phone2.trim() || null,
       email: f.email.trim() || null, company: f.company.trim() || null, residency: f.residency.trim() || null,
@@ -82,155 +76,146 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
 
   useImperativeHandle(ref, () => ({ save }), [save]);
 
-  const wa = (ph: string | null) => {
-    if (!ph) return null;
-    const d = ph.replace(/\D/g, "");
-    if (!d) return null;
-    return "https://wa.me/" + (d.startsWith("0") ? "20" + d.slice(1) : d);
-  };
+  const TabBtn = ({ val, label }: { val: typeof tab; label: string }) => (
+    <button type="button" onClick={() => setTab(val)}
+      className={"pb-3 px-1 text-[13px] font-bold transition-all duration-150 border-b-2 " +
+        (tab === val ? "border-orange-500 text-orange-500" : "border-transparent text-gray-500 hover:text-gray-300")}>
+      {label}
+    </button>
+  );
+
+  const fld = "flex flex-col gap-1.5";
+  const grid2 = "grid grid-cols-2 gap-4";
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* === BASIC === */}
-      <Section title="البيانات الأساسية">
-        <div className="grid grid-cols-2 gap-4">
-          <div className={fld}>
-            <label className={lbl}>الاسم <span className="text-brand/60">(إنجليزي)</span></label>
-            <input className={inp + " font-num"} dir="ltr" value={f.name}
-              onChange={(e) => onName(e.target.value)} placeholder="AHMED ALI" />
-          </div>
-          <div className={fld}>
-            <label className={lbl}>المرحلة</label>
-            <select className={sel} value={f.stage} onChange={(e) => set("stage", e.target.value)}>
-              {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className={fld}>
-            <label className={lbl}>الموبايل 1</label>
-            <input className={inp + " font-num"} dir="ltr" value={f.phone1}
-              onChange={(e) => set("phone1", e.target.value)} />
-          </div>
-          <div className={fld}>
-            <label className={lbl}>الموبايل 2</label>
-            <input className={inp + " font-num"} dir="ltr" value={f.phone2}
-              onChange={(e) => set("phone2", e.target.value)} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className={fld}>
-            <label className={lbl}>الإيميل</label>
-            <input className={inp + " font-num"} dir="ltr" value={f.email}
-              onChange={(e) => set("email", e.target.value)} />
-          </div>
-          <div className={fld}>
-            <label className={lbl}>الشركة</label>
-            <input className={inp} value={f.company}
-              onChange={(e) => set("company", e.target.value)} />
-          </div>
-        </div>
-      </Section>
+    <div className="flex flex-col min-h-full">
+      <div className="flex border-b border-gray-800 mb-6 gap-6">
+        <TabBtn val="basic" label="بيانات أساسية" />
+        <TabBtn val="sales" label="مبيعات" />
+        <TabBtn val="terms" label="الشروط" />
+      </div>
 
-      {/* === SALES === */}
-      <Section title="معلومات المبيعات">
-        <div className="grid grid-cols-2 gap-4">
-          <div className={fld}>
-            <label className={lbl}>التخصص الهندسي</label>
-            <select className={sel} value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
-              <option value="">— غير محدد —</option>
-              {specialties.map((s) => <option key={s.id} value={s.id}>{s.name_ar}</option>)}
-            </select>
-          </div>
-          <div className={fld}>
-            <label className={lbl}>سنة التخرج</label>
-            <input className={inp + " font-num"} dir="ltr" inputMode="numeric" value={f.grad_year}
-              onChange={(e) => set("grad_year", e.target.value)} />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className={fld}>
-            <label className={lbl}>محل الإقامة</label>
-            <input className={inp} value={f.residency}
-              onChange={(e) => set("residency", e.target.value)} />
-          </div>
-          <div className={fld}>
-            <label className={lbl}>كود الأفيلييت</label>
-            <input className={inp + " font-num"} dir="ltr" value={f.affiliate_code}
-              onChange={(e) => set("affiliate_code", e.target.value)} placeholder="اختياري" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className={fld}>
-            <label className={lbl}>مصدر العميل</label>
-            <input className={inp} value={f.source}
-              onChange={(e) => set("source", e.target.value)} placeholder="فيسبوك / إحالة / إعلان…" />
-          </div>
-          <div className={fld}>
-            <label className={lbl}>حالة المنصة (LMS)</label>
-            <select className={sel} value={f.lms_status} onChange={(e) => set("lms_status", e.target.value)}>
-              <option value="">— غير محدّد —</option>
-              <option value="active">مفعّلة</option>
-              <option value="pending">قيد التفعيل</option>
-              <option value="none">غير مفعّلة</option>
-            </select>
-          </div>
-        </div>
-      </Section>
-
-      {/* === TERMS === */}
-      <Section title="الشروط والأحكام">
-        <div className={"flex items-center gap-3.5 rounded-xl border px-4 py-3.5 transition-all duration-200 " +
-          (terms ? "border-green/20 bg-green/[0.04]" : "border-line bg-surface")}>
-          <button type="button" onClick={toggleTerms}
-            className={"relative w-[42px] h-[24px] rounded-full transition-colors duration-200 flex-shrink-0 " +
-              (terms ? "bg-green" : "bg-[#CFD6E2]")}>
-            <span className={"absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-md transition-all duration-200 " +
-              (terms ? "left-[21px]" : "left-[3px]")} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <div className={"text-[13.5px] font-bold " + (terms ? "text-green" : "text-ink")}>
-              {terms ? "✓ العميل أمضى على الشروط والأحكام" : "لم يمضِ على الشروط والأحكام بعد"}
+      <div className="flex-1 space-y-5">
+        {tab === "basic" && (
+          <>
+            <div className={fld}>
+              <label className={lbl}>الاسم <span className="text-orange-400/50 font-normal">(إنجليزي)</span></label>
+              <input className={inp} dir="ltr" value={f.name} placeholder="AHMED ALI"
+                onChange={(e) => setF({...f, name: e.target.value.replace(/[^A-Za-z\s]/g, '').toUpperCase()})} />
             </div>
-            {terms && termsAt && (
-              <div className="text-[11.5px] text-muted font-num mt-0.5">
-                {String(termsAt).replace("T", " ").slice(0, 16)}
+            <div className={fld}>
+              <label className={lbl}>المرحلة</label>
+              <select className={sel} value={f.stage} onChange={(e) => set("stage", e.target.value)}>
+                {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+            </div>
+            <div className={grid2}>
+              <div className={fld}>
+                <label className={lbl}>الموبايل 1</label>
+                <input className={inp} dir="ltr" value={f.phone1} onChange={(e) => set("phone1", e.target.value)} />
               </div>
-            )}
-          </div>
-        </div>
-      </Section>
+              <div className={fld}>
+                <label className={lbl}>الموبايل 2</label>
+                <input className={inp} dir="ltr" value={f.phone2} onChange={(e) => set("phone2", e.target.value)} />
+              </div>
+            </div>
+            <div className={fld}>
+              <label className={lbl}>الإيميل</label>
+              <input className={inp} dir="ltr" value={f.email} onChange={(e) => set("email", e.target.value)} />
+            </div>
+            <div className={grid2}>
+              <div className={fld}>
+                <label className={lbl}>الشركة</label>
+                <input className={inp} value={f.company} onChange={(e) => set("company", e.target.value)} />
+              </div>
+              <div className={fld}>
+                <label className={lbl}>محل الإقامة</label>
+                <input className={inp} value={f.residency} onChange={(e) => set("residency", e.target.value)} />
+              </div>
+            </div>
+          </>
+        )}
 
-      {/* === META === */}
-      <div className="flex items-center justify-between text-[12px] text-muted/70 px-0.5">
-        <span>تاريخ الإضافة: <span className="text-muted font-medium">{new Date(customer.created_at).toLocaleDateString("ar-EG")}</span></span>
-        {wa(f.phone1) && (
-          <a href={wa(f.phone1)!} target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-wa hover:text-wa/80 font-bold text-[13px] transition-colors">
-            <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.6-4A8 8 0 1 1 20 11.5z"/></svg>
-            واتساب
-          </a>
+        {tab === "sales" && (
+          <>
+            <div className={fld}>
+              <label className={lbl}>التخصص الهندسي</label>
+              <select className={sel} value={f.specialty_id} onChange={(e) => set("specialty_id", e.target.value)}>
+                <option value="">— غير محدد —</option>
+                {specialties.map((s) => <option key={s.id} value={s.id}>{s.name_ar}</option>)}
+              </select>
+            </div>
+            <div className={grid2}>
+              <div className={fld}>
+                <label className={lbl}>سنة التخرج</label>
+                <input className={inp} dir="ltr" inputMode="numeric" value={f.grad_year}
+                  onChange={(e) => set("grad_year", e.target.value)} />
+              </div>
+              <div className={fld}>
+                <label className={lbl}>كود الأفيلييت</label>
+                <input className={inp} dir="ltr" value={f.affiliate_code} placeholder="اختياري"
+                  onChange={(e) => set("affiliate_code", e.target.value)} />
+              </div>
+            </div>
+            <div className={fld}>
+              <label className={lbl}>مصدر العميل</label>
+              <input className={inp} value={f.source} placeholder="فيسبوك / إحالة / إعلان…"
+                onChange={(e) => set("source", e.target.value)} />
+            </div>
+            <div className={fld}>
+              <label className={lbl}>حالة المنصة (LMS)</label>
+              <select className={sel} value={f.lms_status} onChange={(e) => set("lms_status", e.target.value)}>
+                <option value="">— غير محدّد —</option>
+                <option value="active">مفعّلة</option>
+                <option value="pending">قيد التفعيل</option>
+                <option value="none">غير مفعّلة</option>
+              </select>
+            </div>
+          </>
+        )}
+
+        {tab === "terms" && (
+          <div className="flex items-center gap-4 p-5 rounded-xl border border-slate-700 bg-slate-800/50">
+            <button type="button" onClick={toggleTerms}
+              className={"relative w-[44px] h-[24px] rounded-full transition-colors flex-shrink-0 " +
+                (terms ? "bg-orange-500" : "bg-slate-600")}>
+              <span className={"absolute top-[3px] w-[18px] h-[18px] rounded-full bg-white shadow transition-all duration-200 " +
+                (terms ? "left-[23px]" : "left-[3px]")} />
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className={"text-[14px] font-bold " + (terms ? "text-orange-400" : "text-gray-400")}>
+                {terms ? "✓ العميل أمضى على الشروط والأحكام" : "لم يمضِ على الشروط والأحكام بعد"}
+              </div>
+              {terms && termsAt && (
+                <div className="text-[12px] text-gray-500 mt-1 font-num">
+                  {String(termsAt).replace("T", " ").slice(0, 16)}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
 
-      {err && <div className={errCls}>{err}</div>}
-      {msg && <div className={okCls}>{msg}</div>}
+      {err && (
+        <div className="mt-5 text-[13px] text-red-400 bg-red-400/10 rounded-lg px-4 py-2.5 border border-red-400/20">
+          {err}
+        </div>
+      )}
+      {msg && (
+        <div className="mt-5 text-[13px] text-green-400 bg-green-400/10 rounded-lg px-4 py-2.5 border border-green-400/20">
+          {msg}
+        </div>
+      )}
+
+      <div className="sticky bottom-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-700 p-4 mt-auto">
+        <button onClick={save}
+          className="w-full h-[46px] bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[14px] tracking-wide rounded-lg active:scale-[.98] transition-all duration-150 shadow-lg shadow-orange-500/20">
+          حفظ التعديلات
+        </button>
+      </div>
     </div>
   );
 });
 
 CustomerEdit.displayName = "CustomerEdit";
 export default CustomerEdit;
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3.5">
-      <div className="flex items-center gap-2.5">
-        <span className="w-[3px] h-[16px] rounded-full bg-brand" />
-        <span className="text-[12px] font-extrabold text-brand tracking-wide">{title}</span>
-        <span className="flex-1 h-px bg-line" />
-      </div>
-      {children}
-    </div>
-  );
-}
