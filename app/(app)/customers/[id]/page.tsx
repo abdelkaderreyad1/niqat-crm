@@ -18,9 +18,9 @@ export const dynamic = "force-dynamic";
 
 const STAGE: Record<string, { label: string; color: string }> = {
   new: { label: "جديد", color: "#2F6BFF" }, contacted: { label: "تم التواصل", color: "#0FA3A3" },
-  interested: { label: "مهتم", color: "#7B61FF" }, quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
-  negotiation: { label: "تفاوض", color: "#F08A24" },
-  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#E6A700" },
+  interested: { label: "مهتم", color: "#7B61FF" }, negotiation: { label: "تفاوض", color: "#F08A24" },
+  quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
+  enrolled: { label: "مسجّل / دفع", color: "#18A957" }, onhold: { label: "معلّق", color: "#7C8AA5" },
   lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
 };
 const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
@@ -40,7 +40,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const canMessage = !!meProf?.can_message;
 
   const { data: c } = await supabase.from("customers")
-    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,created_at")
+    .select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at")
     .eq("id", params.id).maybeSingle();
   if (!c) notFound();
 
@@ -184,6 +184,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             <h2>{c.name}</h2>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{st.label}</span>
+              {c.stage === "onhold" && (c as any).onhold_reason && (
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>⏸️ {(c as any).onhold_reason}</span>
+              )}
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>

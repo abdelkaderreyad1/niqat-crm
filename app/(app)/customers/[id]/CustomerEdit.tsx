@@ -18,6 +18,7 @@ const STAGES = [
   { key: "interested", label: "مهتم" },
   { key: "quote", label: "عرض سعر مُرسل" },
   { key: "negotiation", label: "تفاوض" },
+  { key: "onhold", label: "معلّق" },
   { key: "enrolled", label: "مسجّل / دفع" },
   { key: "lost", label: "مؤجل / مرفوض" },
 ];

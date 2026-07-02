@@ -73,8 +73,8 @@ export default function AddonsPanel({
   if (tableMissing) {
     return (
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
-        <div className="sec-t">الإضافات والمدفوعات</div>
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>جدول الإضافات لسه مش متعمل — شغّل batch4-tables.sql في Supabase.</div>
+        <div className="sec-t" style={{ margin: 0 }}>الإضافات والمدفوعات</div>
+        <div style={{ fontSize: 13, color: "var(--muted)" }}>جدول الإضافات لسه مش متعمل — شغل batch4-tables.sql في Supabase.</div>
       </div>
     );
   }
