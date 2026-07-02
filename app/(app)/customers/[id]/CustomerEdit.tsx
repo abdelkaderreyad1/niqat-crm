@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
@@ -50,6 +50,13 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
   const wa = waLink(f.phone1);
 
+  const saveRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const h = () => saveRef.current();
+    window.addEventListener("niqat:save-customer", h);
+    return () => window.removeEventListener("niqat:save-customer", h);
+  }, []);
+
   async function save() {
     setErr(""); setMsg("");
     if (!f.name.trim()) { setErr("الاسم مطلوب"); return; }
@@ -65,6 +72,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
       onhold_reason: f.stage === "onhold" ? (f.onhold_reason.trim() || null) : null,
     }).eq("id", customer.id);
     setBusy(false);
+    window.dispatchEvent(new Event("niqat:customer-saved"));
     if (error) {
       setErr((error as any).code === "23505" ? "الموبايل أو الإيميل ده موجود عند عميل تاني." : "حصل خطأ: " + error.message);
       return;
@@ -72,6 +80,7 @@ export default function CustomerEdit({ customer, specialties }: { customer: C; s
     setMsg("اتحفظ ✓");
     router.refresh();
   }
+  saveRef.current = save;
 
   return (
     <div className="card" style={{ padding: 18, marginBottom: 14 }}>

@@ -126,8 +126,18 @@ export default async function Dashboard() {
   const byBatch = batches.map((b) => ({ code: b.code, n: enrollments.filter((e) => e.batch_id === b.id).length })).filter((x) => x.n).sort((a, b) => b.n - a.n);
   const bMax = Math.max(...byBatch.map((x) => x.n), 1);
 
+  // اتجاه حقيقي: عملاء آخر 30 يوم مقابل الـ 30 اللي قبلهم
+  const _now = Date.now();
+  const _d30 = new Date(_now - 30 * 864e5).toISOString();
+  const _d60 = new Date(_now - 60 * 864e5).toISOString();
+  const [{ count: last30 }, { count: prev30 }] = await Promise.all([
+    supabase.from("customers").select("*", { count: "exact", head: true }).eq("deleted", false).gte("created_at", _d30),
+    supabase.from("customers").select("*", { count: "exact", head: true }).eq("deleted", false).gte("created_at", _d60).lt("created_at", _d30),
+  ]);
+  const custTrend = prev30 ? Math.round((((last30 || 0) - prev30) / prev30) * 100) : ((last30 || 0) > 0 ? 100 : null);
+
   const kpis = [
-    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥" },
+    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥", trend: custTrend },
     { label: tr("newLeads"), value: leads, color: "#F08A24", emoji: "🎯" },
     { label: tr("convRate"), value: conv + "%", color: "#18A957", emoji: "📈" },
     { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", emoji: "✅" },
@@ -168,7 +178,17 @@ export default async function Dashboard() {
         {kpis.map((k) => (
           <div key={k.label} className="card" style={{ padding: 18 }}>
             <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>{(k as any).emoji}</span>{k.label}</div>
-            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: k.color }}>{k.value}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <div className="num" style={{ fontSize: 28, fontWeight: 800, color: k.color }}>{k.value}</div>
+              {(k as any).trend != null && (
+                <span className={`kpi-trend ${(k as any).trend >= 0 ? "up" : "down"}`}>
+                  <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.5}>
+                    <path d={(k as any).trend >= 0 ? "M6 15l6-6 6 6" : "M6 9l6 6 6-6"} />
+                  </svg>
+                  {Math.abs((k as any).trend)}%
+                </span>
+              )}
+            </div>
           </div>
         ))}
         {canDailySales && (

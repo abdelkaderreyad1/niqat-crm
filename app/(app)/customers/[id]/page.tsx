@@ -12,6 +12,8 @@ import WhatsAppPanel from "./WhatsAppPanel";
 import AddonsPanel from "./AddonsPanel";
 import SubscriptionsPanel from "./SubscriptionsPanel";
 import CopyNumbers from "./CopyNumbers";
+import AccordionSection from "./AccordionSection";
+import DrawerFooter from "./DrawerFooter";
 
 export const dynamic = "force-dynamic";
 
@@ -202,25 +204,38 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         </div>
         <div className="dr-b">
 
+      <AccordionSection title="بيانات العميل" defaultOpen>
       <CustomerEdit customer={c as any} specialties={specs || []} />
+      </AccordionSection>
 
+      <AccordionSection title="الاشتراكات والإضافات">
       <SubscriptionsPanel customerId={c.id as string} meId={user?.id || ""} enrolls={enrolls}
         dipOpts={dipOpts} batchOpts={batchOpts} canFinance={canFinance} />
 
       <AddonsPanel customerId={c.id as string} initial={addons} accreditations={accredList} projects={projList} canFinance={canFinance} tableMissing={addonsMissing} />
+      </AccordionSection>
 
+      <AccordionSection title="التفعيل والمتابعة">
       <AccessPanel customerId={c.id as string} handoff={handoff} items={accessItems}
         accessOptions={[...(accOpts || []), ...enrolls.map((e, i) => ({ id: "dip-" + i, label: "تفعيل: " + e.diploma }))]} meId={user?.id || ""} meName="" />
 
       <FollowUpPanel customerId={c.id as string} meId={user?.id || ""} open={fuOpen} history={fuHistory} />
+      </AccordionSection>
 
-      {canFinance && <FinancePanel enrollments={finEnrollments} customerId={c.id as string} meId={user?.id || ""} />}
+      {canFinance && (
+        <AccordionSection title="المالية والأقساط 🔒">
+          <FinancePanel enrollments={finEnrollments} customerId={c.id as string} meId={user?.id || ""} />
+          <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />
+        </AccordionSection>
+      )}
 
-      {canFinance && <RefundPanel customerId={c.id as string} refund={refund} meId={user?.id || ""} tableMissing={refundTableMissing} />}
-
+      <AccordionSection title="التواصل والنشاط">
       {canMessage && <WhatsAppPanel customerId={c.id as string} meId={user?.id || ""} ctx={waCtx} templates={templates as any} />}
 
       <CustomerActivity customerId={c.id as string} meId={user?.id || ""} initialTasks={tasks} initialNotes={notes} />
+      </AccordionSection>
+
+      <AccordionSection title="الدعم والسجل">
 
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -262,7 +277,9 @@ export default async function CustomerDetail({ params }: { params: { id: string 
           </div>
         ))}
       </div>
+        </AccordionSection>
         </div>
+        <DrawerFooter phone={c.phone1 as string} canMessage={canMessage} />
       </aside>
     </>
   );
