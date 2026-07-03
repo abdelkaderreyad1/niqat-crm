@@ -13,13 +13,13 @@ const STAGES: Record<string, { labelKey: string; color: string }> = {
   enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" }, onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
   lost: { labelKey: "dashStageLost", color: "#94A2BB" },
 };
-const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 type SP = { q?: string; stage?: string; owner?: string; dip?: string; batch?: string; company?: string; pay?: string };
 
 export default async function Customers({ searchParams }: { searchParams: SP }) {
+  const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
   const q = (searchParams?.q || "").trim();
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
