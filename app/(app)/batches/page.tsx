@@ -38,7 +38,7 @@ export default async function Batches() {
       <div className="page-h">
         <div>
           <h1>{tr("batches")}</h1>
-          <p>{(batches || []).length} باتش</p>
+          <p>{(batches || []).length} {tr("batchWord")}</p>
         </div>
         {canManage && <AddBatch diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar }))} />}
       </div>
@@ -47,9 +47,9 @@ export default async function Batches() {
           const seats = Number(b.capacity) || 0;
           const en = cnt.get(b.id as string) || 0;
           const pct = seats ? Math.min(100, Math.round((en / seats) * 100)) : 0;
-          const stt = b.status === "closed" ? { l: "منتهية", c: "#94A2BB" }
-            : b.status === "full" ? { l: "مكتملة", c: "#E0483B" }
-            : { l: "مفتوحة", c: "#18A957" };
+          const stt = b.status === "closed" ? { l: tr("batchEnded"), c: "#94A2BB" }
+            : b.status === "full" ? { l: tr("batchFull"), c: "#E0483B" }
+            : { l: tr("batchOpen"), c: "#18A957" };
           return (
             <div key={b.id as string} className="bcard">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
@@ -61,18 +61,18 @@ export default async function Batches() {
                 <span className="stg" style={{ background: stt.c + "1a", color: stt.c }}>{stt.l}</span>
               </div>
               <div style={{ margin: "14px 0 6px", display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
-                <span style={{ color: "var(--muted)" }}>المقاعد</span>
+                <span style={{ color: "var(--muted)" }}>{tr("seats")}</span>
                 <b className="num">{en}/{seats || "—"}</b>
               </div>
               <div className="bbar"><i style={{ width: pct + "%" }} /></div>
               <div style={{ marginTop: 14 }}>
-                <div className="brow"><span>تاريخ البدء</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
-                <div className="brow"><span>تاريخ النهاية</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
+                <div className="brow"><span>{tr("startDate")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
+                <div className="brow"><span>{tr("endDate")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
               </div>
             </div>
           );
         })}
-        {(!batches || batches.length === 0) && <div className="empty"><b>لا توجد باتشات</b></div>}
+        {(!batches || batches.length === 0) && <div className="empty"><b>{tr("noBatches")}</b></div>}
       </div>
     </div>
   );

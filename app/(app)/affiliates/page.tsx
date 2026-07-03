@@ -21,7 +21,7 @@ export default async function Affiliates() {
       <div className="page-h">
         <div>
           <h1>{tr("manageAff")}</h1>
-          <p>مالكش صلاحية إدارة الإحالات.</p>
+          <p>{tr("noAffiliatesAccess")}</p>
         </div>
       </div>
     );
@@ -41,7 +41,7 @@ export default async function Affiliates() {
       <div className="page-h">
         <div>
           <h1>{tr("manageAff")}</h1>
-          <p>الأكواد المتاحة ونسبة الخصم لكل واحد. أي كود مش في القائمة هيترفض عند التسجيل.</p>
+          <p>{tr("affiliatesManagerHint")}</p>
         </div>
       </div>
       <AffiliatesManager initial={list} />

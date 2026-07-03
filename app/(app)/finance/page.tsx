@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { t as tr } from "@/lib/i18n";
 import CollectionsTable from "./CollectionsTable";
 
 export const dynamic = "force-dynamic";
 
 function money(n: number, cur: string) {
-  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
+  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " EGP");
 }
 
 function Kpi({ label, value, color }: { label: string; value: string; color: string }) {
@@ -31,8 +32,8 @@ export default async function Finance() {
     return (
       <div className="page-h">
         <div>
-          <h1>المالية والتحصيل</h1>
-          <p>مالكش صلاحية رؤية البيانات المالية.</p>
+          <h1>{tr("financeTitle")}</h1>
+          <p>{tr("noFinanceAccess")}</p>
         </div>
       </div>
     );
@@ -95,16 +96,16 @@ export default async function Finance() {
     <div>
       <div className="page-h">
         <div>
-          <h1>المالية والتحصيل</h1>
-          <p>متابعة المتفق عليه والمحصّل والأقساط المستحقة</p>
+          <h1>{tr("financeTitle")}</h1>
+          <p>{tr("financeDesc")}</p>
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 20 }}>
-        <Kpi label="إجمالي المتفق عليه" value={money(agreed, "EGP")} color="#2F6BFF" />
-        <Kpi label="المحصّل" value={money(collected, "EGP")} color="#18A957" />
-        <Kpi label="المتبقّي" value={money(outstanding, "EGP")} color="#E6A700" />
-        <Kpi label="أقساط متأخرة" value={String(overdueN)} color="#E0483B" />
+        <Kpi label={tr("totalAgreed")} value={money(agreed, "EGP")} color="#2F6BFF" />
+        <Kpi label={tr("collected")} value={money(collected, "EGP")} color="#18A957" />
+        <Kpi label={tr("remaining")} value={money(outstanding, "EGP")} color="#E6A700" />
+        <Kpi label={tr("overdueInstallments")} value={String(overdueN)} color="#E0483B" />
       </div>
 
       <CollectionsTable rows={rows} />

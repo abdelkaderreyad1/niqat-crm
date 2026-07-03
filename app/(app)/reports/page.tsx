@@ -4,18 +4,18 @@ import { t as tr } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 function money(n: number) {
-  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + " ج";
+  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + " EGP";
 }
 
-const STAGES: Record<string, { label: string; color: string }> = {
-  new: { label: "جديد", color: "#2F6BFF" },
-  contacted: { label: "تم التواصل", color: "#0FA3A3" },
-  interested: { label: "مهتم", color: "#7B61FF" },
-  quote: { label: "عرض سعر مُرسل", color: "#E6A700" },
-  negotiation: { label: "تفاوض", color: "#F08A24" },
-  enrolled: { label: "مسجّل / دفع", color: "#18A957" },
-  onhold: { label: "معلّق", color: "#E6A700" },
-  lost: { label: "مؤجل / مرفوض", color: "#94A2BB" },
+const STAGES: Record<string, { labelKey: string; color: string }> = {
+  new: { labelKey: "dashStageNew", color: "#2F6BFF" },
+  contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
+  interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
+  quote: { labelKey: "dashStageQuote", color: "#E6A700" },
+  negotiation: { labelKey: "dashStageNegotiation", color: "#F08A24" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
+  onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
+  lost: { labelKey: "dashStageLost", color: "#94A2BB" },
 };
 
 function Kpi({ label, value, color }: { label: string; value: string; color: string }) {
@@ -43,7 +43,7 @@ export default async function Reports() {
       <div className="page-h">
         <div>
           <h1>{tr("reports")}</h1>
-          <p>مالكش صلاحية رؤية التقارير.</p>
+          <p>{tr("noReportsAccess")}</p>
         </div>
       </div>
     );
@@ -135,30 +135,30 @@ export default async function Reports() {
       <div className="page-h">
         <div>
           <h1>{tr("reports")}</h1>
-          <p>نظرة سريعة على المبيعات والتحصيل والإحالات</p>
+          <p>{tr("reportsDesc")}</p>
         </div>
       </div>
 
       {canFinance && (
         <>
-          <h2 className="font-extrabold mb-2 text-ink">التحصيل</h2>
+          <h2 className="font-extrabold mb-2 text-ink">{tr("collection")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            <Kpi label="إجمالي المتفق عليه" value={money(agreed)} color="#2F6BFF" />
-            <Kpi label="إجمالي المحصّل" value={money(collected)} color="#18A957" />
-            <Kpi label="المتبقّي" value={money(agreed - collected)} color="#E6A700" />
-            <Kpi label="أقساط متأخرة" value={String(overdueN)} color="#E0483B" />
+            <Kpi label={tr("totalAgreed")} value={money(agreed)} color="#2F6BFF" />
+            <Kpi label={tr("totalCollected")} value={money(collected)} color="#18A957" />
+            <Kpi label={tr("remaining")} value={money(agreed - collected)} color="#E6A700" />
+            <Kpi label={tr("overdueInstallments")} value={String(overdueN)} color="#E0483B" />
           </div>
         </>
       )}
 
-      <h2 className="font-extrabold mb-2 text-ink">توزيع المراحل ({totalCust} عميل)</h2>
+      <h2 className="font-extrabold mb-2 text-ink">{tr("stageDistribution")} ({totalCust} {tr("customer")})</h2>
       <div className="card" style={{ padding: 16, marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
         {Object.keys(STAGES).map((s) => {
           const n = stageCount[s] || 0;
           const st = STAGES[s];
           return (
             <div key={s} className="flex items-center gap-3">
-              <div className="w-24 text-sm text-ink shrink-0">{st.label}</div>
+              <div className="w-24 text-sm text-ink shrink-0">{tr(st.labelKey)}</div>
               <div className="flex-1 bg-bg rounded-full h-3 overflow-hidden">
                 <div
                   className="h-3 rounded-full"
@@ -171,25 +171,25 @@ export default async function Reports() {
         })}
       </div>
 
-      <h2 className="font-extrabold mb-2 text-ink">تقرير الإحالات / الأفيلييت</h2>
+      <h2 className="font-extrabold mb-2 text-ink">{tr("affiliatesReport")}</h2>
       <div className="tbl-wrap">
         <table style={{ minWidth: 560 }}>
           <thead>
             <tr>
-              <th className="text-start px-4 py-3 font-bold">الكود</th>
-              <th className="text-start px-4 py-3 font-bold">الأفيلييت</th>
-              <th className="text-start px-4 py-3 font-bold">الخصم</th>
-              <th className="text-start px-4 py-3 font-bold">عدد العملاء</th>
-              <th className="text-start px-4 py-3 font-bold">مسجّلون</th>
-              <th className="text-start px-4 py-3 font-bold">مهتم (لسه)</th>
-              <th className="text-start px-4 py-3 font-bold">ريفند</th>
+              <th className="text-start px-4 py-3 font-bold">{tr("code")}</th>
+              <th className="text-start px-4 py-3 font-bold">{tr("affiliate")}</th>
+              <th className="text-start px-4 py-3 font-bold">{tr("discountCol")}</th>
+              <th className="text-start px-4 py-3 font-bold">{tr("customerCount")}</th>
+              <th className="text-start px-4 py-3 font-bold">{tr("enrolledCol")}</th>
+              <th className="text-start px-4 py-3 font-bold">{tr("interestedStill")}</th>
+              <th className="text-start px-4 py-3 font-bold">{tr("refundWord")}</th>
             </tr>
           </thead>
           <tbody>
             {affRows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-muted">
-                  لا توجد إحالات بعد.
+                  {tr("noAffiliatesYet")}
                 </td>
               </tr>
             )}

@@ -96,23 +96,23 @@ export default function TaskList({ initial, meId }: { initial: T[]; meId: string
       <div className="page-h">
         <div>
           <h1>{tr("myTasks")}</h1>
-          <p>{openCount} مهمة مفتوحة</p>
+          <p>{openCount} {tr("openTasks")}</p>
         </div>
       </div>
       <div className="card" style={{ padding: 12, marginBottom: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <input className="inp" placeholder="مهمة جديدة لنفسي…" style={{ flex: 1, minWidth: 180 }} value={nt}
+        <input className="inp" placeholder={tr("newTaskPh")} style={{ flex: 1, minWidth: 180 }} value={nt}
           onChange={(e) => setNt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMine()} />
         <input className="inp num" type="date" dir="ltr" style={{ width: 150 }} value={ntDue} onChange={(e) => setNtDue(e.target.value)} />
-        <button className="btn" onClick={addMine} disabled={adding} style={{ height: 40 }}>{adding ? "..." : "إضافة"}</button>
+        <button className="btn" onClick={addMine} disabled={adding} style={{ height: 40 }}>{adding ? "..." : tr("add")}</button>
       </div>
       {tasks.length === 0 ? (
-        <div className="empty"><b>لا توجد مهام</b></div>
+        <div className="empty"><b>{tr("noTasks")}</b></div>
       ) : (
         <>
-          {Grp("متأخرة", od, "var(--red)")}
-          {Grp("اليوم", td, "var(--green)")}
-          {Grp("قادمة", up)}
-          {Grp("منتهية", dn, "var(--muted)")}
+          {Grp(tr("overdueTasks"), od, "var(--red)")}
+          {Grp(tr("todayTasks"), td, "var(--green)")}
+          {Grp(tr("upcomingTasks"), up)}
+          {Grp(tr("doneTasks"), dn, "var(--muted)")}
         </>
       )}
     </div>

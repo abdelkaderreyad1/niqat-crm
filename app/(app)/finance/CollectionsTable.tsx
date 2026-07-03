@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -10,16 +11,17 @@ type Row = {
 };
 
 function money(n: number, cur: string) {
-  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
+  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " EGP");
 }
 
-const STATE: Record<string, { label: string; color: string; bg: string }> = {
-  overdue: { label: "متأخر", color: "#E0483B", bg: "#FDECEA" },
-  soon: { label: "خلال ٧ أيام", color: "#B8860B", bg: "#FEF6E0" },
-  upcoming: { label: "قادم", color: "#5B6B85", bg: "#EEF1F6" },
+const STATE: Record<string, { labelKey: string; color: string; bg: string }> = {
+  overdue: { labelKey: "overdueWord", color: "#E0483B", bg: "#FDECEA" },
+  soon: { labelKey: "within7days", color: "#B8860B", bg: "#FEF6E0" },
+  upcoming: { labelKey: "upcomingWord", color: "#5B6B85", bg: "#EEF1F6" },
 };
 
 export default function CollectionsTable({ rows }: { rows: Row[] }) {
+  const tr = useT();
   const supabase = createClient();
   const router = useRouter();
   const [list, setList] = useState<Row[]>(rows);
@@ -30,7 +32,7 @@ export default function CollectionsTable({ rows }: { rows: Row[] }) {
     const { error } = await supabase.from("installments")
       .update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
     setBusy(null);
-    if (error) { alert("تعذّر التحديث: " + error.message); return; }
+    if (error) { alert(tr("updateFailed") + error.message); return; }
     setList((l) => l.filter((r) => r.id !== id));
     router.refresh();
   }
@@ -38,7 +40,7 @@ export default function CollectionsTable({ rows }: { rows: Row[] }) {
   if (list.length === 0)
     return (
       <div className="card" style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
-        مفيش أقساط مستحقة 🎉
+        {tr("noDueInstallments")} 🎉
       </div>
     );
 
@@ -47,11 +49,11 @@ export default function CollectionsTable({ rows }: { rows: Row[] }) {
       <table>
         <thead>
           <tr>
-            <th>العميل</th>
-            <th>الدبلومة</th>
-            <th>المبلغ</th>
-            <th>الاستحقاق</th>
-            <th>الحالة</th>
+            <th>{tr("customer")}</th>
+            <th>{tr("theDiploma")}</th>
+            <th>{tr("amount")}</th>
+            <th>{tr("dueDate2")}</th>
+            <th>{tr("status")}</th>
             <th></th>
           </tr>
         </thead>
@@ -70,13 +72,13 @@ export default function CollectionsTable({ rows }: { rows: Row[] }) {
                 <td className="num" dir="ltr" style={{ color: "var(--muted)" }}>{r.due || "—"}</td>
                 <td>
                   <span style={{ fontSize: 11, borderRadius: 20, padding: "2px 9px", fontWeight: 700, color: st.color, background: st.bg }}>
-                    {st.label}
+                    {tr(st.labelKey)}
                   </span>
                 </td>
                 <td style={{ textAlign: "end" }}>
                   <button onClick={() => markPaid(r.id)} disabled={busy === r.id}
                     className="btn" style={{ background: "var(--green)", padding: "6px 12px", fontSize: 12 }}>
-                    {busy === r.id ? "..." : "تم الدفع"}
+                    {busy === r.id ? "..." : tr("markPaid")}
                   </button>
                 </td>
               </tr>

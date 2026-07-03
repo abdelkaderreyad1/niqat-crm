@@ -19,7 +19,7 @@ export default async function Settings() {
   const { data: prof } = await supabase.from("profiles").select("can_manage_settings").eq("id", user?.id || "").maybeSingle();
 
   if (!prof?.can_manage_settings) {
-    return (<div className="page-h"><div><h1>{tr("settings")}</h1><p>مالكش صلاحية إدارة الإعدادات.</p></div></div>);
+    return (<div className="page-h"><div><h1>{tr("settings")}</h1><p>{tr("noSettingsAccess")}</p></div></div>);
   }
 
   // كله بالتوازي للأداء
@@ -43,11 +43,11 @@ export default async function Settings() {
 
   return (
     <div style={{ maxWidth: 720 }}>
-      <div className="page-h"><div><h1>{tr("settings")}</h1><p>تحكّم في خيارات النظام والتكاملات</p></div></div>
+      <div className="page-h"><div><h1>{tr("settings")}</h1><p>{tr("settingsDesc")}</p></div></div>
 
       {tablesMissing && (
         <div className="banner" style={{ marginBottom: 16 }}>
-          ⚠️ بعض جداول الإعدادات لسه مش متعملة. شغّل ملف <b>batch2-tables.sql</b> في Supabase عشان تشتغل كلها.
+          ⚠️ {tr("settingsSqlHint1")} <b>batch2-tables.sql</b> {tr("settingsSqlHint2")}
         </div>
       )}
 
@@ -57,18 +57,18 @@ export default async function Settings() {
       <div className="card" style={{ padding: 18, marginBottom: 18 }}>
         <div className="card-h"><h3>{tr("manageAff")}</h3></div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 12px" }}>
-          الأكواد المتاحة ونسبة الخصم لكل واحد. أي كود مش في القائمة هيترفض عند التسجيل.
+          {tr("affiliatesManagerHint")}
         </p>
         <AffiliatesManager initial={affiliates} />
       </div>
 
-      <OptionsList title="إدارة خيارات الأكسس" hint="بنود التفعيل اللي الدعم بيفعّلها للعميل" table="access_options" labelCol="label" initial={access.items} />
-      <OptionsList title="إدارة التخصصات الهندسية" hint="التخصص الهندسي (غير الدبلومة)" table="specialties" labelCol="name_ar" initial={spec.items} />
-      <OptionsList title="إدارة الدبلومات" hint="الدبلومات المتاحة للتسجيل" table="diplomas" labelCol="name_ar" initial={dip.items} />
-      <OptionsList title="إدارة الاعتمادات" hint="اعتمادات مدفوعة ممكن العميل ياخدها" table="accreditations" labelCol="name" initial={accred.items} />
-      <OptionsList title="إدارة المشاريع" hint="مشاريع مدفوعة ممكن العميل ينضم لها" table="projects" labelCol="name" initial={proj.items} />
-      <OptionsList title="إدارة المكتبات" hint="المكتبات اللي بتظهر كبنود تفعيل للدعم" table="libraries" labelCol="name" initial={lib.items} />
-      <OptionsList title="إدارة الجامعات والكليات" hint="الجامعات والكليات الشريكة" table="universities" labelCol="name" initial={uni.items} />
+      <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
+      <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
+      <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
+      <OptionsList title={tr("manageAccreditations")} hint={tr("manageAccreditationsHint")} table="accreditations" labelCol="name" initial={accred.items} />
+      <OptionsList title={tr("manageProjects")} hint={tr("manageProjectsHint")} table="projects" labelCol="name" initial={proj.items} />
+      <OptionsList title={tr("manageLibraries")} hint={tr("manageLibrariesHint")} table="libraries" labelCol="name" initial={lib.items} />
+      <OptionsList title={tr("manageUniversities")} hint={tr("manageUniversitiesHint")} table="universities" labelCol="name" initial={uni.items} />
     </div>
   );
 }

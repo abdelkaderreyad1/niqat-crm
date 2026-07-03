@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 
@@ -7,6 +8,7 @@ type Opt = { id: string; code: string };
 type Aff = { name: string; code: string; discount: number };
 
 export default function AffiliateExport({ batches, affiliates }: { batches: Opt[]; affiliates: Aff[] }) {
+  const tr = useT();
   const supabase = createClient();
   const [batchId, setBatchId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -14,7 +16,7 @@ export default function AffiliateExport({ batches, affiliates }: { batches: Opt[
   const affName = (code: string) => affiliates.find((a) => a.code.toUpperCase() === (code || "").toUpperCase());
 
   async function exportCsv() {
-    if (!batchId) { toast("اختر الباتش"); return; }
+    if (!batchId) { toast(tr("selectBatch")); return; }
     setBusy(true);
     try {
       // 1) اشتراكات الباتش
@@ -22,7 +24,7 @@ export default function AffiliateExport({ batches, affiliates }: { batches: Opt[
         .select("id,customer_id").eq("batch_id", batchId);
       const custIds = Array.from(new Set((enrs || []).map((e: any) => e.customer_id)));
       const enrIds = (enrs || []).map((e: any) => e.id);
-      if (custIds.length === 0) { toast("مفيش عملاء في الباتش ده"); setBusy(false); return; }
+      if (custIds.length === 0) { toast(tr("noCustomersInBatch")); setBusy(false); return; }
 
       // 2) العملاء (الكود + الاسم)
       const { data: custs } = await supabase.from("customers")
@@ -56,46 +58,46 @@ export default function AffiliateExport({ batches, affiliates }: { batches: Opt[
         const g = groups.get(code)!;
         const isRef = refundedSet.has(c.id);
         const paid = paidByCust.get(c.id) || 0;
-        if (isRef) { g.refunded++; g.lines.push(`${c.name},${paid},ريفند`); }
-        else { g.count++; g.total += paid; g.lines.push(`${c.name},${paid},نشط`); }
+        if (isRef) { g.refunded++; g.lines.push(`${c.name},${paid},${tr("refundWord")}`); }
+        else { g.count++; g.total += paid; g.lines.push(`${c.name},${paid},${tr("activeWord")}`); }
       }
 
       // 6) CSV
       const batchCode = batches.find((b) => b.id === batchId)?.code || batchId;
       let csv = "\uFEFF"; // BOM للعربي في Excel
-      csv += `تصدير الأفيلييت — باتش ${batchCode}\n\n`;
+      csv += `${tr("affiliateExportTitle")} — ${tr("batchWord")} ${batchCode}\n\n`;
       for (const g of Array.from(groups.values())) {
-        csv += `الأفيلييت,${g.name} (${g.code}),نسبة الخصم,${g.disc}%\n`;
-        csv += `عدد العملاء النشطين,${g.count},إجمالي المدفوع,${g.total},عدد الريفند,${g.refunded}\n`;
-        csv += `اسم العميل,المدفوع,الحالة\n`;
+        csv += `${tr("affiliate")},${g.name} (${g.code}),${tr("discountRate")},${g.disc}%\n`;
+        csv += `${tr("activeCustomersCount")},${g.count},${tr("totalPaid")},${g.total},${tr("refundCount")},${g.refunded}\n`;
+        csv += `${tr("customerName")},${tr("paidWord")},${tr("status")}\n`;
         csv += g.lines.join("\n") + "\n\n";
       }
-      if (groups.size === 0) csv += "مفيش عملاء بكود أفيلييت في الباتش ده\n";
+      if (groups.size === 0) csv += tr("noAffiliateCustomers") + "\n";
 
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = `affiliates-${batchCode}.csv`; a.click();
       URL.revokeObjectURL(url);
-      toast("تم التصدير");
+      toast(tr("exported"));
     } catch {
-      toast("تعذّر التصدير");
+      toast(tr("exportFailed"));
     }
     setBusy(false);
   }
 
   return (
     <div className="card" style={{ padding: 18, marginTop: 16 }}>
-      <div className="sec-t" style={{ marginTop: 0 }}>تصدير الأفيلييت لكل باتش</div>
+      <div className="sec-t" style={{ marginTop: 0 }}>{tr("affiliateExportPerBatch")}</div>
       <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10 }}>
-        اختر الباتش وحمّل Excel: نسبة الخصم، عدد العملاء، إجمالي المدفوع، والريفند بيتشال من الإجمالي ومتعلّم.
+        {tr("affiliateExportHint")}
       </div>
       <div style={{ display: "flex", gap: 8 }}>
         <select className="inp" style={{ flex: 1 }} value={batchId} onChange={(e) => setBatchId(e.target.value)}>
-          <option value="">— اختر الباتش —</option>
+          <option value="">{tr("selectBatchDash")}</option>
           {batches.map((b) => <option key={b.id} value={b.id}>{b.code}</option>)}
         </select>
-        <button className="btn" onClick={exportCsv} disabled={busy} style={{ height: 40 }}>{busy ? "..." : "تصدير Excel"}</button>
+        <button className="btn" onClick={exportCsv} disabled={busy} style={{ height: 40 }}>{busy ? "..." : tr("exportExcel")}</button>
       </div>
     </div>
   );

@@ -72,7 +72,7 @@ export default async function Onboarding() {
       <div className="page-h">
         <div>
           <h1>{tr("onboarding")}</h1>
-          <p>{pendCount} عميل محتاج تفعيل</p>
+          <p>{pendCount} {tr("customerNeedsActivation")}</p>
         </div>
       </div>
       <OnboardingCards cards={cards} />

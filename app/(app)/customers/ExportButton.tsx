@@ -1,8 +1,10 @@
 "use client";
+import { useT } from "@/lib/i18n/client";
 
 type Row = Record<string, string>;
 
 export default function ExportButton({ rows, headers }: { rows: Row[]; headers: [string, string][] }) {
+  const tr = useT();
   function download() {
     const cols = headers.map((h) => h[0]);
     const titles = headers.map((h) => h[1]);
@@ -23,11 +25,11 @@ export default function ExportButton({ rows, headers }: { rows: Row[]; headers: 
   }
 
   return (
-    <button onClick={download} className="btn ghost" title="تصدير العملاء (CSV)">
+    <button onClick={download} className="btn ghost" title={tr("exportCustomersCsv")}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
       </svg>
-      تصدير
+      {tr("export")}
     </button>
   );
 }

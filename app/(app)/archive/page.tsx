@@ -17,7 +17,7 @@ export default async function Archive() {
   const reasonMap = new Map<string, string>();
   if (ids.length) {
     const rf = await supabase.from("refunds").select("customer_id,reason,status").in("customer_id", ids);
-    if (!rf.error) for (const r of (rf.data as any[]) || []) reasonMap.set(r.customer_id, r.reason || "ريفند");
+    if (!rf.error) for (const r of (rf.data as any[]) || []) reasonMap.set(r.customer_id, r.reason || tr("refundWord"));
   }
 
   return (
@@ -25,15 +25,15 @@ export default async function Archive() {
       <div className="page-h">
         <div>
           <h1>{tr("archive")}</h1>
-          <p>{(rows || []).length} عميل مؤرشف</p>
+          <p>{(rows || []).length} {tr("archivedCustomer")}</p>
         </div>
       </div>
       {(!rows || rows.length === 0) ? (
-        <div className="empty"><b>الأرشيف فاضي</b></div>
+        <div className="empty"><b>{tr("archiveEmpty")}</b></div>
       ) : (
         <div className="tbl-wrap">
           <table>
-            <thead><tr><th>الاسم</th><th>الموبايل / الإيميل</th><th>سبب الأرشفة</th><th></th></tr></thead>
+            <thead><tr><th>{tr("name")}</th><th>{tr("mobileEmail")}</th><th>{tr("archiveReason")}</th><th></th></tr></thead>
             <tbody>
               {(rows || []).map((c) => (
                 <tr key={c.id as string}>
@@ -43,7 +43,7 @@ export default async function Archive() {
                     </Link>
                   </td>
                   <td className="num" dir="ltr">{c.phone1 || c.email || "—"}</td>
-                  <td><span className="stg" style={{ background: "var(--red-soft)", color: "var(--red)" }}>ريفند{reasonMap.get(c.id as string) && reasonMap.get(c.id as string) !== "ريفند" ? " — " + reasonMap.get(c.id as string) : ""}</span></td>
+                  <td><span className="stg" style={{ background: "var(--red-soft)", color: "var(--red)" }}>{tr("refundWord")}{reasonMap.get(c.id as string) && reasonMap.get(c.id as string) !== tr("refundWord") ? " — " + reasonMap.get(c.id as string) : ""}</span></td>
                   <td><RestoreBtn id={c.id as string} /></td>
                 </tr>
               ))}

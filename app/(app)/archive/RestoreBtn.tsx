@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 
 export default function RestoreBtn({ id }: { id: string }) {
+  const tr = useT();
   const router = useRouter();
   const supabase = createClient();
   const [busy, setBusy] = useState(false);
@@ -12,12 +14,12 @@ export default function RestoreBtn({ id }: { id: string }) {
     setBusy(true);
     const { error } = await supabase.from("customers").update({ archived: false }).eq("id", id);
     setBusy(false);
-    if (error) { toast("تعذّر الرجوع"); return; }
-    toast("رجع للعملاء"); router.refresh();
+    if (error) { toast(tr("restoreFailed")); return; }
+    toast(tr("restoredToCustomers")); router.refresh();
   }
   return (
     <button className="btn ghost" onClick={restore} disabled={busy} style={{ height: 32, padding: "0 12px", fontSize: 12.5 }}>
-      {busy ? "..." : "↩ رجوع للعملاء"}
+      {busy ? "..." : "↩ " + tr("restoreToCustomers")}
     </button>
   );
 }

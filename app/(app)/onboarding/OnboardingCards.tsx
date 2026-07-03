@@ -1,5 +1,6 @@
 "use client";
 import { useState, useCallback, useMemo, memo } from "react";
+import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -10,7 +11,7 @@ type Card = {
 };
 
 function initials(name: string) {
-  const p = (name || "؟").trim().split(/\s+/);
+  const p = (name || "?").trim().split(/\s+/);
   return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2);
 }
 const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
@@ -24,6 +25,7 @@ const CardView = memo(function CardView({
   onToggle: (hid: string, iid: string) => void;
   onComplete: (hid: string) => void;
 }) {
+  const tr = useT();
   const total = c.items.length;
   const dn = c.items.filter((i) => i.done).length;
   const allDone = total > 0 && dn === total;
@@ -36,7 +38,7 @@ const CardView = memo(function CardView({
           <div style={{ fontSize: 11.5, color: "var(--muted)", fontFamily: "var(--fe)", direction: "ltr" }}>{c.phone || "—"}</div>
         </div>
         <span className="chip" style={{ background: allDone ? "rgba(24,169,87,.12)" : "var(--brand-soft)", color: allDone ? "var(--green)" : "var(--brand)" }}>
-          {allDone ? "جاهز للإتمام" : "محتاج تفعيل"}
+          {allDone ? tr("readyToComplete") : tr("needsActivation")}
         </span>
       </div>
       <div className="ob">
@@ -46,10 +48,10 @@ const CardView = memo(function CardView({
           </div>
         )}
         {c.note && <div className="onb-note" style={{ marginBottom: 12 }}>📝 {c.note}</div>}
-        <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 4 }}>{dn}/{total} تم</div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 4 }}>{dn}/{total} {tr("doneWord")}</div>
         <div className="prog"><i style={{ width: (total ? (dn / total) * 100 : 0) + "%" }} /></div>
         <div style={{ marginTop: 12 }}>
-          {c.items.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>لا توجد مهام تفعيل لهذا العميل.</div>}
+          {c.items.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("noActivationTasks")}</div>}
           {c.items.map((it) => (
             <div className={"task" + (it.done ? " done" : "")} style={{ marginBottom: 8 }} key={it.id}>
               <div className={"cb" + (it.done ? " on" : "")} onClick={() => onToggle(c.handoffId, it.id)} style={{ cursor: "pointer" }}>
@@ -57,7 +59,7 @@ const CardView = memo(function CardView({
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="tt">{it.label}</div>
-                {it.done && it.by && <div className="tinfo">فعّلها: <b>{it.by}</b>{it.at ? " • " + it.at : ""}</div>}
+                {it.done && it.by && <div className="tinfo">{tr("activatedBy")} <b>{it.by}</b>{it.at ? " • " + it.at : ""}</div>}
               </div>
             </div>
           ))}
@@ -66,11 +68,11 @@ const CardView = memo(function CardView({
           <a className="btn wa sm" style={{ textDecoration: "none" }} href={waLink(c.phone)} target="_blank" rel="noreferrer">
             <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" /></svg>
           </a>
-          <Link className="btn ghost sm" href={`/customers/${c.custId}`}>الملف</Link>
+          <Link className="btn ghost sm" href={`/customers/${c.custId}`}>{tr("theFile")}</Link>
           {allDone && (
             <button className="btn sm" style={{ marginInlineStart: "auto" }} onClick={() => onComplete(c.handoffId)}>
               <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
-              إتمام التفعيل
+              {tr("completeActivation")}
             </button>
           )}
         </div>
@@ -80,6 +82,7 @@ const CardView = memo(function CardView({
 });
 
 export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
+  const tr = useT();
   const supabase = createClient();
   const [cards, setCards] = useState<Card[]>(initial);
 
@@ -107,7 +110,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
           {pend.map((c) => <CardView key={c.handoffId} c={c} onToggle={toggle} onComplete={complete} />)}
         </div>
       ) : (
-        <div className="empty"><b>لا توجد طلبات تفعيل حالياً 🎉</b></div>
+        <div className="empty"><b>{tr("noActivationRequests")} 🎉</b></div>
       )}
     </>
   );

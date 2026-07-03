@@ -6,13 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 function money(n: number, cur: string) {
-  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " ج");
+  return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " EGP");
 }
 
-const STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  requested: { label: "في انتظار الريفند", color: "#B8860B", bg: "#FEF6E0" },
-  refunded: { label: "تم الريفند — بانتظار الإغلاق", color: "#2F6BFF", bg: "#E8F0FF" },
-  closed: { label: "مؤرشف", color: "#94A2BB", bg: "#EEF1F6" },
+const STATUS: Record<string, { labelKey: string; color: string; bg: string }> = {
+  requested: { labelKey: "refundRequested2", color: "#B8860B", bg: "#FEF6E0" },
+  refunded: { labelKey: "refundDone2", color: "#2F6BFF", bg: "#E8F0FF" },
+  closed: { labelKey: "archived", color: "#94A2BB", bg: "#EEF1F6" },
 };
 
 export default async function Refunds() {
@@ -22,7 +22,7 @@ export default async function Refunds() {
 
   if (!prof?.can_see_finance) {
     return (
-      <div className="page-h"><div><h1>{tr("refunds")}</h1><p>مالكش صلاحية رؤية البيانات المالية.</p></div></div>
+      <div className="page-h"><div><h1>{tr("refunds")}</h1><p>{tr("noFinanceAccess")}</p></div></div>
     );
   }
 
@@ -37,8 +37,8 @@ export default async function Refunds() {
         <div className="page-h"><div><h1>{tr("refunds")}</h1></div></div>
         <div className="card" style={{ padding: 20, fontSize: 14, color: "var(--muted)" }}>
           {missingTable
-            ? "جدول الاسترداد لسه مش متعمل في قاعدة البيانات. شغّل SQL الـ refunds مرة واحدة في Supabase وهتشتغل الشاشة."
-            : `تعذّر تحميل طلبات الاسترداد: ${(error as any)?.message || "خطأ غير معروف"}. لو المشكلة في الصلاحيات، شغّل تحديث سياسات الـ RLS من ملف refunds.sql.`}
+            ? tr("refundsTableMissing")
+            : `${tr("refundsLoadFailed")} ${(error as any)?.message || tr("unknownError")}`}
         </div>
       </div>
     );
@@ -50,10 +50,10 @@ export default async function Refunds() {
 
   return (
     <div>
-      <div className="page-h"><div><h1>{tr("refunds")}</h1><p>{rows.length} طلب</p></div></div>
+      <div className="page-h"><div><h1>{tr("refunds")}</h1><p>{rows.length} {tr("requestWord")}</p></div></div>
 
       {rows.length === 0 ? (
-        <div className="empty"><b>لا توجد طلبات استرداد</b></div>
+        <div className="empty"><b>{tr("noRefundRequests")}</b></div>
       ) : (
         <RefundTable rows={rows.map((r) => ({
           id: r.id as string, customer_id: r.customer_id as string,

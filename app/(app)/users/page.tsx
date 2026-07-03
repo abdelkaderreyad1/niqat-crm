@@ -13,7 +13,7 @@ export default async function Users() {
 
   if (!me?.can_manage_users) {
     return (
-      <div className="page-h"><div><h1>{tr("users")}</h1><p>مالكش صلاحية إدارة المستخدمين.</p></div></div>
+      <div className="page-h"><div><h1>{tr("users")}</h1><p>{tr("noUsersAccess")}</p></div></div>
     );
   }
 
@@ -28,7 +28,7 @@ export default async function Users() {
       <div className="page-h">
         <div>
           <h1>{tr("users")}</h1>
-          <p>{users.length} مستخدم — قابل للإضافة بلا حد</p>
+          <p>{users.length} {tr("userWord")} — {tr("unlimitedAdd")}</p>
         </div>
       </div>
       <UsersManager profiles={users} />
