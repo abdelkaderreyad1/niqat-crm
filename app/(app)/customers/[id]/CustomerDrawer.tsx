@@ -39,7 +39,14 @@ export default function CustomerDrawer(props: {
           projects={props.projList} libraries={props.libNames} canFinance={props.canFinance} />
 
         <AccessPanel customerId={props.c.id} handoff={props.handoff} items={props.accessItems}
-          accessOptions={[...(props.accOpts || []), ...props.enrolls.map((e: any, i: number) => ({ id: "dip-" + i, label: "تفعيل: " + e.diploma }))]}
+          accessOptions={[
+            ...(props.accOpts || []),
+            ...props.enrolls.map((e: any, i: number) => ({ id: "dip-" + i, label: "تفعيل دبلومة: " + e.diploma })),
+            ...(props.addons || []).map((a: any, i: number) => ({
+              id: "addon-" + i,
+              label: (a.type === "accred" ? "إصدار اعتماد: " : a.type === "project" ? "تجهيز مشروع: " : a.type === "library" ? "فتح مكتبة: " : "تفعيل: ") + a.name,
+            })),
+          ]}
           libraries={props.libOpts} meId={props.user?.id || ""} meName="" />
 
         <FollowUpPanel customerId={props.c.id} meId={props.user?.id || ""} open={props.fuOpen} history={props.fuHistory} />

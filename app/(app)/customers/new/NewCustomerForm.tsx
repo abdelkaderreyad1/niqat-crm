@@ -28,6 +28,7 @@ export default function NewCustomerForm({
   const [payMode, setPayMode] = useState<"cash" | "installment">("cash");
   const [instCount, setInstCount] = useState("3");
   const [instGap, setInstGap] = useState("1");
+  const [payFirstNow, setPayFirstNow] = useState(false);
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
   // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
@@ -91,7 +92,9 @@ export default function NewCustomerForm({
     }
     const cid = cust.id;
     // صورة تحويل الفلوس المتفق عليها → تخزين + تسجيل في المستندات
-    if (payFile) {
+    // (نتخطّاها لو الإيصال هيتربط بالقسط الأول في وضع التقسيط)
+    const receiptGoesToInstallment = payMode === "installment" && payFirstNow;
+    if (payFile && !receiptGoesToInstallment) {
       const path = `docs/${cid}/${Date.now()}-${payFile.name}`;
       const up = await supabase.storage.from("receipts").upload(path, payFile, { upsert: false });
       if (!up.error) {
@@ -119,10 +122,23 @@ export default function NewCustomerForm({
         } else {
           const rows = buildSchedule(net, Number(instCount), Number(instGap));
           if (rows.length) {
+            // لو دفع أول قسط دلوقتي: القسط الأول paid + نربط بيه الإيصال المرفوع
+            let firstShot: string | null = null;
+            if (payFirstNow && payFile) {
+              const p = `installments/${cid}/${Date.now()}-${payFile.name}`;
+              const u = await supabase.storage.from("receipts").upload(p, payFile, { upsert: false });
+              if (!u.error) {
+                firstShot = supabase.storage.from("receipts").getPublicUrl(p).data.publicUrl;
+                await supabase.from("customer_docs").insert({ customer_id: cid, url: firstShot, name: `إيصال القسط الأول (${payFile.name})` });
+              }
+            }
             await supabase.from("installments").insert(
-              rows.map((r) => ({
+              rows.map((r, idx) => ({
                 enrollment_id: enr.id, amount: r.amount, currency: f.currency,
-                due_date: r.due, status: "pending",
+                due_date: r.due,
+                status: payFirstNow && idx === 0 ? "paid" : "pending",
+                paid_at: payFirstNow && idx === 0 ? new Date().toISOString() : null,
+                screenshot_url: payFirstNow && idx === 0 ? firstShot : null,
               }))
             );
           }
@@ -254,11 +270,20 @@ export default function NewCustomerForm({
                   </div>
                   {schedule.map((s, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "3px 0" }}>
-                      <span>القسط {i + 1}</span>
+                      <span>القسط {i + 1}{payFirstNow && i === 0 ? " ✅ مدفوع الآن" : ""}</span>
                       <b className="num" dir="ltr">{s.amount} {f.currency === "USD" ? "$" : "ج"}</b>
-                      <span className="num" dir="ltr" style={{ color: "var(--muted)" }}>{s.due}</span>
+                      <span className="num" dir="ltr" style={{ color: "var(--muted)" }}>{payFirstNow && i === 0 ? "النهاردة" : s.due}</span>
                     </div>
                   ))}
+                </div>
+              )}
+              <label className="chkrow" style={{ marginTop: 10 }}>
+                <input type="checkbox" checked={payFirstNow} onChange={(e) => setPayFirstNow(e.target.checked)} />
+                دفع أول قسط دلوقتي مع التسجيل
+              </label>
+              {payFirstNow && (
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                  القسط الأول هيتسجّل مدفوع، وصورة التحويل اللي تحت هتترّبط بيه وتظهر في المستندات.
                 </div>
               )}
             </div>

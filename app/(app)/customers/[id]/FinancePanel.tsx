@@ -31,28 +31,38 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
   const [amt, setAmt] = useState("");
   const [due, setDue] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [payFor, setPayFor] = useState<string | null>(null);
+  const [payFile, setPayFile] = useState<File | null>(null);
   const [editAgreedId, setEditAgreedId] = useState<string | null>(null);
   const [editAgreedVal, setEditAgreedVal] = useState("");
 
   async function logAudit(action: string, detail: string) {
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action, detail });
   }
-  async function uploadShot(): Promise<string | null> {
-    if (!file) return null;
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  async function uploadShot(f?: File | null, label?: string): Promise<string | null> {
+    const theFile = f ?? file;
+    if (!theFile) return null;
+    const ext = (theFile.name.split(".").pop() || "jpg").toLowerCase();
     const path = `${customerId}/${Date.now()}.${ext}`;
-    const up = await supabase.storage.from("receipts").upload(path, file, { upsert: false });
+    const up = await supabase.storage.from("receipts").upload(path, theFile, { upsert: false });
     if (up.error) { toast("تعذّر رفع الصورة"); return null; }
-    const { data } = supabase.storage.from("receipts").getPublicUrl(path);
-    return data?.publicUrl || null;
+    const url = supabase.storage.from("receipts").getPublicUrl(path).data?.publicUrl || null;
+    // تسجيل نسخة في المستندات عشان تظهر في سكشن المستندات
+    if (url) await supabase.from("customer_docs").insert({ customer_id: customerId, url, name: label || `إيصال قسط (${theFile.name})` });
+    return url;
   }
 
-  async function markPaid(id: string) {
+  async function markPaid(id: string, f?: File | null) {
     setBusy(id);
-    const { error } = await supabase.from("installments").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
+    let shotUrl: string | null = null;
+    if (f) shotUrl = await uploadShot(f, `إيصال دفع قسط (${f.name})`);
+    const patch: any = { status: "paid", paid_at: new Date().toISOString() };
+    if (shotUrl) patch.screenshot_url = shotUrl;
+    const { error } = await supabase.from("installments").update(patch).eq("id", id);
     setBusy(null);
     if (error) return alert("تعذّر التحديث: " + error.message);
-    await logAudit("installment_paid", "تأكيد دفع قسط");
+    await logAudit("installment_paid", "تأكيد دفع قسط" + (shotUrl ? " + إيصال" : ""));
+    setPayFor(null); setPayFile(null);
     toast("اتسجّل الدفع"); router.refresh();
   }
   async function addInstallment(e: Enr) {
@@ -123,14 +133,26 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
                   const paidNow = i.status === "paid" || i.paidAt;
                   const over = isOverdue(i);
                   return (
-                    <div key={i.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "6px 10px" }}>
+                    <div key={i.id} style={{ display: "flex", flexDirection: "column", gap: 6, border: "1px solid var(--line)", borderRadius: 8, padding: "6px 10px" }}>
+                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                       <span className="num" dir="ltr" style={{ fontWeight: 700 }}>{money(i.amount, i.currency)}</span>
                       <span className="num" dir="ltr" style={{ color: "var(--muted)", fontSize: 12 }}>{i.due || "—"}</span>
                       {i.shot && <a href={i.shot} target="_blank" rel="noreferrer" style={{ fontSize: 11.5, color: "var(--brand)", fontWeight: 700 }}>إيصال</a>}
                       {paidNow ? badge(tr("paid"), "#18A957") : over ? badge(tr("overdue"), "#E0483B") : badge(tr("pending"), "#94A2BB")}
                       {!paidNow ? (
-                        <button onClick={() => markPaid(i.id)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
+                        <button onClick={() => { setPayFor(payFor === i.id ? null : i.id); setPayFile(null); }} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{tr("paid")}</button>
                       ) : <span style={{ width: 70 }} />}
+                     </div>
+                     {payFor === i.id && !paidNow && (
+                       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
+                         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
+                           🖼️ {payFile ? payFile.name : "ارفع إيصال التحويل (اختياري)"}
+                           <input type="file" accept="image/*" style={{ display: "none" }} onChange={(ev) => setPayFile(ev.target.files?.[0] || null)} />
+                         </label>
+                         <button onClick={() => markPaid(i.id, payFile)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : "تأكيد الدفع"}</button>
+                         <button onClick={() => { setPayFor(null); setPayFile(null); }} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
+                       </div>
+                     )}
                     </div>
                   );
                 })}
