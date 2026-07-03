@@ -26,9 +26,10 @@ export default async function Refunds() {
     );
   }
 
-  const { data: rf, error } = await supabase.from("refunds")
-    .select("id,customer_id,amount,currency,reason,status,created_at")
-    .order("created_at", { ascending: false });
+  const [{ data: rf, error }, { data: custs }] = await Promise.all([
+    supabase.from("refunds").select("id,customer_id,amount,currency,reason,status,created_at").order("created_at", { ascending: false }),
+    supabase.from("customers").select("id,name"),
+  ]);
 
   if (error) {
     const missingTable = (error as any)?.code === "42P01" || /does not exist|relation .* does not/i.test((error as any)?.message || "");
@@ -45,7 +46,6 @@ export default async function Refunds() {
   }
 
   const rows = rf || [];
-  const { data: custs } = await supabase.from("customers").select("id,name");
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));
 
   return (

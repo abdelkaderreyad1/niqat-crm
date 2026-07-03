@@ -6,12 +6,24 @@ export const dynamic = "force-dynamic";
 export default async function Batches() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: meB } = await supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle();
+
+  // موجة متوازية: الصلاحية + الباتشات + الدبلومات + الحجوزات (كلهم مستقلين)
+  const [
+    { data: meB },
+    bFull,
+    bd,
+    { data: allDips },
+    { data: enr },
+  ] = await Promise.all([
+    supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
+    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes").order("created_at", { ascending: false }),
+    supabase.from("batches").select("id,diploma_id"),
+    supabase.from("diplomas").select("id,name_ar").order("name_ar"),
+    supabase.from("enrollments").select("batch_id"),
+  ]);
   const canManage = !!meB?.can_manage_batches;
+
   let batches: any[] = [];
-  const bFull = await supabase.from("batches")
-    .select("id,code,status,start_date,end_date,capacity,notes")
-    .order("created_at", { ascending: false });
   if (bFull.error) {
     const bMin = await supabase.from("batches")
       .select("id,code,status,start_date,capacity,notes")
@@ -21,12 +33,9 @@ export default async function Batches() {
 
   // الدبلومة لكل باتش (دفاعي)
   const dMap = new Map<string, string>();
-  const bd = await supabase.from("batches").select("id,diploma_id");
-  const { data: allDips } = await supabase.from("diplomas").select("id,name_ar").order("name_ar");
   const dipName = new Map((allDips || []).map((d: any) => [d.id, d.name_ar]));
   if (!bd.error) for (const r of (bd.data as any[]) || []) if (r.diploma_id) dMap.set(r.id, dipName.get(r.diploma_id) || "");
 
-  const { data: enr } = await supabase.from("enrollments").select("batch_id");
   const cnt = new Map<string, number>();
   for (const e of enr || []) {
     const b = (e as any).batch_id as string;

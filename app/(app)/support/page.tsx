@@ -6,19 +6,23 @@ export const dynamic = "force-dynamic";
 export default async function Support({ searchParams }: { searchParams: { q?: string } }) {
   const supabase = createClient();
   const q = (searchParams?.q || "").trim().toLowerCase();
-  const { data: tickets } = await supabase
-    .from("tickets")
-    .select("id,title,body,status,priority,customer_id,assignee_id,created_at")
-    .eq("archived", false)
-    .order("created_at", { ascending: false })
-    .limit(500);
-  const { data: custs } = await supabase.from("customers").select("id,name,phone1");
-  const { data: profs } = await supabase.from("profiles").select("id,full_name,team");
-  const { data: { user } } = await supabase.auth.getUser();
+  // موجة متوازية: كل الاستعلامات مستقلة عن بعضها
+  const [
+    { data: tickets },
+    { data: custs },
+    { data: profs },
+    { data: { user } },
+    { data: ts },
+  ] = await Promise.all([
+    supabase.from("tickets").select("id,title,body,status,priority,customer_id,assignee_id,created_at").eq("archived", false).order("created_at", { ascending: false }).limit(500),
+    supabase.from("customers").select("id,name,phone1"),
+    supabase.from("profiles").select("id,full_name,team"),
+    supabase.auth.getUser(),
+    supabase.from("app_settings").select("value").eq("key", "ticket_problems").maybeSingle(),
+  ]);
 
   // المواضيع المتكررة (datalist)
   let subjects: string[] = [];
-  const { data: ts } = await supabase.from("app_settings").select("value").eq("key", "ticket_problems").maybeSingle();
   if (ts?.value) { try { subjects = JSON.parse(ts.value as string); } catch { subjects = []; } }
 
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));

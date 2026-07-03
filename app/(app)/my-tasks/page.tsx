@@ -4,19 +4,18 @@ export const dynamic = "force-dynamic";
 
 export default async function MyTasks() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: rows } = await supabase
-    .from("tasks")
-    .select("id,title,due_at,done,customer_id,assignee_id")
-    .order("due_at", { ascending: true })
-    .limit(500);
-
-  const { data: custs } = await supabase.from("customers").select("id,name,phone1");
+  const [
+    { data: { user } },
+    { data: rows },
+    { data: custs },
+    { data: profs },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from("tasks").select("id,title,due_at,done,customer_id,assignee_id").order("due_at", { ascending: true }).limit(500),
+    supabase.from("customers").select("id,name,phone1"),
+    supabase.from("profiles").select("id,full_name"),
+  ]);
   const cMap = new Map((custs || []).map((c) => [c.id, c]));
-  const { data: profs } = await supabase.from("profiles").select("id,full_name");
   const pMap = new Map((profs || []).map((p) => [p.id, p.full_name]));
 
   const tasks = (rows || []).map((k) => ({

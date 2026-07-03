@@ -27,14 +27,12 @@ export default async function Affiliates() {
     );
   }
 
-  const { data: setting } = await supabase
-    .from("app_settings")
-    .select("value")
-    .eq("key", "affiliates")
-    .maybeSingle();
+  const [{ data: setting }, { data: bts }] = await Promise.all([
+    supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
+    supabase.from("batches").select("id,code").order("code"),
+  ]);
 
   const list = Array.isArray(setting?.value) ? (setting!.value as any[]) : [];
-  const { data: bts } = await supabase.from("batches").select("id,code").order("code");
 
   return (
     <div className="max-w-2xl">

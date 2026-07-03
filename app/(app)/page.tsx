@@ -21,20 +21,14 @@ const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString("ar
 export default async function Dashboard() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: me } = await supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches").eq("id", user?.id || "").maybeSingle();
-  const canFinance = !!me?.can_see_finance;
-  const canManageBatches = !!me?.can_manage_batches;
-  // صلاحية رؤية مبيعات اليوم (منفصلة — جلب آمن لو العمود لسه مش موجود)
-  const { data: dsProf } = await supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle();
-  const canDailySales = !!dsProf?.can_see_daily_sales;
-  // أسماء التخصصات
-  const { data: specsD } = await supabase.from("specialties").select("id,name_ar");
-  const spName = new Map((specsD || []).map((s: any) => [s.id, s.name_ar]));
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
 
-  const [custRes, enrRes, dipRes, btRes, tkRes, fuRes, hoRes, logRes, profRes] = await Promise.all([
+  const [meRes, dsRes, specsRes, custRes, enrRes, dipRes, btRes, tkRes, fuRes, hoRes, logRes, profRes] = await Promise.all([
+    supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches").eq("id", user?.id || "").maybeSingle(),
+    supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle(),
+    supabase.from("specialties").select("id,name_ar"),
     supabase.from("customers").select("id,name,stage,specialty_id").eq("deleted", false).eq("archived", false),
     supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id"),
     supabase.from("diplomas").select("id,name_ar"),
@@ -45,6 +39,12 @@ export default async function Dashboard() {
     supabase.from("audit_log").select("customer_id,actor_id,action,detail,at").order("at", { ascending: false }).limit(8),
     supabase.from("profiles").select("id,full_name"),
   ]);
+
+  const me = meRes.data;
+  const canFinance = !!me?.can_see_finance;
+  const canManageBatches = !!me?.can_manage_batches;
+  const canDailySales = !!dsRes.data?.can_see_daily_sales;
+  const spName = new Map(((specsRes.data as any[]) || []).map((s: any) => [s.id, s.name_ar]));
 
   const customers = (custRes.data as any[]) || [];
   const enrollments = (enrRes.data as any[]) || [];
