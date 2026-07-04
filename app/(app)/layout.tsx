@@ -7,6 +7,7 @@ import NotificationsBell from "./NotificationsBell";
 import LangToggle from "./LangToggle";
 import ThemeToggle from "./ThemeToggle";
 import Toaster from "./Toaster";
+import DailyGreeting from "./DailyGreeting";
 // import AnimatedMain from "./AnimatedMain";
 import { LangProvider } from "@/lib/i18n/client";
 import { getLang, tFor } from "@/lib/i18n";
@@ -137,6 +138,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <main className="content"><div>{children}</div></main>
       </div>
     <Toaster />
+    <DailyGreeting />
     </div>
     </LangProvider>
   );

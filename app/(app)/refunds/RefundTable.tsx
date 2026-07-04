@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useT } from "@/lib/i18n/client";
+import EmptyState from "../EmptyState";
 
 type Row = {
   id: string; customer_id: string; customerName: string;
@@ -19,7 +20,7 @@ function money(n: number, cur: string) {
 
 export default function RefundTable({ rows }: { rows: Row[] }) {
   const tr = useT();
-  if (!rows.length) return <div className="empty"><b>{tr("noRefundRequests")}</b></div>;
+  if (!rows.length) return <EmptyState text={tr("funNoRefunds")} />;
   return (
     <div className="tbl-wrap">
       <table>

@@ -207,7 +207,9 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .login{position:fixed;inset:0;z-index:200;background:linear-gradient(135deg,#0F1B30,#1c2d4d);display:grid;place-items:center;padding:20px}
 .login.hide{display:none}
 .login-card{background:#fff;border-radius:18px;width:min(400px,100%);padding:34px 30px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
-.login-card .logo{text-align:center;margin-bottom:20px}.login-card .logo img{height:62px;object-fit:contain}
+.login-card .logo{display:flex;justify-content:center;align-items:center;margin-bottom:20px}.login-card .logo img{height:62px;object-fit:contain}
+.login-cat{position:fixed;bottom:28px;left:34px;width:150px;height:auto;opacity:.9;pointer-events:none;user-select:none;z-index:201;filter:drop-shadow(0 8px 20px rgba(0,0,0,.35))}
+@media(max-width:640px){.login-cat{width:96px;bottom:16px;left:16px;opacity:.8}}
 .login h2{text-align:center;font-size:17px;color:var(--ink);margin-bottom:4px}.login p.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:22px}
 .login .hint{margin-top:14px;background:#f4f6fb;border-radius:10px;padding:11px 13px;font-size:12px;color:var(--muted)}
 .doc{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;margin-bottom:7px;background:#fff;font-size:13px}.doc svg{width:16px;height:16px;color:var(--blue);flex-shrink:0}.doc a{margin-inline-start:auto;color:var(--blue);font-weight:700;text-decoration:none;font-size:12px}
@@ -276,3 +278,20 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 
 .bg-surface{background:var(--surface)}
+
+/* === Daily greeting card === */
+.dg-overlay{position:fixed;inset:0;z-index:400;display:grid;place-items:center;background:rgba(15,27,48,.45);backdrop-filter:blur(3px);animation:dgFadeIn .35s ease both}
+.dg-overlay.dg-leave{animation:dgFadeOut .45s ease both}
+.dg-card{position:relative;background:var(--surface,#fff);border-radius:20px;padding:34px 30px 28px;width:min(380px,90%);text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.4);animation:dgPop .45s cubic-bezier(.34,1.56,.64,1) both}
+.dg-overlay.dg-leave .dg-card{animation:dgPopOut .45s ease both}
+.dg-cat{width:130px;height:auto;margin:0 auto 14px;display:block;filter:drop-shadow(0 8px 18px rgba(0,0,0,.18))}
+.dg-quote{font-size:15.5px;font-weight:700;line-height:1.7;color:var(--text,#1a2b4a)}
+.dg-close{position:absolute;top:10px;right:14px;background:none;border:0;font-size:26px;line-height:1;color:var(--muted,#8694ad);cursor:pointer;padding:2px 6px;border-radius:8px}
+.dg-close:hover{background:rgba(0,0,0,.06);color:var(--text,#1a2b4a)}
+@keyframes dgFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes dgFadeOut{from{opacity:1}to{opacity:0}}
+@keyframes dgPop{from{opacity:0;transform:scale(.85) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes dgPopOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.9) translateY(8px)}}
+
+/* === Empty state with cat === */
+.empty-cat .empty-cat-img{width:120px;height:auto;margin:0 auto 16px;display:block;opacity:.92;filter:drop-shadow(0 6px 14px rgba(0,0,0,.12))}

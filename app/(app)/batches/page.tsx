@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import AddBatch from "./AddBatch";
+import EmptyState from "../EmptyState";
 export const dynamic = "force-dynamic";
 
 export default async function Batches() {
@@ -81,7 +82,7 @@ export default async function Batches() {
             </div>
           );
         })}
-        {(!batches || batches.length === 0) && <div className="empty"><b>{tr("noBatches")}</b></div>}
+        {(!batches || batches.length === 0) && <EmptyState text={tr("funNoBatches")} />}
       </div>
     </div>
   );

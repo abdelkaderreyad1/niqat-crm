@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
-  const [lang, setLang] = useState<"ar" | "en">("ar");
+  const [lang, setLang] = useState<"ar" | "en">("en");
 
   useEffect(() => {
     if (!supabaseRef.current) supabaseRef.current = createClient();
@@ -40,6 +40,8 @@ export default function LoginPage() {
 
   return (
     <div className="login">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="login-cat" src="/cats/cat-6.svg" alt="" aria-hidden="true" />
       <div className="login-card" dir={lang === "ar" ? "rtl" : "ltr"}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <div className="logo" style={{ textAlign: "center" }}><img src="/logo.png" alt="NIQAT" /></div>

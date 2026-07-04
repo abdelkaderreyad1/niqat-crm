@@ -6,9 +6,9 @@ export type Lang = "ar" | "en";
 export function getLang(): Lang {
   try {
     const c = cookies().get("lang")?.value;
-    return c === "en" ? "en" : "ar";
+    return c === "ar" ? "ar" : "en";
   } catch {
-    return "ar";
+    return "en";
   }
 }
 

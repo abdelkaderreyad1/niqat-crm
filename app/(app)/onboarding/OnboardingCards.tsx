@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo, memo } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import EmptyState from "../EmptyState";
 
 type Item = { id: string; label: string; done: boolean; by: string | null; at: string };
 type Card = {
@@ -110,7 +111,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
           {pend.map((c) => <CardView key={c.handoffId} c={c} onToggle={toggle} onComplete={complete} />)}
         </div>
       ) : (
-        <div className="empty"><b>{tr("noActivationRequests")} 🎉</b></div>
+        <EmptyState text={tr("funNoOnboarding") + " 🎉"} />
       )}
     </>
   );

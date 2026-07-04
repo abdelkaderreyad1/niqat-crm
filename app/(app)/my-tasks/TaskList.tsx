@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import EmptyState from "../EmptyState";
 
 type T = {
   id: string; title: string; due: string; done: boolean;
@@ -106,7 +107,7 @@ export default function TaskList({ initial, meId }: { initial: T[]; meId: string
         <button className="btn" onClick={addMine} disabled={adding} style={{ height: 40 }}>{adding ? "..." : tr("add")}</button>
       </div>
       {tasks.length === 0 ? (
-        <div className="empty"><b>{tr("noTasks")}</b></div>
+        <EmptyState text={tr("funNoTasks")} />
       ) : (
         <>
           {Grp(tr("overdueTasks"), od, "var(--red)")}

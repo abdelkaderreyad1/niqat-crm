@@ -2,6 +2,7 @@ import Link from "next/link";
 import { t as tr } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 import RestoreBtn from "./RestoreBtn";
+import EmptyState from "../EmptyState";
 export const dynamic = "force-dynamic";
 
 export default async function Archive() {
@@ -29,7 +30,7 @@ export default async function Archive() {
         </div>
       </div>
       {(!rows || rows.length === 0) ? (
-        <div className="empty"><b>{tr("archiveEmpty")}</b></div>
+        <EmptyState text={tr("funNoArchive")} />
       ) : (
         <div className="tbl-wrap">
           <table>
