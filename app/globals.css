@@ -208,9 +208,10 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .login.hide{display:none}
 .login-card{background:#fff;border-radius:18px;width:min(400px,100%);padding:34px 30px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
 .login-card .logo{display:flex;justify-content:center;align-items:center;margin-bottom:20px}.login-card .logo img{height:62px;object-fit:contain}
-.login-cat{position:fixed;bottom:48px;left:60px;width:260px;height:auto;opacity:.95;pointer-events:none;user-select:none;z-index:201;filter:drop-shadow(0 12px 28px rgba(0,0,0,.4));animation:catFloat 4s ease-in-out infinite}
-@media(max-width:900px){.login-cat{width:180px;bottom:24px;left:24px}}
-@media(max-width:640px){.login-cat{width:130px;bottom:16px;left:12px;opacity:.85}}
+.login-cat{position:fixed;bottom:40px;left:calc(50% - 600px);width:360px;height:auto;opacity:.97;pointer-events:none;user-select:none;z-index:201;filter:drop-shadow(0 14px 32px rgba(0,0,0,.42));animation:catFloat 4s ease-in-out infinite}
+@media(max-width:1200px){.login-cat{left:40px;width:300px}}
+@media(max-width:900px){.login-cat{width:200px;bottom:24px;left:24px}}
+@media(max-width:640px){.login-cat{width:140px;bottom:16px;left:12px;opacity:.9}}
 @keyframes catFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-16px) rotate(1deg)}}
 .login h2{text-align:center;font-size:17px;color:var(--ink);margin-bottom:4px}.login p.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:22px}
 .login .hint{margin-top:14px;background:#f4f6fb;border-radius:10px;padding:11px 13px;font-size:12px;color:var(--muted)}
