@@ -31,6 +31,18 @@ export const COUNTRIES: Country[] = [
 
 export const DEFAULT_DIAL = "20"; // مصر
 
+/**
+ * مفتاح مقارنة موحّد للرقم — آخر 9 أرقام (الجزء المميّز).
+ * بيحل مشكلة اختلاف الصيغ: 01147666096 و 201147666096 و +201147666096
+ * كلهم بيطلّعوا نفس المفتاح "147666096". يُستخدم في كشف التكرار.
+ */
+export function phoneKey(raw: string): string {
+  const digits = toAsciiDigits(raw).replace(/\D/g, "");
+  if (!digits) return "";
+  // آخر 9 أرقام (كافية للتمييز، وبتتجاهل اختلاف الكود/الصفر البادئ)
+  return digits.length > 9 ? digits.slice(-9) : digits;
+}
+
 // أطول-كود-أولاً عشان الكشف يبقى دقيق (مثلاً 971 قبل 97)
 const DIALS_BY_LEN = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
 

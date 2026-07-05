@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { autoHandoffIfNeeded } from "@/lib/handoff";
-import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, normalizePhone } from "@/lib/phone";
+import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
 
 type Opt = { id: string; name: string };
 type BatchOpt = { id: string; name: string; price?: number; currency?: string; diploma_id?: string };
@@ -51,13 +51,11 @@ export default function NewCustomerForm({
     const p1 = f.phone1.trim(), p2 = f.phone2.trim(), em = f.email.trim();
     if (!p1 && !p2 && !em) { setLiveDup(null); return; }
     const t = setTimeout(async () => {
+      const k1 = phoneKey(p1), k2 = phoneKey(p2);
       const ors: string[] = [];
-      const n1 = p1 ? normalizePhone(p1, dial1) : "";
-      const n2 = p2 ? normalizePhone(p2, dial2) : "";
-      if (p1) ors.push(`phone1.eq.${p1}`, `phone2.eq.${p1}`);
-      if (n1 && n1 !== p1) ors.push(`phone1.eq.${n1}`, `phone2.eq.${n1}`);
-      if (p2) ors.push(`phone1.eq.${p2}`, `phone2.eq.${p2}`);
-      if (n2 && n2 !== p2) ors.push(`phone1.eq.${n2}`, `phone2.eq.${n2}`);
+      // مطابقة بآخر 9 أرقام (تتجاهل اختلاف الكود/الصفر البادئ بين الصيغ)
+      if (k1) ors.push(`phone1.like.%${k1}`, `phone2.like.%${k1}`);
+      if (k2) ors.push(`phone1.like.%${k2}`, `phone2.like.%${k2}`);
       if (em) ors.push(`email.eq.${em}`);
       if (!ors.length) { setLiveDup(null); return; }
       const { data } = await supabase.from("customers")
@@ -118,10 +116,11 @@ export default function NewCustomerForm({
     const phone1 = f.phone1.trim() ? combineDialAndNumber(dial1, f.phone1) : "";
     const phone2 = f.phone2.trim() ? combineDialAndNumber(dial2, f.phone2) : "";
 
-    // منع التكرار: نفس الاسم أو الموبايل (الخام أو المطبّع) أو الإيميل
+    // منع التكرار: نفس الاسم أو الموبايل (مطابقة بآخر 9 أرقام) أو الإيميل
     const ors: string[] = [`name.eq.${f.name.trim()}`];
-    for (const p of [f.phone1.trim(), phone1]) if (p) ors.push(`phone1.eq.${p}`, `phone2.eq.${p}`);
-    for (const p of [f.phone2.trim(), phone2]) if (p) ors.push(`phone1.eq.${p}`, `phone2.eq.${p}`);
+    const sk1 = phoneKey(f.phone1), sk2 = phoneKey(f.phone2);
+    if (sk1) ors.push(`phone1.like.%${sk1}`, `phone2.like.%${sk1}`);
+    if (sk2) ors.push(`phone1.like.%${sk2}`, `phone2.like.%${sk2}`);
     if (f.email.trim()) ors.push(`email.eq.${f.email.trim()}`);
     const { data: exist } = await supabase.from("customers")
       .select("id,name").eq("deleted", false).or(ors.join(",")).limit(1).maybeSingle();
