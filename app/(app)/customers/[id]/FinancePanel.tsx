@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import { autoHandoffIfNeeded } from "@/lib/handoff";
 
 type Inst = { id: string; amount: number; currency: string; due: string; status: string; paidAt: string | null; shot: string | null };
 type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[] };
@@ -52,16 +53,28 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
     return url;
   }
 
-  async function markPaid(id: string, f?: File | null) {
+  async function markPaid(id: string, f?: File | null, enr?: Enr) {
     setBusy(id);
     let shotUrl: string | null = null;
     if (f) shotUrl = await uploadShot(f, `${tr("instReceipt")} (${f.name})`);
     const patch: any = { status: "paid", paid_at: new Date().toISOString() };
     if (shotUrl) patch.screenshot_url = shotUrl;
     const { error } = await supabase.from("installments").update(patch).eq("id", id);
-    setBusy(null);
-    if (error) return alert(tr("updateFailed") + error.message);
+    if (error) { setBusy(null); return alert(tr("updateFailed") + error.message); }
     await logAudit("installment_paid", tr("auditInstallmentPaid") + (shotUrl ? " + " + tr("receipt") : ""));
+
+    // شبكة الأمان: لو الدفعة دي كمّلت المبلغ المتفق عليه → تحويل تلقائي للدعم
+    if (enr && Number(enr.agreed) > 0) {
+      const paidNow = enr.installments.reduce((s, i) => {
+        const isPaid = i.id === id ? true : (i.status === "paid" || i.paidAt);
+        return s + (isPaid ? (Number(i.amount) || 0) : 0);
+      }, 0);
+      if (paidNow >= Number(enr.agreed)) {
+        try { await autoHandoffIfNeeded(supabase, customerId, meId); } catch {}
+      }
+    }
+
+    setBusy(null);
     setPayFor(null); setPayFile(null);
     toast(tr("paymentLogged")); router.refresh();
   }
@@ -149,7 +162,7 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
                            🖼️ {payFile ? payFile.name : tr("uploadReceiptOpt")}
                            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(ev) => setPayFile(ev.target.files?.[0] || null)} />
                          </label>
-                         <button onClick={() => markPaid(i.id, payFile)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : tr("confirmPayment")}</button>
+                         <button onClick={() => markPaid(i.id, payFile, e)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : tr("confirmPayment")}</button>
                          <button onClick={() => { setPayFor(null); setPayFile(null); }} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                        </div>
                      )}

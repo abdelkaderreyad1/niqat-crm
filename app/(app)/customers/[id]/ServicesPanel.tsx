@@ -38,6 +38,7 @@ export default function ServicesPanel({
   const [svFree, setSvFree] = useState(false);
   const [svNote, setSvNote] = useState("");
   const [svPaid, setSvPaid] = useState(false);
+  const [svNeedsAct, setSvNeedsAct] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [moveFor, setMoveFor] = useState<string | null>(null);
   const [moveTo, setMoveTo] = useState("");
@@ -69,7 +70,7 @@ export default function ServicesPanel({
 
     if (svType === "diploma") {
       const { data: ins, error } = await supabase.from("enrollments")
-        .insert({ customer_id: customerId, diploma_id: svDip, batch_id: svBatch || null, status: "active" })
+        .insert({ customer_id: customerId, diploma_id: svDip, batch_id: svBatch || null, status: "active", needs_activation: svNeedsAct })
         .select("id").maybeSingle();
       if (error || !ins) { setBusy(false); toast(tr("addDiplomaFailed")); return; }
       if (canFinance && amt > 0) {
@@ -78,14 +79,14 @@ export default function ServicesPanel({
       await logAudit("enrollment_add", `${tr("auditEnrollmentAdd")}: ${label}${svBatch ? " — " + batchLabel(svBatch) : ""}`);
     } else {
       const { data, error } = await supabase.from("customer_addons").insert({
-        customer_id: customerId, type: svType, name: label, amount: amt, free: svFree, note: svNote.trim(), paid: svPaid, shot_url: shot_url || null,
+        customer_id: customerId, type: svType, name: label, amount: amt, free: svFree, note: svNote.trim(), paid: svPaid, shot_url: shot_url || null, needs_activation: svNeedsAct,
       }).select("id").single();
       if (error) { setBusy(false); toast(tr("addFailed") + error.message); return; }
       await logAudit("addon_add", `${tr("auditAddonAdd")} ${tr(stMeta(svType).labelKey)}: ${label}`);
     }
 
     setBusy(false); setOpen(false);
-    setSvDip(""); setSvBatch(""); setSvName(""); setSvAmount(""); setSvNote(""); setFile(null); setSvFree(false); setSvPaid(false);
+    setSvDip(""); setSvBatch(""); setSvName(""); setSvAmount(""); setSvNote(""); setFile(null); setSvFree(false); setSvPaid(false); setSvNeedsAct(false);
     toast(tr("serviceAdded")); router.refresh();
   }
 
@@ -154,6 +155,11 @@ export default function ServicesPanel({
           )}
 
           <label className="chkrow"><input type="checkbox" checked={svFree} onChange={(e) => setSvFree(e.target.checked)} /> {tr("freeGift")}</label>
+
+          <label className="chkrow" style={{ background: svNeedsAct ? "rgba(24,169,87,.08)" : "transparent", borderRadius: 8, padding: svNeedsAct ? "6px 8px" : "0" }}>
+            <input type="checkbox" checked={svNeedsAct} onChange={(e) => setSvNeedsAct(e.target.checked)} />
+            🎯 {tr("svNeedsActivation")}
+          </label>
 
           {canFinance && !svFree && (
             <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginTop: 8, background: "rgba(24,169,87,.04)" }}>

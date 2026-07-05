@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import { autoHandoffIfNeeded } from "@/lib/handoff";
 
 type Opt = { id: string; name: string };
 const STAGES = [
@@ -32,7 +33,14 @@ export default function NewCustomerForm({
   const [instGap, setInstGap] = useState("1");
   const [payFirstNow, setPayFirstNow] = useState(false);
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
+  // بند 2: إظهار قسم الاشتراك (يدوي أو حسب المرحلة)
+  const [showSubManual, setShowSubManual] = useState(false);
+  // فكرة عبدالقادر: المبيعات يعلّم إن الاشتراك ده يتفعّل عند الدعم
+  const [needsActivation, setNeedsActivation] = useState(false);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
+  // بند 2: قسم الاشتراك يظهر لما المرحلة (عرض سعر/تفاوض/مسجّل) أو بزر يدوي
+  const stageOpensSub = ["quote", "negotiation", "enrolled"].includes(f.stage);
+  const showSub = stageOpensSub || showSubManual;
   // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
   const setName = (v: string) => set("name", /[A-Za-z]/.test(v) ? v.toUpperCase() : v);
 
@@ -107,7 +115,7 @@ export default function NewCustomerForm({
     if (f.diploma_id) {
       const { data: enr } = await supabase.from("enrollments").insert({
         customer_id: cid, diploma_id: f.diploma_id, batch_id: f.batch_id || null,
-        status: "active", free: f.free,
+        status: "active", free: f.free, needs_activation: needsActivation,
       }).select("id").maybeSingle();
       // المالية: المبلغ المستحق بعد الخصم
       if (enr && !f.free && net > 0) {
@@ -146,6 +154,12 @@ export default function NewCustomerForm({
           }
         }
       }
+    }
+
+    // شبكة الأمان: هدية أو دفع كاش كامل → تحويل تلقائي للدعم + المرحلة enrolled
+    const fullyPaidNow = f.diploma_id && (f.free || (payMode === "cash" && net > 0));
+    if (fullyPaidNow) {
+      try { await autoHandoffIfNeeded(supabase, cid, meId); } catch {}
     }
     // متابعة
     if (f.follow) {
@@ -208,6 +222,13 @@ export default function NewCustomerForm({
           <input className="inp num" type="datetime-local" dir="ltr" value={f.follow} onChange={(e) => set("follow", e.target.value)} /></div>
       </div>
 
+      {!showSub ? (
+        <button type="button" onClick={() => setShowSubManual(true)}
+          className="btn ghost" style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
+          ＋ {tr("addSubscription")}
+        </button>
+      ) : (
+      <>
       <div className="sec-t">{tr("subscriptionOpt")}</div>
       <div className="frow">
         <div className="fld"><label>{tr("theDiploma")}</label>
@@ -221,6 +242,15 @@ export default function NewCustomerForm({
             {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select></div>
       </div>
+
+      {/* فكرة عبدالقادر: علامة "يتفعّل عند الدعم" — المبيعات يحدّد البنود */}
+      {f.diploma_id && (
+        <label className="chkrow" style={{ background: needsActivation ? "rgba(24,169,87,.08)" : "transparent", borderRadius: 8, padding: needsActivation ? "6px 8px" : "0" }}>
+          <input type="checkbox" checked={needsActivation} onChange={(e) => setNeedsActivation(e.target.checked)} />
+          🎯 {tr("needsActivationLabel")}
+        </label>
+      )}
+
       <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> {tr("giftFree")}</label>
       {!f.free && (
         <div className="frow" style={{ marginTop: 8 }}>
@@ -303,6 +333,8 @@ export default function NewCustomerForm({
           </label>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
         </div>
+      )}
+      </>
       )}
 
       <div className="sec-t">{tr("initialNote")}</div>
