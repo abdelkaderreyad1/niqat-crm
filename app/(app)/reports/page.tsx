@@ -141,7 +141,7 @@ export default async function Reports() {
 
       {canFinance && (
         <>
-          <h2 className="font-extrabold mb-2 text-ink">{tr("collection")}</h2>
+          <h2 className="font-extrabold mb-2" style={{ color: "var(--text)" }}>{tr("collection")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <Kpi label={tr("totalAgreed")} value={money(agreed)} color="#2F6BFF" />
             <Kpi label={tr("totalCollected")} value={money(collected)} color="#18A957" />
@@ -151,27 +151,27 @@ export default async function Reports() {
         </>
       )}
 
-      <h2 className="font-extrabold mb-2 text-ink">{tr("stageDistribution")} ({totalCust} {tr("customer")})</h2>
+      <h2 className="font-extrabold mb-2" style={{ color: "var(--text)" }}>{tr("stageDistribution")} ({totalCust} {tr("customer")})</h2>
       <div className="card" style={{ padding: 16, marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
         {Object.keys(STAGES).map((s) => {
           const n = stageCount[s] || 0;
           const st = STAGES[s];
           return (
             <div key={s} className="flex items-center gap-3">
-              <div className="w-24 text-sm text-ink shrink-0">{tr(st.labelKey)}</div>
+              <div className="w-24 text-sm shrink-0" style={{ color: "var(--text)" }}>{tr(st.labelKey)}</div>
               <div className="flex-1 bg-bg rounded-full h-3 overflow-hidden">
                 <div
                   className="h-3 rounded-full"
                   style={{ width: `${(n / maxStage) * 100}%`, background: st.color }}
                 />
               </div>
-              <div className="w-10 text-end num font-bold text-ink">{n}</div>
+              <div className="w-10 text-end num font-bold" style={{ color: "var(--text)" }}>{n}</div>
             </div>
           );
         })}
       </div>
 
-      <h2 className="font-extrabold mb-2 text-ink">{tr("affiliatesReport")}</h2>
+      <h2 className="font-extrabold mb-2" style={{ color: "var(--text)" }}>{tr("affiliatesReport")}</h2>
       <div className="tbl-wrap">
         <table style={{ minWidth: 560 }}>
           <thead>
@@ -188,7 +188,7 @@ export default async function Reports() {
           <tbody>
             {affRows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-muted">
+                <td colSpan={7} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>
                   {tr("noAffiliatesYet")}
                 </td>
               </tr>
@@ -196,7 +196,7 @@ export default async function Reports() {
             {affRows.map((r) => (
               <tr key={r.code} className="border-t border-line">
                 <td className="px-4 py-3 font-bold text-brand">{r.code}</td>
-                <td className="px-4 py-3 text-ink">{r.name}</td>
+                <td className="px-4 py-3" style={{ color: "var(--text)" }}>{r.name}</td>
                 <td className="px-4 py-3 num">{r.discount != null ? r.discount + "%" : "—"}</td>
                 <td className="px-4 py-3 num font-bold">{r.customers}</td>
                 <td className="px-4 py-3 num font-bold text-green">{r.enrolled}</td>
