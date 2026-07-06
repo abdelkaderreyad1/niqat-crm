@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchDoneBtn from "./batches/BatchDoneBtn";
+import { CountUp, Donut, BarRow } from "./Charts";
 
 export const dynamic = "force-dynamic";
 
@@ -121,20 +122,17 @@ export default async function Dashboard() {
   const dipTot = byDip.reduce((s, x) => s + x.n, 0) || 1;
   let acc = 0;
   const segs = byDip.map((x, i) => { const st = (acc / dipTot) * 360; acc += x.n; return `${DC[i % DC.length]} ${st}deg ${(acc / dipTot) * 360}deg`; }).join(",");
+  const dipDonut = byDip.map((x, i) => ({ label: x.name, value: x.n, color: DC[i % DC.length] }));
 
   // by batch
   const byBatch = batches.map((b) => ({ code: b.code, n: enrollments.filter((e) => e.batch_id === b.id).length })).filter((x) => x.n).sort((a, b) => b.n - a.n);
   const bMax = Math.max(...byBatch.map((x) => x.n), 1);
 
-  const kpis = [
+  const generalKpis = [
     { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥" },
     { label: tr("newLeads"), value: leads, color: "#F08A24", emoji: "🎯" },
-    { label: tr("convRate"), value: conv + "%", color: "#18A957", emoji: "📈" },
+    { label: tr("convRate"), value: conv, suffix: "%", color: "#18A957", emoji: "📈" },
     { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", emoji: "✅" },
-    ...(canFinance ? [
-      { label: tr("revenue"), value: fmtMoney(revenue / 1000) + "K", color: "#0FA3A3", emoji: "💰" },
-      { label: tr("outstanding"), value: fmtMoney(outstanding / 1000) + "K", color: "#E6A700", emoji: "⏳" },
-    ] : []),
     { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", emoji: "🎫" },
   ];
 
@@ -171,110 +169,124 @@ export default async function Dashboard() {
     <div>
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14 }}>
-        {kpis.map((k) => (
-          <div key={k.label} className="card" style={{ padding: 18 }}>
-            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 6 }}><span style={{ marginInlineEnd: 6 }}>{(k as any).emoji}</span>{k.label}</div>
-            <div className="num" style={{ fontSize: 28, fontWeight: 800, color: k.color }}>{k.value}</div>
-          </div>
-        ))}
-        {canDailySales && (
-          <div className="card" style={{ padding: 18, background: "linear-gradient(135deg,#0FA3A312,#18A95712)", border: "1px solid #18A95733" }}>
-            <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("todayCollections")}</span>
-              {todayCount > 0 && <span className="chip" style={{ background: "#18A95722", color: "#18A957" }}>{todayCount}</span>}
-            </div>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <div>
-                <div className="num" style={{ fontSize: 26, fontWeight: 800, color: "#18A957" }}>{fmtMoney(todayEgp)} <span style={{ fontSize: 14 }}>{tr("egpShort")}</span></div>
+      {/* ===== شريط الفلوس: تحويلات اليوم + المالية ===== */}
+      {(canDailySales || canFinance) && (
+        <div className="grid2" style={{ marginBottom: 16 }}>
+          {canDailySales && (
+            <div className="card" style={{ padding: 20, background: "linear-gradient(135deg,#18A95712,#0FA3A312)", border: "1px solid #18A95733" }}>
+              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 700 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("todayCollections")}</span>
+                {todayCount > 0 && <span className="chip" style={{ background: "#18A95722", color: "#18A957" }}>{todayCount}</span>}
               </div>
-              {todayUsd > 0 && (
-                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 16 }}>
-                  <div className="num" style={{ fontSize: 26, fontWeight: 800, color: "#0FA3A3" }}>${fmtMoney(todayUsd)}</div>
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "baseline" }}>
+                <div style={{ fontSize: 30, fontWeight: 800, color: "#18A957" }}>
+                  <CountUp value={todayEgp} /> <span style={{ fontSize: 15 }}>{tr("egpShort")}</span>
                 </div>
-              )}
+                {todayUsd > 0 && (
+                  <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 20, fontSize: 30, fontWeight: 800, color: "#0FA3A3" }}>
+                    $<CountUp value={todayUsd} />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* مطلوب إجراء الآن */}
-      <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>{tr("alertsT")}</h3><span className="chip">{actionCount}</span>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          {actionCount === 0 ? (
-            <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 14 }}>{tr("noAlerts")} 🎉</div>
-          ) : (
-            <>
-              {canFinance && grp(tr("overdueInst"), "#E5484D", overdueRows)}
-              {canFinance && grp(tr("dueSoon"), "#F5A623", soonRows)}
-              {grp(tr("followDue"), "#2F6BFF", followRows)}
-              {grp(tr("pendingAccessT"), "#F08A24", handoffRows)}
-            </>
+          )}
+          {canFinance && (
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 10, fontWeight: 700 }}>💰 {tr("financeOverview")}</div>
+              <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("revenue")}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#0FA3A3" }}><CountUp value={revenue} /></div>
+                </div>
+                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 22 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("outstanding")}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#E6A700" }}><CountUp value={outstanding} /></div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
+      )}
+
+      {/* ===== KPIs عامة مكثّفة ===== */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
+        {generalKpis.map((k) => (
+          <div key={k.label} className="card" style={{ padding: 16 }}>
+            <div style={{ color: "var(--muted)", fontSize: 12.5, marginBottom: 4 }}><span style={{ marginInlineEnd: 5 }}>{(k as any).emoji}</span>{k.label}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: k.color }}>
+              {typeof k.value === "number" ? <CountUp value={k.value} suffix={(k as any).suffix || ""} /> : k.value}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* جدول الباتشات */}
-      <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>{tr("schedule")}</h3><span className="chip">{batches.length}</span>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
-          {batches.map((b) => {
-            const st = b.status === "closed" ? { l: tr("endedLabel"), c: "#94A2BB" } : b.status === "full" ? { l: tr("fullLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
-            const end = endMap.get(b.id);
-            const range = (b.start_date || "—") + (end ? " → " + end : "");
-            return (
-              <div key={b.id} className="sch">
-                <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
-                <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
-                {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
-                <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ملخص المسار + دونات الدبلومات */}
+      {/* ===== مطلوب إجراء + جدول الباتشات ===== */}
       <div className="grid2" style={{ marginTop: 16 }}>
         <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("pipelineSummary")}</h3><span className="chip">{total}</span></div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 10 }}>
-            {STAGES.map((s) => {
-              const n = byStage[s.key] || 0; const pct = total ? Math.round((n / total) * 100) : 0;
+          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3>{tr("alertsT")}</h3><span className="chip">{actionCount}</span>
+          </div>
+          <div style={{ marginTop: 10, maxHeight: 360, overflowY: "auto" }}>
+            {actionCount === 0 ? (
+              <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 20 }}>{tr("noAlerts")} 🎉</div>
+            ) : (
+              <>
+                {canFinance && grp(tr("overdueInst"), "#E5484D", overdueRows)}
+                {canFinance && grp(tr("dueSoon"), "#F5A623", soonRows)}
+                {grp(tr("followDue"), "#2F6BFF", followRows)}
+                {grp(tr("pendingAccessT"), "#F08A24", handoffRows)}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 18 }}>
+          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3>{tr("schedule")}</h3><span className="chip">{batches.length}</span>
+          </div>
+          <div style={{ marginTop: 8, maxHeight: 360, overflowY: "auto" }}>
+            {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
+            {batches.map((b) => {
+              const st = b.status === "closed" ? { l: tr("endedLabel"), c: "#94A2BB" } : b.status === "full" ? { l: tr("fullLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
+              const end = endMap.get(b.id);
+              const range = (b.start_date || "—") + (end ? " → " + end : "");
               return (
-                <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ width: 96, fontSize: 12.5, fontWeight: 700 }}>
-                    <span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{tr(s.labelKey)}
-                  </span>
-                  <div style={{ flex: 1, height: 9, background: "#eef2f8", borderRadius: 20, overflow: "hidden" }}>
-                    <div style={{ width: pct + "%", height: "100%", background: s.color }} />
-                  </div>
-                  <span className="num" style={{ width: 30, textAlign: "left", fontWeight: 700, color: "var(--muted)" }}>{n}</span>
+                <div key={b.id} className="sch">
+                  <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
+                  <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
+                  {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
+                  <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
                 </div>
               );
             })}
           </div>
         </div>
+      </div>
+
+      {/* ===== ملخص المسار + دونات الدبلومات ===== */}
+      <div className="grid2" style={{ marginTop: 16 }}>
+        <div className="card" style={{ padding: 18 }}>
+          <div className="card-h"><h3>{tr("pipelineSummary")}</h3><span className="chip">{total}</span></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+            {STAGES.map((s) => (
+              <BarRow key={s.key} label={<span><span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{tr(s.labelKey)}</span>} value={byStage[s.key] || 0} max={total || 1} color={s.color} />
+            ))}
+          </div>
+        </div>
 
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("byDiploma")}</h3></div>
-          {byDip.length === 0 ? (
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>{tr("noEnrolls")}</div>
+          {dipDonut.length === 0 ? (
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noEnrolls")}</div>
           ) : (
-            <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
-              <div style={{ width: 120, height: 120, borderRadius: "50%", background: `conic-gradient(${segs})`, flexShrink: 0 }} />
+            <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
+              <Donut data={dipDonut} />
               <div style={{ flex: 1, minWidth: 140 }}>
-                {byDip.map((x, i) => (
-                  <div key={x.name} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, padding: "3px 0" }}>
-                    <i style={{ background: DC[i % DC.length], width: 10, height: 10, borderRadius: 3, display: "inline-block" }} />
-                    <span style={{ flex: 1 }}>{x.name}</span>
-                    <span className="num" style={{ fontWeight: 700, color: "var(--muted)" }}>{x.n}</span>
+                {dipDonut.map((x) => (
+                  <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, padding: "3px 0" }}>
+                    <i style={{ background: x.color, width: 10, height: 10, borderRadius: 3, display: "inline-block" }} />
+                    <span style={{ flex: 1 }}>{x.label}</span>
+                    <span className="num" style={{ fontWeight: 700, color: "var(--muted)" }}>{x.value}</span>
                   </div>
                 ))}
               </div>
@@ -283,62 +295,47 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {/* التخصصات الهندسية (المسجّلين الدافعين) */}
-      <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>{tr("specDist")}</h3><span className="chip">{spRows.length}</span>
+      {/* ===== التخصصات الهندسية + العملاء حسب الباتش ===== */}
+      <div className="grid2" style={{ marginTop: 16 }}>
+        <div className="card" style={{ padding: 18 }}>
+          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3>{tr("specDist")}</h3><span className="chip">{spRows.length}</span>
+          </div>
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+            {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolledYet")}</div>}
+            {spRows.map((x, i) => (
+              <BarRow key={x.name} label={<span>{i === 0 ? "🏆 " : ""}{x.name}</span>} value={x.n} max={spMax} color="#2F6BFF" />
+            ))}
+          </div>
         </div>
-        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9 }}>
-          {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolledYet")}</div>}
-          {spRows.map((x, i) => {
-            const pct = Math.round((x.n / spMax) * 100);
-            return (
-              <div key={x.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 150, fontSize: 12.5, fontWeight: 700 }}>{i === 0 ? "🏆 " : ""}{x.name}</span>
-                <div style={{ flex: 1, height: 9, background: "#eef2f8", borderRadius: 20, overflow: "hidden" }}>
-                  <div style={{ width: pct + "%", height: "100%", background: "#2F6BFF" }} />
-                </div>
-                <span className="num" style={{ width: 30, textAlign: "left", fontWeight: 700, color: "var(--muted)" }}>{x.n}</span>
-              </div>
-            );
-          })}
+
+        <div className="card" style={{ padding: 18 }}>
+          <div className="card-h"><h3>{tr("byBatch")}</h3></div>
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+            {byBatch.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>—</div>}
+            {byBatch.map((x) => (
+              <BarRow key={x.code} label={x.code} value={x.n} max={bMax} color="#0FA3A3" />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* by batch + النشاط الأخير */}
-      <div className="grid2" style={{ marginTop: 16 }}>
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("byBatch")}</h3></div>
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 9 }}>
-            {byBatch.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>—</div>}
-            {byBatch.map((x) => (
-              <div key={x.code} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 60, fontSize: 12.5, fontWeight: 700 }}>{x.code}</span>
-                <div style={{ flex: 1, height: 9, background: "#eef2f8", borderRadius: 20, overflow: "hidden" }}>
-                  <div style={{ width: Math.round((x.n / bMax) * 100) + "%", height: "100%", background: "#2F6BFF" }} />
-                </div>
-                <span className="num" style={{ width: 30, textAlign: "left", fontWeight: 700, color: "var(--muted)" }}>{x.n}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("recentAct")}</h3></div>
-          <div style={{ marginTop: 8 }}>
-            {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
-            {((logRes.data as any[]) || []).map((l, idx) => (
-              <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-                <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{l.action}{l.detail ? ` — ${l.detail}` : ""}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                    {l.customer_id ? (cName.get(l.customer_id) || "") + " · " : ""}{pName.get(l.actor_id) || ""}
-                  </div>
+      {/* ===== آخر النشاطات ===== */}
+      <div className="card" style={{ padding: 18, marginTop: 16 }}>
+        <div className="card-h"><h3>{tr("recentAct")}</h3></div>
+        <div style={{ marginTop: 8 }}>
+          {((logRes.data as any[]) || []).length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noActivity")}</div>}
+          {((logRes.data as any[]) || []).map((l, idx) => (
+            <div key={idx} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+              <span style={{ marginTop: 5, width: 7, height: 7, borderRadius: "50%", background: "#18A957", flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: "var(--ink)" }}>{l.action}{l.detail ? ` — ${l.detail}` : ""}</div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                  {l.customer_id ? (cName.get(l.customer_id) || "") + " · " : ""}{pName.get(l.actor_id) || ""}
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
