@@ -211,7 +211,7 @@ export default async function Dashboard() {
       {/* ===== KPIs عامة مكثّفة ===== */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
         {generalKpis.map((k) => (
-          <div key={k.label} className="card" style={{ padding: 16 }}>
+          <div key={k.label} className="card rise" style={{ padding: 16 }}>
             <div style={{ color: "var(--muted)", fontSize: 12.5, marginBottom: 4 }}><span style={{ marginInlineEnd: 5 }}>{(k as any).emoji}</span>{k.label}</div>
             <div style={{ fontSize: 26, fontWeight: 800, color: k.color }}>
               {typeof k.value === "number" ? <CountUp value={k.value} suffix={(k as any).suffix || ""} /> : k.value}

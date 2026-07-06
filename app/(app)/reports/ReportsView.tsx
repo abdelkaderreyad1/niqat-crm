@@ -72,7 +72,7 @@ export default function ReportsView({
           {/* منحنى التحصيل الشهري */}
           <div className="card" style={{ padding: 18, marginBottom: 16 }}>
             <div className="card-h"><h3>{tr("collectionTrend")}</h3></div>
-            <div style={{ marginTop: 14 }}><AreaChart points={monthly} color="#18A957" height={120} /></div>
+            <div style={{ marginTop: 14 }}><AreaChart points={monthly} color="#18A957" height={180} /></div>
           </div>
 
           {/* نسبة التحصيل */}

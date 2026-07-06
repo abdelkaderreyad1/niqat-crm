@@ -114,7 +114,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none}input,sele
 .kpi .sub{font-size:12px;margin-top:4px;font-weight:600}.up{color:var(--green)}.down{color:var(--red)}
 .kpi .ic{position:absolute;inset-inline-end:14px;top:14px;width:34px;height:34px;border-radius:9px;display:grid;place-items:center}.kpi .ic svg{width:18px;height:18px}
 .grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);transition:transform .2s cubic-bezier(.4,0,.2,1),box-shadow .2s ease,border-color .2s ease}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(16,27,48,.1),0 2px 8px rgba(16,27,48,.06)}
+[data-theme="dark"] .card:hover{box-shadow:0 8px 28px rgba(0,0,0,.5)}
 .card-h{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.card-h h3{font-size:15.5px;font-weight:800;color:var(--ink)}.card-b{padding:18px}
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .toolbar select{height:38px;border:1px solid var(--line);border-radius:9px;padding:0 12px;background:#fff;font-size:13px;color:var(--text)}
@@ -264,6 +266,9 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .tab-pane{animation:fadeIn .2s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .fade-in{animation:fadeIn .4s ease both}
+@keyframes riseIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.rise{animation:riseIn .5s cubic-bezier(.22,1,.36,1) both}
+.rise:nth-child(1){animation-delay:.02s}.rise:nth-child(2){animation-delay:.08s}.rise:nth-child(3){animation-delay:.14s}.rise:nth-child(4){animation-delay:.2s}.rise:nth-child(5){animation-delay:.26s}.rise:nth-child(6){animation-delay:.32s}
 .drawer-footer{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--line);background:rgba(255,255,255,.72);backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);position:sticky;bottom:0;z-index:5}
 [data-theme="dark"] .drawer-footer{background:rgba(19,28,43,.82);backdrop-filter:blur(16px) saturate(180%)}
 

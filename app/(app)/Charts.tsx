@@ -84,39 +84,88 @@ export function BarRow({ label, value, max, color, prefix = "" }: {
 }
 
 // ===== رسم خطي (sparkline/area) SVG =====
-export function AreaChart({ points, color = "#F08A24", height = 90 }: {
+export function AreaChart({ points, color = "#F08A24", height = 160 }: {
   points: { label: string; value: number }[]; color?: string; height?: number;
 }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const t = setTimeout(() => setMounted(true), 50); return () => clearTimeout(t); }, []);
   if (!points.length) return null;
-  const w = 100, h = height;
+
+  const W = 600, H = height;
+  const padL = 44, padR = 14, padT = 14, padB = 26;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
   const max = Math.max(...points.map((p) => p.value), 1);
-  const step = points.length > 1 ? w / (points.length - 1) : w;
-  const coords = points.map((p, i) => [i * step, h - (p.value / max) * (h - 20) - 6]);
-  const line = coords.map((c, i) => (i === 0 ? `M${c[0]},${c[1]}` : `L${c[0]},${c[1]}`)).join(" ");
-  const area = `${line} L${w},${h} L0,${h} Z`;
+  // خطوات المحور الرأسي (4 خطوط)
+  const ticks = 4;
+  const niceMax = Math.ceil(max / ticks) * ticks || ticks;
+  const step = points.length > 1 ? plotW / (points.length - 1) : plotW;
+  const X = (i: number) => padL + i * step;
+  const Y = (v: number) => padT + plotH - (v / niceMax) * plotH;
+  const pts = points.map((p, i) => [X(i), Y(p.value)] as [number, number]);
+
+  // منحنى ناعم (Catmull-Rom → Bézier)
+  function smoothPath(p: [number, number][]) {
+    if (p.length < 2) return p.length ? `M${p[0][0]},${p[0][1]}` : "";
+    let d = `M${p[0][0]},${p[0][1]}`;
+    for (let i = 0; i < p.length - 1; i++) {
+      const p0 = p[i - 1] || p[i];
+      const p1 = p[i];
+      const p2 = p[i + 1];
+      const p3 = p[i + 2] || p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+    }
+    return d;
+  }
+  const line = smoothPath(pts);
+  const area = `${line} L${pts[pts.length - 1][0]},${padT + plotH} L${pts[0][0]},${padT + plotH} Z`;
+  const gid = "areaG" + color.replace("#", "");
+
   return (
-    <div style={{ width: "100%" }}>
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height }}>
-        <defs>
-          <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#areaG)" style={{ opacity: mounted ? 1 : 0, transition: "opacity 1s" }} />
-        <path d={line} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke"
-          strokeDasharray={mounted ? "none" : "1000"} strokeDashoffset={mounted ? 0 : 1000}
-          style={{ transition: "stroke-dashoffset 1.2s ease" }} />
-        {coords.map((c, i) => (
-          <circle key={i} cx={c[0]} cy={c[1]} r={2.5} fill={color} vectorEffect="non-scaling-stroke"
-            style={{ opacity: mounted ? 1 : 0, transition: `opacity .4s ${0.5 + i * 0.08}s` }} />
-        ))}
-      </svg>
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
-        {points.map((p, i) => <span key={i} style={{ fontSize: 10, color: "var(--muted)" }}>{p.label}</span>)}
-      </div>
-    </div>
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }}>
+      <defs>
+        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* خطوط الشبكة الأفقية + قيم المحور */}
+      {Array.from({ length: ticks + 1 }).map((_, i) => {
+        const v = (niceMax / ticks) * (ticks - i);
+        const y = padT + (plotH / ticks) * i;
+        return (
+          <g key={i}>
+            <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--line)" strokeWidth={1} opacity={0.5} />
+            <text x={padL - 8} y={y + 3} textAnchor="end" style={{ fontSize: 10, fill: "var(--muted)" }}>
+              {v >= 1000 ? Math.round(v / 1000) + "k" : Math.round(v)}
+            </text>
+          </g>
+        );
+      })}
+      {/* التعبئة */}
+      <path d={area} fill={`url(#${gid})`} style={{ opacity: mounted ? 1 : 0, transition: "opacity .9s ease" }} />
+      {/* الخط */}
+      <path d={line} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+        pathLength={1} strokeDasharray={1} strokeDashoffset={mounted ? 0 : 1}
+        style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(.4,0,.2,1)" }} />
+      {/* النقاط + القيم فوقها */}
+      {pts.map((c, i) => (
+        <g key={i} style={{ opacity: mounted ? 1 : 0, transition: `opacity .4s ${0.4 + i * 0.09}s` }}>
+          <circle cx={c[0]} cy={c[1]} r={3.5} fill="var(--surface)" stroke={color} strokeWidth={2} />
+          {points[i].value > 0 && (
+            <text x={c[0]} y={c[1] - 9} textAnchor="middle" style={{ fontSize: 10, fontWeight: 700, fill: color }}>
+              {points[i].value >= 1000 ? (points[i].value / 1000).toFixed(1) + "k" : points[i].value}
+            </text>
+          )}
+        </g>
+      ))}
+      {/* أسماء الشهور */}
+      {points.map((p, i) => (
+        <text key={i} x={X(i)} y={H - 8} textAnchor="middle" style={{ fontSize: 10.5, fill: "var(--muted)" }}>{p.label}</text>
+      ))}
+    </svg>
   );
 }
