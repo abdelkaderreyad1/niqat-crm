@@ -139,11 +139,18 @@ export default async function Dashboard() {
   // تحويلات النهاردة الفعلية (أقساط + إضافات مدفوعة) — جنيه ودولار منفصلين
   let todayEgp = 0, todayUsd = 0, todayCount = 0;
   if (canDailySales) {
-    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
-    const iso = startToday.toISOString();
+    // بداية ونهاية اليوم بتوقيت القاهرة (UTC+2) — عشان اليوم يبدأ 12:00 ص وينتهي 11:59 م بتوقيت مصر
+    const CAIRO_OFFSET_MS = 2 * 3600 * 1000; // +2 ساعة
+    const nowCairo = new Date(Date.now() + CAIRO_OFFSET_MS);
+    const y = nowCairo.getUTCFullYear(), m = nowCairo.getUTCMonth(), d = nowCairo.getUTCDate();
+    // منتصف ليل القاهرة = 00:00 القاهرة → نطرح الأوفست نرجّعها UTC للاستعلام
+    const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) - CAIRO_OFFSET_MS);
+    const endUtc = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - CAIRO_OFFSET_MS);
+    const iso = startUtc.toISOString();
+    const isoEnd = endUtc.toISOString();
     const [instToday, addonToday] = await Promise.all([
-      supabase.from("installments").select("amount,currency,paid_at,status").gte("paid_at", iso),
-      supabase.from("customer_addons").select("amount,currency,paid,created_at").eq("paid", true).gte("created_at", iso),
+      supabase.from("installments").select("amount,currency,paid_at,status").gte("paid_at", iso).lte("paid_at", isoEnd),
+      supabase.from("customer_addons").select("amount,currency,paid,created_at").eq("paid", true).gte("created_at", iso).lte("created_at", isoEnd),
     ]);
     for (const i of (instToday.data || []) as any[]) {
       if (i.status === "paid" || i.paid_at) {
@@ -182,11 +189,9 @@ export default async function Dashboard() {
                 <div style={{ fontSize: 30, fontWeight: 800, color: "#18A957" }}>
                   <CountUp value={todayEgp} /> <span style={{ fontSize: 15 }}>{tr("egpShort")}</span>
                 </div>
-                {todayUsd > 0 && (
-                  <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 20, fontSize: 30, fontWeight: 800, color: "#0FA3A3" }}>
-                    $<CountUp value={todayUsd} />
-                  </div>
-                )}
+                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 20, fontSize: 30, fontWeight: 800, color: "#0FA3A3" }}>
+                  $<CountUp value={todayUsd} />
+                </div>
               </div>
             </div>
           )}
