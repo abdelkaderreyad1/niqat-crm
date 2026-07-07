@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchDoneBtn from "./batches/BatchDoneBtn";
+import BatchesByDiploma from "./BatchesByDiploma";
 import { CountUp, Donut, BarRow } from "./Charts";
 
 export const dynamic = "force-dynamic";
@@ -127,6 +128,26 @@ export default async function Dashboard() {
   // by batch
   const byBatch = batches.map((b) => ({ code: b.code, n: enrollments.filter((e) => e.batch_id === b.id).length })).filter((x) => x.n).sort((a, b) => b.n - a.n);
   const bMax = Math.max(...byBatch.map((x) => x.n), 1);
+
+  // الباتشات مجمّعة تحت كل دبلومة (احترافي + قابل للنمو)
+  const batchMeta = new Map(batches.map((b) => [b.id, { code: b.code, status: b.status }]));
+  // لكل دبلومة: عدد عملائها الكلي + باتشاتها (كل باتش وعدد عملائه في الدبلومة دي)
+  const diploMap: Record<string, { name: string; total: number; batches: Record<string, number> }> = {};
+  for (const e of enrollments) {
+    if (!e.diploma_id) continue;
+    const dn = dName.get(e.diploma_id) || "—";
+    if (!diploMap[e.diploma_id]) diploMap[e.diploma_id] = { name: dn, total: 0, batches: {} };
+    diploMap[e.diploma_id].total++;
+    const bcode = e.batch_id ? (batchMeta.get(e.batch_id)?.code || "—") : "—";
+    diploMap[e.diploma_id].batches[bcode] = (diploMap[e.diploma_id].batches[bcode] || 0) + 1;
+  }
+  const batchesByDiploma = Object.values(diploMap)
+    .map((d) => ({
+      name: d.name,
+      total: d.total,
+      batches: Object.entries(d.batches).map(([code, n]) => ({ code, n })).sort((a, b) => b.n - a.n),
+    }))
+    .sort((a, b) => b.total - a.total);
 
   const generalKpis = [
     { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥" },
@@ -327,13 +348,10 @@ export default async function Dashboard() {
         </div>
 
         <div className="card" style={{ padding: 18 }}>
-          <div className="card-h"><h3>{tr("byBatch")}</h3></div>
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-            {byBatch.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>—</div>}
-            {byBatch.map((x) => (
-              <BarRow key={x.code} label={x.code} value={x.n} max={bMax} color="#0FA3A3" />
-            ))}
+          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3>{tr("byBatch")}</h3><span className="chip">{batchesByDiploma.length}</span>
           </div>
+          <BatchesByDiploma groups={batchesByDiploma} />
         </div>
       </div>
 
