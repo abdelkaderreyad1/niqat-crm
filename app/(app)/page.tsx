@@ -140,12 +140,24 @@ export default async function Dashboard() {
   let todayEgp = 0, todayUsd = 0, todayCount = 0;
   if (canDailySales) {
     // بداية ونهاية اليوم بتوقيت القاهرة (UTC+2) — عشان اليوم يبدأ 12:00 ص وينتهي 11:59 م بتوقيت مصر
-    const CAIRO_OFFSET_MS = 2 * 3600 * 1000; // +2 ساعة
-    const nowCairo = new Date(Date.now() + CAIRO_OFFSET_MS);
+    // بداية/نهاية اليوم بتوقيت مصر (Africa/Cairo) — يتعامل مع الصيفي/الشتوي تلقائياً
+    // نحسب أوفست مصر الحالي ديناميكياً من الـ IANA timezone
+    const cairoOffsetMs = (() => {
+      const now = new Date();
+      // نجيب الوقت كما يظهر في القاهرة، ونقارنه بالـ UTC عشان نطلّع الفرق
+      const cairoParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+      }).formatToParts(now).reduce((acc: any, p) => { acc[p.type] = p.value; return acc; }, {});
+      const asUtc = Date.UTC(+cairoParts.year, +cairoParts.month - 1, +cairoParts.day,
+        +cairoParts.hour === 24 ? 0 : +cairoParts.hour, +cairoParts.minute, +cairoParts.second);
+      return asUtc - now.getTime();
+    })();
+    const nowCairo = new Date(Date.now() + cairoOffsetMs);
     const y = nowCairo.getUTCFullYear(), m = nowCairo.getUTCMonth(), d = nowCairo.getUTCDate();
-    // منتصف ليل القاهرة = 00:00 القاهرة → نطرح الأوفست نرجّعها UTC للاستعلام
-    const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) - CAIRO_OFFSET_MS);
-    const endUtc = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - CAIRO_OFFSET_MS);
+    // منتصف ليل القاهرة → نطرح الأوفست نرجّعها UTC للاستعلام
+    const startUtc = new Date(Date.UTC(y, m, d, 0, 0, 0) - cairoOffsetMs);
+    const endUtc = new Date(Date.UTC(y, m, d, 23, 59, 59, 999) - cairoOffsetMs);
     const iso = startUtc.toISOString();
     const isoEnd = endUtc.toISOString();
     const [instToday, addonToday] = await Promise.all([
