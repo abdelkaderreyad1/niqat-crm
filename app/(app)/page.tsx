@@ -14,6 +14,7 @@ const STAGES = [
   { key: "quote", labelKey: "dashStageQuote", color: "#E6A700" },
   { key: "negotiation", labelKey: "dashStageNegotiation", color: "#F08A24" },
   { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
+  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
   { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
@@ -282,21 +283,30 @@ export default async function Dashboard() {
           <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <h3>{tr("schedule")}</h3><span className="chip">{batches.length}</span>
           </div>
-          <div style={{ marginTop: 8, maxHeight: 360, overflowY: "auto" }}>
+          <div style={{ marginTop: 8 }}>
             {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
-            {batches.map((b) => {
-              const st = b.status === "closed" ? { l: tr("endedLabel"), c: "#94A2BB" } : b.status === "full" ? { l: tr("fullLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
-              const end = endMap.get(b.id);
-              const range = (b.start_date || "—") + (end ? " → " + end : "");
-              return (
-                <div key={b.id} className="sch">
-                  <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
-                  <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
-                  {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
-                  <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
-                </div>
-              );
-            })}
+            {batches
+              .filter((b) => b.status !== "closed")
+              .sort((a, b) => String(a.start_date || "9999").localeCompare(String(b.start_date || "9999")))
+              .slice(0, 6)
+              .map((b) => {
+                const st = b.status === "full" ? { l: tr("fullLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
+                const end = endMap.get(b.id);
+                const range = (b.start_date ? String(b.start_date).slice(0, 10) : "—") + (end ? " → " + String(end).slice(0, 10) : "");
+                return (
+                  <div key={b.id} className="sch">
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: st.c, flexShrink: 0, marginInlineEnd: 8 }} />
+                    <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
+                    <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
+                    {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
+                    <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
+                  </div>
+                );
+              })}
+            <Link href="/batches" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12, padding: "9px 0", borderRadius: 10, border: "1px solid var(--line)", color: "var(--brand)", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
+              {tr("viewAll")} ({batches.length})
+              <span style={{ fontSize: 15 }}>←</span>
+            </Link>
           </div>
         </div>
       </div>

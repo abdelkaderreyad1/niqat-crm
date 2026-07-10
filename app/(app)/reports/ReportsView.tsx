@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import { CountUp, Donut, BarRow, AreaChart } from "../Charts";
 import ExportButton from "../ExportButton";
+import AffiliateReport from "./AffiliateReport";
 
 type StageRow = { key: string; label: string; color: string; n: number };
 type AffRow = { code: string; name: string; discount: number | null; customers: number; enrolled: number; interested: number; refunded: number };
@@ -13,12 +14,16 @@ type Monthly = { label: string; value: number };
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd,
   stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma,
+  batchOpts, diplomaOpts, affiliates,
 }: {
   canFinance: boolean;
   agreed: number; collected: number; overdueN: number; collectedUsd: number; agreedUsd: number;
   stageRows: StageRow[]; totalCust: number; affRows: AffRow[];
   salesRows: SalesRow[]; supportRows: SupportRow[]; monthly: Monthly[];
   byDiploma: { label: string; value: number; color: string }[];
+  batchOpts: { v: string; label: string }[];
+  diplomaOpts: { v: string; label: string }[];
+  affiliates: { code: string; name: string; rate?: number; discount?: number }[];
 }) {
   const tr = useT();
   const TABS = [
@@ -202,41 +207,8 @@ export default function ReportsView({
       {/* ===== تبويب الأفيلييت ===== */}
       {tab === "affiliate" && (
         <div className="fade-in">
-          <div className="card" style={{ padding: 18 }}>
-            <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3>{tr("affiliatesReport")}</h3>
-              <ExportButton filename="affiliates"
-                headers={[tr("code"), tr("affiliate"), tr("discountCol"), tr("customerCount"), tr("enrolledCol"), tr("interestedStill"), tr("refundWord")]}
-                rows={affRows.map((r) => [r.code, r.name, r.discount != null ? r.discount + "%" : "—", r.customers, r.enrolled, r.interested, r.refunded])} />
-            </div>
-            <div className="tbl-wrap" style={{ marginTop: 12 }}>
-              <table style={{ minWidth: 560 }}>
-                <thead><tr>
-                  <th className="text-start px-4 py-3 font-bold">{tr("code")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("affiliate")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("discountCol")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("customerCount")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("enrolledCol")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("interestedStill")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("refundWord")}</th>
-                </tr></thead>
-                <tbody>
-                  {affRows.length === 0 && <tr><td colSpan={7} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noAffiliatesYet")}</td></tr>}
-                  {affRows.map((r) => (
-                    <tr key={r.code} className="border-t border-line">
-                      <td className="px-4 py-3 font-bold text-brand">{r.code}</td>
-                      <td className="px-4 py-3" style={{ color: "var(--text)" }}>{r.name}</td>
-                      <td className="px-4 py-3 num">{r.discount != null ? r.discount + "%" : "—"}</td>
-                      <td className="px-4 py-3 num font-bold">{r.customers}</td>
-                      <td className="px-4 py-3 num font-bold text-green">{r.enrolled}</td>
-                      <td className="px-4 py-3 num font-bold" style={{ color: "#E6A700" }}>{r.interested}</td>
-                      <td className="px-4 py-3 num font-bold" style={{ color: "#E0483B" }}>{r.refunded}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <div className="page-h" style={{ marginBottom: 12 }}><div><h3 style={{ margin: 0 }}>{tr("affiliateReportTitle")}</h3></div></div>
+          <AffiliateReport affRows={affRows} batches={batchOpts} diplomas={diplomaOpts} affiliates={affiliates} canFinance={canFinance} />
         </div>
       )}
     </div>

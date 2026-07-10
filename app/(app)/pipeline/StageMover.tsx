@@ -11,6 +11,7 @@ const STAGES = [
   { key: "quote", labelKey: "dashStageQuote" },
   { key: "negotiation", labelKey: "dashStageNegotiation" },
   { key: "enrolled", labelKey: "dashStageEnrolled" },
+  { key: "onhold", labelKey: "dashStageOnhold" },
   { key: "lost", labelKey: "dashStageLost" },
 ];
 

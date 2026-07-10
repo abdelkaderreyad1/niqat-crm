@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import AddBatch from "./AddBatch";
-import BatchActions from "./BatchActions";
+import BatchesView from "./BatchesView";
 import EmptyState from "../EmptyState";
 export const dynamic = "force-dynamic";
 
@@ -44,6 +44,28 @@ export default async function Batches() {
     if (b) cnt.set(b, (cnt.get(b) || 0) + 1);
   }
 
+  const viewData = (batches || []).map((b) => ({
+    id: b.id as string,
+    code: (b.code as string) || "",
+    diploma: dMap.get(b.id as string) || "",
+    diploma_id: "",
+    status: (b.status as string) || "open",
+    start_date: (b.start_date as string) || null,
+    end_date: (b.end_date as string) || null,
+    capacity: (b.capacity as number) ?? null,
+    enrolled: cnt.get(b.id as string) || 0,
+    price: ((b as any).price as number) ?? null,
+    currency: ((b as any).currency as string) || "EGP",
+    notes: (b.notes as string) || null,
+  }));
+  // ربط diploma_id لكل باتش (للفلترة)
+  if (!bd.error) for (const r of (bd.data as any[]) || []) {
+    const row = viewData.find((v) => v.id === r.id);
+    if (row && r.diploma_id) row.diploma_id = r.diploma_id;
+  }
+
+  const diplomaOpts = (allDips || []).map((d: any) => ({ v: d.id, label: d.name_ar }));
+
   return (
     <div>
       <div className="page-h">
@@ -53,52 +75,9 @@ export default async function Batches() {
         </div>
         {canManage && <AddBatch diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar }))} />}
       </div>
-      <div className="bgrid">
-        {(batches || []).map((b) => {
-          const seats = Number(b.capacity) || 0;
-          const en = cnt.get(b.id as string) || 0;
-          const pct = seats ? Math.min(100, Math.round((en / seats) * 100)) : 0;
-          const stt = b.status === "closed" ? { l: tr("batchEnded"), c: "#94A2BB" }
-            : b.status === "full" ? { l: tr("batchFull"), c: "#E0483B" }
-            : { l: tr("batchOpen"), c: "#18A957" };
-          return (
-            <div key={b.id as string} className="bcard">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-                <div>
-                  {dMap.get(b.id as string) && <div style={{ color: "var(--brand)", fontSize: 12.5, fontWeight: 700 }}>{dMap.get(b.id as string)}</div>}
-                  <div className="bcode">{b.code}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12.5 }}>{b.notes || ""}</div>
-                </div>
-                <span className="stg" style={{ background: stt.c + "1a", color: stt.c }}>{stt.l}</span>
-              </div>
-              <div style={{ margin: "14px 0 6px", display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
-                <span style={{ color: "var(--muted)" }}>{tr("seats")}</span>
-                <b className="num">{en}/{seats || "—"}</b>
-              </div>
-              <div className="bbar"><i style={{ width: pct + "%" }} /></div>
-              <div style={{ marginTop: 14 }}>
-                <div className="brow"><span>{tr("startDate")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
-                <div className="brow"><span>{tr("endDate")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
-                {Number((b as any).price) > 0 && (
-                  <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number((b as any).price))} {(b as any).currency === "USD" ? "$" : tr("egpShort")}</b></div>
-                )}
-              </div>
-              {canManage && (
-                <BatchActions
-                  batch={{
-                    id: b.id as string, code: b.code as string, status: (b.status as string) || "open",
-                    start_date: (b.start_date as string) || null, end_date: (b.end_date as string) || null,
-                    capacity: (b.capacity as number) ?? null, notes: (b.notes as string) || null,
-                    price: ((b as any).price as number) ?? null, currency: ((b as any).currency as string) || "EGP",
-                  }}
-                  enrolledCount={en}
-                />
-              )}
-            </div>
-          );
-        })}
-        {(!batches || batches.length === 0) && <EmptyState text={tr("funNoBatches")} />}
-      </div>
+      {(!batches || batches.length === 0)
+        ? <EmptyState text={tr("funNoBatches")} />
+        : <BatchesView batches={viewData} canManage={canManage} diplomaOpts={diplomaOpts} />}
     </div>
   );
 }

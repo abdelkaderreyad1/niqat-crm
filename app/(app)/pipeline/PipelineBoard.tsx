@@ -23,6 +23,7 @@ const STAGES = [
   { key: "quote", labelKey: "dashStageQuote", color: "#E6A700" },
   { key: "negotiation", labelKey: "dashStageNegotiation", color: "#F08A24" },
   { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
+  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
   { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
 ];
 

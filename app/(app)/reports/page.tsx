@@ -27,13 +27,14 @@ export default async function Reports() {
   }
   const canFinance = !!prof.can_see_finance;
 
-  const [custRes, enrRes, affRes, profRes, dipRes, refundRes] = await Promise.all([
+  const [custRes, enrRes, affRes, profRes, dipRes, refundRes, batchRes] = await Promise.all([
     supabase.from("customers").select("id,stage,affiliate_code,owner_id").eq("deleted", false).eq("archived", false),
     supabase.from("enrollments").select("customer_id,diploma_id"),
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
     supabase.from("profiles").select("id,full_name,team"),
     supabase.from("diplomas").select("id,name_ar"),
     supabase.from("refunds").select("customer_id"),
+    supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
   ]);
 
   const custs = (custRes.data as any[]) || [];
@@ -160,6 +161,10 @@ export default async function Reports() {
     interested: Math.max(0, v.customers - v.enrolled), refunded: refundCodeCount[code] || 0,
   })).sort((a, b) => b.customers - a.customers);
 
+  const batchOpts = ((batchRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code }));
+  const diplomaOpts = diplomas.map((d: any) => ({ v: d.id, label: d.name_ar }));
+  const affiliatesList = affList.map((a: any) => ({ code: (a.code || "").toUpperCase(), name: a.name || "—", rate: Number(a.rate) || 0, discount: Number(a.discount) || 0 }));
+
   return (
     <ReportsView
       canFinance={canFinance}
@@ -167,6 +172,7 @@ export default async function Reports() {
       agreedUsd={Math.round(agreedUsd)} collectedUsd={Math.round(collectedUsd)}
       stageRows={stageRows} totalCust={totalCust} affRows={affRows}
       salesRows={salesRows} supportRows={supportRows} monthly={monthly} byDiploma={byDiploma}
+      batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
     />
   );
 }

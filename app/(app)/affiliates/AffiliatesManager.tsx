@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Aff = { name: string; code: string; discount: number };
+type Aff = { name: string; code: string; discount: number; rate?: number };
 
 export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
   const tr = useT();
@@ -14,6 +14,7 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [disc, setDisc] = useState("");
+  const [rate, setRate] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -31,13 +32,18 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
     if (!c) return alert(tr("enterCode"));
     if (list.some((a) => a.code.toUpperCase() === c)) return alert(tr("codeAlreadyExists"));
     const d = Number(disc) || 0;
-    const next = [...list, { name: name.trim() || "—", code: c, discount: d }];
-    setList(next); setName(""); setCode(""); setDisc("");
+    const r = Number(rate) || 0;
+    const next = [...list, { name: name.trim() || "—", code: c, discount: d, rate: r }];
+    setList(next); setName(""); setCode(""); setDisc(""); setRate("");
     await persist(next);
   }
 
   function changeDiscount(i: number, v: string) {
     setList(list.map((a, idx) => (idx === i ? { ...a, discount: Number(v) || 0 } : a)));
+  }
+
+  function changeRate(i: number, v: string) {
+    setList(list.map((a, idx) => (idx === i ? { ...a, rate: Number(v) || 0 } : a)));
   }
 
   async function remove(i: number) {
@@ -57,6 +63,8 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
             value={code} onChange={(e) => setCode(e.target.value)} />
           <input className="inp num" style={{ width: 100 }} placeholder={tr("discountPct")}
             value={disc} onChange={(e) => setDisc(e.target.value)} />
+          <input className="inp num" style={{ width: 120 }} placeholder={tr("commissionPct")}
+            value={rate} onChange={(e) => setRate(e.target.value)} />
           <button onClick={add} disabled={busy} className="btn">{tr("add")}</button>
         </div>
       </div>
@@ -68,12 +76,13 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
               <th>{tr("code")}</th>
               <th>{tr("name")}</th>
               <th>{tr("discountPct")}</th>
+              <th>{tr("commissionPct")}</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {list.length === 0 && (
-              <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noCodesYet")}</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>{tr("noCodesYet")}</td></tr>
             )}
             {list.map((a, i) => (
               <tr key={a.code}>
@@ -82,6 +91,10 @@ export default function AffiliatesManager({ initial }: { initial: Aff[] }) {
                 <td>
                   <input className="inp num" style={{ width: 80, padding: "5px 8px" }}
                     value={a.discount} onChange={(e) => changeDiscount(i, e.target.value)} />
+                </td>
+                <td>
+                  <input className="inp num" style={{ width: 80, padding: "5px 8px" }}
+                    value={a.rate ?? 0} onChange={(e) => changeRate(i, e.target.value)} />
                 </td>
                 <td style={{ textAlign: "end" }}>
                   <button onClick={() => remove(i)} style={{ color: "var(--red)", fontSize: 12, fontWeight: 700, background: "none" }}>{tr("delete")}</button>
