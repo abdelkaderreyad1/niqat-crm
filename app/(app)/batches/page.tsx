@@ -15,13 +15,11 @@ export default async function Batches() {
     bFull,
     bd,
     { data: allDips },
-    { data: enr },
   ] = await Promise.all([
     supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
     supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency").order("created_at", { ascending: false }),
     supabase.from("batches").select("id,diploma_id"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
-    supabase.from("enrollments").select("batch_id"),
   ]);
   const canManage = !!meB?.can_manage_batches;
 
@@ -38,11 +36,14 @@ export default async function Batches() {
   const dipName = new Map((allDips || []).map((d: any) => [d.id, d.name_ar]));
   if (!bd.error) for (const r of (bd.data as any[]) || []) if (r.diploma_id) dMap.set(r.id, dipName.get(r.diploma_id) || "");
 
-  const cnt = new Map<string, number>();
-  for (const e of enr || []) {
-    const b = (e as any).batch_id as string;
-    if (b) cnt.set(b, (cnt.get(b) || 0) + 1);
-  }
+  // عدد المشتركين الفعلي لكل باتش (count مستقل يتجاوز حد الـ1000 صف)
+  const cntPairs = await Promise.all(
+    (batches || []).map((b: any) =>
+      supabase.from("enrollments").select("id", { count: "exact", head: true }).eq("batch_id", b.id)
+        .then((r) => [b.id as string, r.count || 0] as const)
+    )
+  );
+  const cnt = new Map<string, number>(cntPairs);
 
   const viewData = (batches || []).map((b) => ({
     id: b.id as string,
