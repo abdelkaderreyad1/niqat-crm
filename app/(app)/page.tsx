@@ -235,42 +235,44 @@ export default async function Dashboard() {
 
       {/* ===== شريط الفلوس: تحويلات اليوم + المالية ===== */}
       {(canDailySales || canFinance) && (
-        <div className="grid2" style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16, alignItems: "stretch" }}>
+          {canFinance && (
+            <div className="card" style={{ padding: 20, flex: "1.7 1 340px", display: "flex", flexDirection: "column" }}>
+              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 14, fontWeight: 700 }}>💰 {tr("financeOverview")}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, flex: 1 }}>
+                {[
+                  { badge: tr("egpShort"), pre: "", collected: egpCollected, due: egpDue, accent: "#0FA3A3" },
+                  { badge: "USD", pre: "$", collected: usdCollected, due: usdDue, accent: "#2F6BFF" },
+                ].map((c) => (
+                  <div key={c.badge} style={{ background: "rgba(127,127,127,0.06)", border: "1px solid var(--line)", borderRadius: 14, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <span style={{ alignSelf: "flex-start", fontSize: 11.5, fontWeight: 800, color: c.accent, background: c.accent + "1a", padding: "2px 10px", borderRadius: 20 }}>{c.pre}{c.badge}</span>
+                    <div>
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("revenue")}</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "#18A957", lineHeight: 1.1 }}>{c.pre}<CountUp value={c.collected} /></div>
+                    </div>
+                    <div style={{ borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("outstanding")}</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: "#E6A700", lineHeight: 1.1 }}>{c.pre}<CountUp value={c.due} /></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {canDailySales && (
-            <div className="card" style={{ padding: 20, background: "linear-gradient(135deg,#18A95712,#0FA3A312)", border: "1px solid #18A95733" }}>
+            <div className="card" style={{ padding: 20, flex: "1 1 240px", display: "flex", flexDirection: "column", background: "linear-gradient(135deg,#18A95712,#0FA3A312)", border: "1px solid #18A95733" }}>
               <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontWeight: 700 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("todayCollections")}</span>
                 {todayCount > 0 && <span className="chip" style={{ background: "#18A95722", color: "#18A957" }}>{todayCount}</span>}
               </div>
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", alignItems: "baseline" }}>
-                <div style={{ fontSize: 30, fontWeight: 800, color: "#18A957" }}>
-                  <CountUp value={todayEgp} /> <span style={{ fontSize: 15 }}>{tr("egpShort")}</span>
-                </div>
-                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 20, fontSize: 30, fontWeight: 800, color: "#0FA3A3" }}>
-                  $<CountUp value={todayUsd} />
-                </div>
-              </div>
-            </div>
-          )}
-          {canFinance && (
-            <div className="card" style={{ padding: 20 }}>
-              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 12, fontWeight: 700 }}>💰 {tr("financeOverview")}</div>
-              <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-                {/* جنيه */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
                 <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>{tr("egpShort")}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("revenue")}</div>
-                  <div style={{ fontSize: 21, fontWeight: 800, color: "#0FA3A3", marginBottom: 6 }}><CountUp value={egpCollected} /></div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("outstanding")}</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: "#E6A700" }}><CountUp value={egpDue} /></div>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>{tr("egpShort")}</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#18A957", lineHeight: 1 }}><CountUp value={todayEgp} /></div>
                 </div>
-                {/* دولار */}
-                <div style={{ borderInlineStart: "1px solid var(--line)", paddingInlineStart: 24 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>USD $</div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("revenue")}</div>
-                  <div style={{ fontSize: 21, fontWeight: 800, color: "#0FA3A3", marginBottom: 6 }}>$<CountUp value={usdCollected} /></div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{tr("outstanding")}</div>
-                  <div style={{ fontSize: 17, fontWeight: 800, color: "#E6A700" }}>$<CountUp value={usdDue} /></div>
+                <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+                  <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 2 }}>USD</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#0FA3A3", lineHeight: 1 }}>$<CountUp value={todayUsd} /></div>
                 </div>
               </div>
             </div>
