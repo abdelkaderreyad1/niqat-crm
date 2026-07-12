@@ -33,6 +33,21 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
 
+  // ===== أرصدة مستحقة لكل العملاء (دالة القاعدة — تتجاوز حد الصفحة) =====
+  const remMap = new Map<string, number>();
+  const curMap = new Map<string, string>();
+  const overdueSet = new Set<string>();
+  let balanceIds: string[] = [];
+  if (canFinance) {
+    const { data: outs } = await supabase.rpc("cust_outstanding");
+    for (const o of (outs as any[]) || []) {
+      remMap.set(o.customer_id, Number(o.remaining) || 0);
+      curMap.set(o.customer_id, o.currency || "EGP");
+      if (o.has_overdue) overdueSet.add(o.customer_id);
+    }
+    balanceIds = Array.from(remMap.keys());
+  }
+
   // العملاء: آخر 100 مسجّلين (الأحدث فوق) + العدد الفعلي الكامل من القاعدة (count exact)
   let cq = supabase.from("customers")
     .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id", { count: "exact" })
@@ -43,6 +58,10 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   if (f.owner === "none") cq = cq.is("owner_id", null);
   else if (f.owner) cq = cq.eq("owner_id", f.owner);
   if (f.company) cq = cq.eq("company", f.company);
+  if (f.pay && canFinance) {
+    const ids = f.pay === "over" ? Array.from(overdueSet) : balanceIds;
+    cq = cq.in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
+  }
 
   const page = Math.max(1, parseInt(f.page || "1", 10) || 1);
   const offset = (page - 1) * LIST_LIMIT;
@@ -78,31 +97,12 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     if (e.diploma_id) { const a = custDipIds.get(cid) || []; a.push(e.diploma_id); custDipIds.set(cid, a); }
   }
 
-  // الرصيد المتبقّي + المتأخر (للمالية) — للعملاء المعروضين فقط
-  const remMap = new Map<string, number>();
-  const overdueSet = new Set<string>();
-  const dueSet = new Set<string>();
-  if (canFinance) {
-    const enrToCust = new Map(enrollments.map((e) => [e.id, e.customer_id]));
-    const enrIds = enrollments.map((e) => e.id);
-    const { data: insts } = enrIds.length
-      ? await supabase.from("installments").select("enrollment_id,amount,paid_at,due_date,status").in("enrollment_id", enrIds)
-      : ({ data: [] } as any);
-    for (const i of (insts as any[]) || []) {
-      const cid = enrToCust.get(i.enrollment_id); if (!cid) continue;
-      const paid = !!i.paid_at || i.status === "paid";
-      if (!paid) {
-        remMap.set(cid, (remMap.get(cid) || 0) + (Number(i.amount) || 0));
-        if (i.due_date) { dueSet.add(cid); if (i.due_date < todayStr()) overdueSet.add(cid); }
-      }
-    }
-  }
+  // الرصيد المتبقّي + المتأخر: محسوب فوق من دالة cust_outstanding (كل العملاء)
 
   // فلاتر متقدّمة (على العملاء المعروضين): دبلومة / باتش / حالة الدفع
   if (f.dip) customers = customers.filter((c) => (custDipIds.get(c.id) || []).includes(f.dip!));
   if (f.batch) customers = customers.filter((c) => (custBatchIds.get(c.id) || []).includes(f.batch!));
-  if (f.pay && canFinance) customers = customers.filter((c) =>
-    f.pay === "bal" ? (remMap.get(c.id) || 0) > 0 : f.pay === "due" ? dueSet.has(c.id) : overdueSet.has(c.id));
+  // فلتر حالة الدفع اتطبّق على مستوى القاعدة فوق (cq.in) — يشمل كل العملاء مش المعروضين بس
 
   // العدد المعروض: الإجمالي الفعلي من القاعدة، أو عدد النتائج لما يكون فيه فلتر متقدّم
   const advanced = !!(f.dip || f.batch || f.pay);
@@ -141,7 +141,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     specialty: spName.get(c.specialty_id) || "",
     phone1: c.phone1 || "", phone2: c.phone2 || "", email: c.email || "", company: c.company || "",
     stage: tr((STAGES[c.stage] || STAGES.new).labelKey), owner: pName.get(c.owner_id) || tr("unassigned"),
-    ...(canFinance ? { remaining: money(remMap.get(c.id) || 0) } : {}),
+    ...(canFinance ? { remaining: money(remMap.get(c.id) || 0) + " " + (curMap.get(c.id) || "EGP") } : {}),
   }));
   const exportHeaders: [string, string][] = [
     ["name", tr("name")], ["diploma", tr("diplomas")], ["specialty", tr("specialty")], ["phone1", tr("phone1")], ["phone2", tr("phone2")],
@@ -212,7 +212,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
                   <td><span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span></td>
                   {canFinance && (
                     <td className="num" dir="ltr" style={{ fontWeight: 700 }}>
-                      {rem > 0 ? money(rem) + " " + tr("egpShort") : "—"}
+                      {rem > 0 ? (curMap.get(r.id) === "USD" ? "$" + money(rem) : money(rem) + " " + tr("egpShort")) : "—"}
                       {od && <span className="stg" style={{ background: "#FDECEA", color: "#E0483B", marginInlineStart: 6, fontSize: 10 }}>{tr("overdueTag")}</span>}
                     </td>
                   )}
