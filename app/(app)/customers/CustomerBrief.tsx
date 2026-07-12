@@ -18,6 +18,7 @@ type Data = {
   specialty: string; owner: string; source: string; created: string;
   diplomas: string[]; batches: string[];
   agreed: number; paid: number; remaining: number; nextDue: string;
+  transfers: string[];
 };
 
 export default function CustomerBrief({ customerId, canFinance }: { customerId: string; canFinance: boolean }) {
@@ -38,14 +39,16 @@ export default function CustomerBrief({ customerId, canFinance }: { customerId: 
       if (error) throw error;
       const cc = (c || {}) as any;
 
-      const [spRes, ownRes, enrRes] = await Promise.all([
+      const [spRes, ownRes, enrRes, trRes] = await Promise.all([
         cc.specialty_id ? supabase.from("specialties").select("name_ar").eq("id", cc.specialty_id).maybeSingle() : Promise.resolve({ data: null }),
         cc.owner_id ? supabase.from("profiles").select("full_name").eq("id", cc.owner_id).maybeSingle() : Promise.resolve({ data: null }),
         supabase.from("enrollments").select("id, diplomas(name_ar), batches(code)").eq("customer_id", customerId),
+        supabase.from("audit_log").select("detail,at").eq("customer_id", customerId).eq("action", "batch_transfer").order("at", { ascending: false }),
       ]);
       const enrList = ((enrRes as any).data as any[]) || [];
       const diplomas = Array.from(new Set(enrList.map((e) => e.diplomas?.name_ar).filter(Boolean)));
       const batches = Array.from(new Set(enrList.map((e) => e.batches?.code).filter(Boolean)));
+      const transfers = (((trRes as any).data as any[]) || []).map((r) => String(r.detail || "").trim()).filter(Boolean);
 
       let agreed = 0, paid = 0, remaining = 0, nextDue = "";
       if (canFinance && enrList.length) {
@@ -67,7 +70,7 @@ export default function CustomerBrief({ customerId, canFinance }: { customerId: 
         stage: cc.stage || "new", specialty: (spRes as any).data?.name_ar || "",
         owner: (ownRes as any).data?.full_name || "", source: cc.source || "",
         created: cc.created_at ? String(cc.created_at).slice(0, 10) : "",
-        diplomas, batches, agreed, paid, remaining, nextDue,
+        diplomas, batches, agreed, paid, remaining, nextDue, transfers,
       });
     } catch { setErr(true); }
     setLoading(false);
@@ -118,6 +121,17 @@ export default function CustomerBrief({ customerId, canFinance }: { customerId: 
                 <Row label={t("owner")} value={data.owner || t("unassigned")} />
                 {data.source && <Row label={t("source")} value={data.source} />}
                 <Row label={t("createdDate")} value={data.created} />
+
+                {data.transfers.length > 0 && (
+                  <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: "rgba(240,138,36,.1)", border: "1px solid rgba(240,138,36,.35)" }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#C56A12", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>🔄</span>{t("auditBatchTransfer")}
+                    </div>
+                    {data.transfers.map((trLine, i) => (
+                      <div key={i} style={{ fontSize: 12.5, color: "var(--ink)", padding: "3px 0", lineHeight: 1.5 }}>{trLine}</div>
+                    ))}
+                  </div>
+                )}
 
                 {canFinance && data.agreed > 0 && (
                   <div style={{ marginTop: 10, padding: 12, borderRadius: 10, background: "var(--muted-soft)" }}>
