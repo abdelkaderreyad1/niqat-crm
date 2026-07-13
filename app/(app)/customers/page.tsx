@@ -74,39 +74,63 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     }
   }
 
-  // العملاء: آخر 100 مسجّلين (الأحدث فوق) + العدد الفعلي الكامل من القاعدة (count exact)
-  let cq = supabase.from("customers")
-    .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id", { count: "exact" })
-    .eq("deleted", false);
-  if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
-  if (f.stage) cq = cq.eq("stage", f.stage);
-  if (f.spec) cq = cq.eq("specialty_id", f.spec);
-  if (f.owner === "none") cq = cq.is("owner_id", null);
-  else if (f.owner) cq = cq.eq("owner_id", f.owner);
-  if (f.company) cq = cq.eq("company", f.company);
-  if (f.pay && canFinance) {
-    // bal = عليه متبقّي · due = عليه قسط بتاريخ · overdue/over = متأخر
-    const set = (f.pay === "overdue" || f.pay === "over") ? payOverdueSet
-      : f.pay === "due" ? payDueSet
-      : payBalanceSet;
-    const ids = Array.from(set);
-    cq = cq.in("id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
-  }
+  // فلتر الدفع: بنحسبه بمجموعة IDs — منجيبش كلهم في .in() واحد (URL بيطول ويفشل)
+  const payActive = !!(f.pay && canFinance);
+  const payIds = payActive
+    ? Array.from((f.pay === "overdue" || f.pay === "over") ? payOverdueSet
+        : f.pay === "due" ? payDueSet : payBalanceSet)
+    : [];
 
   const page = Math.max(1, parseInt(f.page || "1", 10) || 1);
   const offset = (page - 1) * LIST_LIMIT;
 
-  // جلب متوازي
-  const [custRes, profRes, dipRes, spRes, btRes] = await Promise.all([
-    cq.order("created_at", { ascending: false }).range(offset, offset + LIST_LIMIT - 1),
+  // البيانات المساعدة (صغيرة)
+  const [profRes, dipRes, spRes, btRes] = await Promise.all([
     supabase.from("profiles").select("id,full_name"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
   ]);
 
-  let customers = (custRes.data as any[]) || [];
-  const totalCount = (custRes as any).count ?? customers.length;
+  let customers: any[] = [];
+  let totalCount = 0;
+  if (payActive) {
+    // جلب العملاء المطابقين على دفعات (≤ 100 id للـ URL) + باقي الفلاتر، ثم ترتيب وتقسيم صفحات في الـ JS
+    if (payIds.length) {
+      const CH = 100;
+      let all: any[] = [];
+      for (let i = 0; i < payIds.length; i += CH) {
+        let sub = supabase.from("customers")
+          .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id,created_at")
+          .eq("deleted", false).in("id", payIds.slice(i, i + CH));
+        if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
+        if (f.stage) sub = sub.eq("stage", f.stage);
+        if (f.spec) sub = sub.eq("specialty_id", f.spec);
+        if (f.owner === "none") sub = sub.is("owner_id", null);
+        else if (f.owner) sub = sub.eq("owner_id", f.owner);
+        if (f.company) sub = sub.eq("company", f.company);
+        const { data } = await sub;
+        all = all.concat((data as any[]) || []);
+      }
+      all.sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+      totalCount = all.length;
+      customers = all.slice(offset, offset + LIST_LIMIT);
+    }
+  } else {
+    let cq = supabase.from("customers")
+      .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id", { count: "exact" })
+      .eq("deleted", false);
+    if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
+    if (f.stage) cq = cq.eq("stage", f.stage);
+    if (f.spec) cq = cq.eq("specialty_id", f.spec);
+    if (f.owner === "none") cq = cq.is("owner_id", null);
+    else if (f.owner) cq = cq.eq("owner_id", f.owner);
+    if (f.company) cq = cq.eq("company", f.company);
+    const custRes = await cq.order("created_at", { ascending: false }).range(offset, offset + LIST_LIMIT - 1);
+    customers = (custRes.data as any[]) || [];
+    totalCount = (custRes as any).count ?? customers.length;
+  }
+
   const custIds = customers.map((c) => c.id);
   const enrRes = custIds.length
     ? await supabase.from("enrollments").select("id,customer_id,diploma_id,batch_id, diplomas(name_ar), batches(code)").in("customer_id", custIds)
@@ -194,7 +218,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
 
   // قوائم الفلاتر
   const owners = Array.from(new Set(((profRes.data as any[]) || []).map((p) => p.id))).map((id) => ({ v: id as string, label: pName.get(id) || "—" }));
-  const companies = Array.from(new Set(((custRes.data as any[]) || []).map((c) => c.company).filter(Boolean))).map((c) => ({ v: c as string, label: c as string }));
+  const companies = Array.from(new Set(customers.map((c) => c.company).filter(Boolean))).map((c) => ({ v: c as string, label: c as string }));
   const dipOpts = ((dipRes.data as any[]) || []).map((d) => ({ v: d.id, label: d.name_ar }));
   const spOpts = ((spRes.data as any[]) || []).map((s) => ({ v: s.id, label: s.name_ar }));
   const btOpts = ((btRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code }));
