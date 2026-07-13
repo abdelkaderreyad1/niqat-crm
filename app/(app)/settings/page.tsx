@@ -42,33 +42,40 @@ export default async function Settings() {
   const tablesMissing = accred.missing || proj.missing || uni.missing || tplRes.error;
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div className="settings-page">
       <div className="page-h"><div><h1>{tr("settings")}</h1><p>{tr("settingsDesc")}</p></div></div>
 
       {tablesMissing && (
-        <div className="banner" style={{ marginBottom: 16 }}>
+        <div className="banner settings-anim" style={{ marginBottom: 16 }}>
           ⚠️ {tr("featuresUnderPrep")}
         </div>
       )}
 
-      <WatiCard initial={wati} />
-      <TemplatesManager initial={templates as any} />
+      <div className="settings-anim" style={{ animationDelay: ".04s" }}>
+        <WatiCard initial={wati} />
+      </div>
+      <div className="settings-anim" style={{ animationDelay: ".08s" }}>
+        <TemplatesManager initial={templates as any} />
+      </div>
 
-      <div className="card" style={{ padding: 18, marginBottom: 18 }}>
-        <div className="card-h"><h3>{tr("manageAff")}</h3></div>
+      <div className="card settings-anim" style={{ padding: 18, marginBottom: 18, animationDelay: ".12s" }}>
+        <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("manageAff")}</h3></div>
         <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 12px" }}>
           {tr("affiliatesManagerHint")}
         </p>
         <AffiliatesManager initial={affiliates} />
       </div>
 
-      <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
-      <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
-      <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
-      <OptionsList title={tr("manageAccreditations")} hint={tr("manageAccreditationsHint")} table="accreditations" labelCol="name" initial={accred.items} />
-      <OptionsList title={tr("manageProjects")} hint={tr("manageProjectsHint")} table="projects" labelCol="name" initial={proj.items} />
-      <OptionsList title={tr("manageLibraries")} hint={tr("manageLibrariesHint")} table="libraries" labelCol="name" initial={lib.items} />
-      <OptionsList title={tr("manageUniversities")} hint={tr("manageUniversitiesHint")} table="universities" labelCol="name" initial={uni.items} />
+      <div className="settings-sec">{tr("manageDiplomas")} · {tr("manageSpecialties")}</div>
+      <div className="settings-grid">
+        <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
+        <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
+        <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
+        <OptionsList title={tr("manageAccreditations")} hint={tr("manageAccreditationsHint")} table="accreditations" labelCol="name" initial={accred.items} />
+        <OptionsList title={tr("manageProjects")} hint={tr("manageProjectsHint")} table="projects" labelCol="name" initial={proj.items} />
+        <OptionsList title={tr("manageLibraries")} hint={tr("manageLibrariesHint")} table="libraries" labelCol="name" initial={lib.items} />
+        <OptionsList title={tr("manageUniversities")} hint={tr("manageUniversitiesHint")} table="universities" labelCol="name" initial={uni.items} />
+      </div>
     </div>
   );
 }

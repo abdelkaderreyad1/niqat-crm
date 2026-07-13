@@ -16,6 +16,23 @@ export default function TemplatesManager({ initial }: { initial: Tpl[] }) {
   const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [eName, setEName] = useState("");
+  const [eBody, setEBody] = useState("");
+
+  function startEdit(t: Tpl) { setEditId(t.id); setEName(t.name); setEBody(t.body); }
+  function cancelEdit() { setEditId(null); setEName(""); setEBody(""); }
+
+  async function saveEdit(t: Tpl) {
+    if (!eName.trim() || !eBody.trim()) { toast(tr("enterNameAndText")); return; }
+    const prev = list;
+    const next = { name: eName.trim(), body: eBody.trim() };
+    setList((s) => s.map((x) => (x.id === t.id ? { ...x, ...next } : x)));
+    cancelEdit();
+    const { error } = await supabase.from("wa_templates").update(next).eq("id", t.id);
+    if (error) { setList(prev); toast(tr("saveFailed")); return; }
+    toast(tr("updated"));
+  }
 
   async function add() {
     if (!name.trim() || !body.trim()) { toast(tr("enterNameAndText")); return; }
@@ -61,11 +78,32 @@ export default function TemplatesManager({ initial }: { initial: Tpl[] }) {
         {list.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noTemplatesYet")}</div>}
         {list.map((t) => (
           <div key={t.id} className="tplrow">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-              <b>{t.name}</b>
-              <button onClick={() => del(t)} style={{ color: "var(--red)", fontSize: 12, fontWeight: 700, background: "none" }}>{tr("delete")}</button>
-            </div>
-            <div style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "pre-wrap" }}>{t.body}</div>
+            {editId === t.id ? (
+              <div>
+                <div className="fld" style={{ marginBottom: 8 }}><label>{tr("templateName")}</label>
+                  <input className="inp" value={eName} onChange={(e) => setEName(e.target.value)} /></div>
+                <div className="fld" style={{ marginBottom: 8 }}><label>{tr("messageText")}</label>
+                  <textarea className="inp" rows={3} value={eBody} onChange={(e) => setEBody(e.target.value)} /></div>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 10 }}>
+                  {tr("variablesLabel")} {VARS.map((v) => <code key={v} style={{ marginInlineEnd: 6, color: "var(--brand)" }}>{v}</code>)}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => saveEdit(t)} className="btn sm">{tr("save")}</button>
+                  <button onClick={cancelEdit} className="btn ghost sm">{tr("cancel")}</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 10 }}>
+                  <b>{t.name}</b>
+                  <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+                    <button onClick={() => startEdit(t)} style={{ color: "var(--brand)", fontSize: 12, fontWeight: 700, background: "none" }}>{tr("edit")}</button>
+                    <button onClick={() => del(t)} style={{ color: "var(--red)", fontSize: 12, fontWeight: 700, background: "none" }}>{tr("delete")}</button>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: "var(--muted)", whiteSpace: "pre-wrap" }}>{t.body}</div>
+              </>
+            )}
           </div>
         ))}
       </div>
