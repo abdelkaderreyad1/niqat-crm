@@ -44,12 +44,11 @@ function initials(name: string) {
   return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2);
 }
 
-export default function SupportBoard({ initial, assignees, subjects, meId, customers = [] }: {
+export default function SupportBoard({ initial, assignees, subjects, meId }: {
   initial: Ticket[];
   assignees: { id: string; name: string }[];
   subjects: string[];
   meId: string;
-  customers?: { id: string; name: string; phone1?: string; phone2?: string; email?: string }[];
 }) {
   const tr = useT();
   const router = useRouter();
@@ -328,7 +327,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
         </>
       )}
 
-      <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} customers={customers} problems={subjects} />
+      <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} problems={subjects} />
     </div>
   );
 }

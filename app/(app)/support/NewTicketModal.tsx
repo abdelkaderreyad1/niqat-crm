@@ -12,9 +12,9 @@ const PRIOS = [
 ];
 
 export default function NewTicketModal({
-  open, onClose, customers, problems = [],
+  open, onClose, problems = [],
 }: {
-  open: boolean; onClose: () => void; customers: Cust[]; problems?: string[];
+  open: boolean; onClose: () => void; problems?: string[];
 }) {
   const tr = useT();
   const router = useRouter();
@@ -28,18 +28,33 @@ export default function NewTicketModal({
   const [err, setErr] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
-  const filtered = customers.filter((c) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      c.name.toLowerCase().includes(q) ||
-      (c.phone1 || "").includes(q) ||
-      (c.phone2 || "").includes(q) ||
-      (c.email || "").toLowerCase().includes(q)
-    );
-  });
+  const [results, setResults] = useState<Cust[]>([]);
+  const [searching, setSearching] = useState(false);
 
-  const selected = customers.find((c) => c.id === customerId);
+  // بحث من السيرفر مباشرة — بيدوّر في كل العملاء (مش محدود بـ 1000)، بالاسم/الإيميل/الرقم (آخر ٩ أرقام)
+  useEffect(() => {
+    if (customerId) return;                 // اختار عميل بالفعل
+    const raw = search.trim();
+    if (!raw) { setResults([]); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const tid = setTimeout(async () => {
+      const safe = raw.replace(/[,()%]/g, " ").trim();
+      const digits = raw.replace(/\D/g, "");
+      const conds: string[] = [];
+      if (safe) conds.push(`name.ilike.%${safe}%`, `email.ilike.%${safe}%`);
+      if (digits.length >= 3) {
+        const d9 = digits.slice(-9);        // يطابق 01xxx و 201xxx معاً
+        conds.push(`phone1.ilike.%${d9}%`, `phone2.ilike.%${d9}%`);
+      } else if (safe) {
+        conds.push(`phone1.ilike.%${safe}%`, `phone2.ilike.%${safe}%`);
+      }
+      const { data } = await supabase.from("customers")
+        .select("id,name,phone1,phone2,email").or(conds.join(",")).limit(20);
+      if (!cancelled) { setResults((data as Cust[]) || []); setSearching(false); }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(tid); };
+  }, [search, customerId, supabase]);
 
   useEffect(() => {
     function handle(e: MouseEvent) {
@@ -83,15 +98,17 @@ export default function NewTicketModal({
           <div className="fld">
             <label>{tr("customer")}</label>
             <div ref={ref} style={{ position: "relative" }}>
-              <input className="inp" value={selected ? selected.name : search}
+              <input className="inp" value={search}
                 onChange={(e) => { setSearch(e.target.value); setDropOpen(true); setCustomerId(""); }}
                 onFocus={() => setDropOpen(true)} placeholder={tr("searchCustomerPh")}
                 style={{ width: "100%", boxSizing: "border-box" }} />
-              {dropOpen && (
+              {dropOpen && (search.trim() !== "") && (
                 <div className="suggest-drop" style={{ position: "absolute", top: "100%", left: 0, right: 0 }}>
-                  {filtered.length === 0 ? (
+                  {searching ? (
+                    <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>…</div>
+                  ) : results.length === 0 ? (
                     <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>{tr("noResults")}</div>
-                  ) : filtered.map((c) => (
+                  ) : results.map((c) => (
                     <div key={c.id} className="suggest-item" onClick={() => { setCustomerId(c.id); setSearch(c.name); setDropOpen(false); }}>
                       <span>{c.name}</span>
                       <span>
