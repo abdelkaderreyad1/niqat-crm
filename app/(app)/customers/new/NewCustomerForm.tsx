@@ -37,6 +37,7 @@ export default function NewCustomerForm({
   const [instCount, setInstCount] = useState("3");
   const [instGap, setInstGap] = useState("1");
   const [payFirstNow, setPayFirstNow] = useState(false);
+  const [cashPaidNow, setCashPaidNow] = useState(false); // كاش: هل اتدفع فعلاً دلوقتي؟ (افتراضي لأ)
   const [dup, setDup] = useState<{ id: string; name: string } | null>(null);
   const dupRef = useRef<HTMLDivElement>(null);
   // بند 3: كشف تكرار فوري أثناء الكتابة
@@ -142,6 +143,7 @@ export default function NewCustomerForm({
       email: f.email.trim() || null, company: f.company.trim(), affiliate_code: f.affiliate_code.trim(),
       specialty_id: f.specialty_id || null, stage: f.stage, residency: f.residency.trim(),
       grad_year: f.grad_year.trim() || null, source: f.source.trim(),
+      owner_id: meId || null,
     }).select("id").single();
 
     if (error || !cust) {
@@ -176,7 +178,8 @@ export default function NewCustomerForm({
           await supabase.from("installments").insert({
             enrollment_id: enr.id, amount: net, currency: f.currency,
             due_date: new Date().toISOString().slice(0, 10),
-            status: "paid", paid_at: new Date().toISOString(),
+            status: cashPaidNow ? "paid" : "due",
+            paid_at: cashPaidNow ? new Date().toISOString() : null,
           });
         } else {
           const rows = buildSchedule(net, Number(instCount), Number(instGap));
@@ -205,9 +208,8 @@ export default function NewCustomerForm({
       }
     }
 
-    // شبكة الأمان: هدية أو دفع كاش كامل → تحويل تلقائي للدعم + المرحلة enrolled
-    const fullyPaidNow = f.diploma_id && (f.free || (payMode === "cash" && net > 0));
-    if (fullyPaidNow) {
+    // تحويل للتفعيل عند الدعم — فقط لو المبيعات علّم 🎯 (يتفعّل عند الدعم)
+    if (f.diploma_id && needsActivation) {
       try { await autoHandoffIfNeeded(supabase, cid, meId); } catch {}
     }
     // متابعة
@@ -371,8 +373,16 @@ export default function NewCustomerForm({
           </div>
 
           {payMode === "cash" && (
-            <div style={{ fontSize: 12.5, color: "var(--green)", marginTop: 8, fontWeight: 600 }}>
-              {tr("cashPayNote1")} {net} {f.currency === "USD" ? "$" : tr("egpShort")} {tr("cashPayNote2")}
+            <div style={{ marginTop: 8 }}>
+              <label className="chkrow" style={{ background: cashPaidNow ? "rgba(24,169,87,.08)" : "transparent", borderRadius: 8, padding: cashPaidNow ? "6px 8px" : "0" }}>
+                <input type="checkbox" checked={cashPaidNow} onChange={(e) => setCashPaidNow(e.target.checked)} />
+                💵 {tr("paidNow")} — {net} {f.currency === "USD" ? "$" : tr("egpShort")}
+              </label>
+              <div style={{ fontSize: 11.5, color: cashPaidNow ? "var(--green)" : "var(--muted)", marginTop: 4 }}>
+                {cashPaidNow
+                  ? `${tr("cashPayNote1")} ${net} ${f.currency === "USD" ? "$" : tr("egpShort")} ${tr("cashPayNote2")}`
+                  : `${tr("agreedAmount")}: ${net} ${f.currency === "USD" ? "$" : tr("egpShort")} — ${tr("unpaid")}`}
+              </div>
             </div>
           )}
 
