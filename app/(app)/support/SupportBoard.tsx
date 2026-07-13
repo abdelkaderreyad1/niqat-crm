@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useT } from "@/lib/i18n/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -49,13 +49,15 @@ export default function SupportBoard({ initial, assignees, subjects, meId, custo
   assignees: { id: string; name: string }[];
   subjects: string[];
   meId: string;
-  customers?: { id: string; name: string }[];
+  customers?: { id: string; name: string; phone1?: string; phone2?: string; email?: string }[];
 }) {
   const tr = useT();
   const router = useRouter();
   const downRef = useRef<{ x: number; y: number } | null>(null);
   const supabase = createClient();
   const [tickets, setTickets] = useState<Ticket[]>(initial);
+  // مزامنة القائمة بعد router.refresh() (إنشاء تذكرة/تحديث) — تظهر من غير ريفرش كامل
+  useEffect(() => { setTickets(initial); }, [initial]);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
   const [colSort, setColSort] = useState<Record<string, string>>({});

@@ -15,7 +15,7 @@ export default async function Support({ searchParams }: { searchParams: { q?: st
     { data: ts },
   ] = await Promise.all([
     supabase.from("tickets").select("id,title,body,status,priority,customer_id,assignee_id,created_at").eq("archived", false).order("created_at", { ascending: false }).limit(500),
-    supabase.from("customers").select("id,name,phone1"),
+    supabase.from("customers").select("id,name,phone1,phone2,email"),
     supabase.from("profiles").select("id,full_name,team"),
     supabase.auth.getUser(),
     supabase.from("app_settings").select("value").eq("key", "ticket_problems").maybeSingle(),
@@ -49,5 +49,5 @@ export default async function Support({ searchParams }: { searchParams: { q?: st
     date: t.created_at ? String(t.created_at).slice(0, 10) : "",
   }));
 
-  return <SupportBoard key={q || "all"} initial={items} assignees={assignees} subjects={subjects} meId={user?.id || ""} customers={(custs || []).map((c: any) => ({ id: c.id, name: c.name }))} />;
+  return <SupportBoard key={q || "all"} initial={items} assignees={assignees} subjects={subjects} meId={user?.id || ""} customers={(custs || []).map((c: any) => ({ id: c.id, name: c.name, phone1: c.phone1, phone2: c.phone2, email: c.email }))} />;
 }
