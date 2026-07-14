@@ -24,7 +24,7 @@ function payMode(e: Enr): "cash" | "installment" | "none" {
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [] }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[] }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [], handedOff = false }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[]; handedOff?: boolean }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -167,6 +167,7 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
           const mode = payMode(e);
           const instTotal = e.installments.length;
           const instPaid = e.installments.filter((i) => i.status === "paid" || i.paidAt).length;
+          const fullyPaid = e.free || (Number(e.agreed) > 0 && paid >= Number(e.agreed));
           return (
             <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -189,6 +190,19 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                   <span style={{ color: "var(--amber)" }}>{tr("remaining")}: <b className="num">{money(remaining, e.currency)}</b></span>
                 </div>
               </div>
+
+              {/* اكتمل الدفع (أو هدية) ولسه ما اتحوّلش للتفعيل → زر واضح يفتح قايمة التفعيل */}
+              {fullyPaid && !handedOff && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: "rgba(24,169,87,.08)", border: "1px solid var(--green)", borderRadius: 8, padding: "8px 12px", marginTop: 10 }}>
+                  <span style={{ fontSize: 12.5, color: "var(--green)", fontWeight: 700 }}>✓ {tr("fullyPaidReady")}</span>
+                  <button onClick={() => openActivation(e)} className="btn" style={{ marginInlineStart: "auto", height: 32, padding: "0 14px", fontSize: 12.5 }}>
+                    {tr("sendToActivationBtn")}
+                  </button>
+                </div>
+              )}
+              {handedOff && fullyPaid && (
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>✓ {tr("alreadySentToActivation")}</div>
+              )}
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                 {e.installments.length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("noInstallments")}</div>}
                 {e.installments.map((i) => {

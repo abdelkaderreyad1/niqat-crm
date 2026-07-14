@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
-import { autoHandoffIfNeeded } from "@/lib/handoff";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
 
 type Opt = { id: string; name: string };
@@ -44,8 +43,6 @@ export default function NewCustomerForm({
   const [liveDup, setLiveDup] = useState<{ id: string; name: string; field: string } | null>(null);
   // بند 2: إظهار قسم الاشتراك (يدوي أو حسب المرحلة)
   const [showSubManual, setShowSubManual] = useState(false);
-  // فكرة عبدالقادر: المبيعات يعلّم إن الاشتراك ده يتفعّل عند الدعم
-  const [needsActivation, setNeedsActivation] = useState(false);
   // بند 6: المبلغ النهائي بعد الخصم — يُحسب تلقائي، وقابل للتعديل يدوي
   const [netOverride, setNetOverride] = useState<string | null>(null);
   const set = (k: string, v: any) => setF((s) => ({ ...s, [k]: v }));
@@ -166,7 +163,7 @@ export default function NewCustomerForm({
     if (f.diploma_id) {
       const { data: enr } = await supabase.from("enrollments").insert({
         customer_id: cid, diploma_id: f.diploma_id, batch_id: f.batch_id || null,
-        status: "active", free: f.free, needs_activation: needsActivation,
+        status: "active", free: f.free, needs_activation: false,
       }).select("id").maybeSingle();
       // المالية: المبلغ المستحق بعد الخصم
       if (enr && !f.free && net > 0) {
@@ -208,10 +205,8 @@ export default function NewCustomerForm({
       }
     }
 
-    // تحويل للتفعيل عند الدعم — فقط لو المبيعات علّم 🎯 (يتفعّل عند الدعم)
-    if (f.diploma_id && needsActivation) {
-      try { await autoHandoffIfNeeded(supabase, cid, meId); } catch {}
-    }
+    // ملاحظة: التحويل للتفعيل بقى من كارت العميل (قسم الماليات) بعد تأكيد الدفع،
+    // عشان المبيعات يحدّد الباتش والإضافات بدقة — مفيش تحويل صامت هنا.
     // متابعة
     if (f.follow) {
       await supabase.from("follow_ups").insert({
@@ -324,14 +319,6 @@ export default function NewCustomerForm({
             {batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select></div>
       </div>
-
-      {/* فكرة عبدالقادر: علامة "يتفعّل عند الدعم" — المبيعات يحدّد البنود */}
-      {f.diploma_id && (
-        <label className="chkrow" style={{ background: needsActivation ? "rgba(24,169,87,.08)" : "transparent", borderRadius: 8, padding: needsActivation ? "6px 8px" : "0" }}>
-          <input type="checkbox" checked={needsActivation} onChange={(e) => setNeedsActivation(e.target.checked)} />
-          🎯 {tr("needsActivationLabel")}
-        </label>
-      )}
 
       <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> {tr("giftFree")}</label>
       {!f.free && (
