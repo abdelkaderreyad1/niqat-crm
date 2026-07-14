@@ -60,7 +60,7 @@ export function Donut({ data, size = 140, thickness = 22 }: {
         })}
       </g>
       <text x={cx} y={cy - 4} textAnchor="middle" style={{ fontSize: 22, fontWeight: 800, fill: "var(--text)" }} className="num">{total}</text>
-      <text x={cx} y={cy + 16} textAnchor="middle" style={{ fontSize: 11, fill: "var(--muted)" }}>{data.length}</text>
+      <text x={cx} y={cy + 16} textAnchor="middle" style={{ fontSize: 10, fill: "var(--muted)" }}>{data.length}</text>
     </svg>
   );
 }
@@ -139,7 +139,7 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
         return (
           <g key={i}>
             <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--line)" strokeWidth={1} opacity={0.5} />
-            <text x={padL - 8} y={y + 3} textAnchor="end" style={{ fontSize: 11, fill: "var(--muted)" }}>
+            <text x={padL - 8} y={y + 3} textAnchor="end" style={{ fontSize: 10, fill: "var(--muted)" }}>
               {v >= 1000 ? Math.round(v / 1000) + "k" : Math.round(v)}
             </text>
           </g>
@@ -148,7 +148,7 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
       {/* التعبئة */}
       <path d={area} fill={`url(#${gid})`} style={{ opacity: mounted ? 1 : 0, transition: "opacity .9s ease" }} />
       {/* الخط */}
-      <path d={line} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+      <path d={line} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
         pathLength={1} strokeDasharray={1} strokeDashoffset={mounted ? 0 : 1}
         style={{ transition: "stroke-dashoffset 1.3s cubic-bezier(.4,0,.2,1)" }} />
       {/* النقاط + القيم فوقها */}
@@ -156,7 +156,7 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
         <g key={i} style={{ opacity: mounted ? 1 : 0, transition: `opacity .4s ${0.4 + i * 0.09}s` }}>
           <circle cx={c[0]} cy={c[1]} r={3.5} fill="var(--surface)" stroke={color} strokeWidth={2} />
           {points[i].value > 0 && (
-            <text x={c[0]} y={c[1] - 10} textAnchor="middle" style={{ fontSize: 11, fontWeight: 700, fill: color }}>
+            <text x={c[0]} y={c[1] - 10} textAnchor="middle" style={{ fontSize: 9.5, fontWeight: 700, fill: color }}>
               {points[i].value >= 1000 ? (points[i].value / 1000).toFixed(1) + "k" : points[i].value}
             </text>
           )}
@@ -164,7 +164,7 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
       ))}
       {/* أسماء الشهور */}
       {points.map((p, i) => (
-        <text key={i} x={X(i)} y={H - 9} textAnchor="middle" style={{ fontSize: 11, fill: "var(--muted)" }}>{p.label}</text>
+        <text key={i} x={X(i)} y={H - 9} textAnchor="middle" style={{ fontSize: 10, fill: "var(--muted)" }}>{p.label}</text>
       ))}
     </svg>
   );

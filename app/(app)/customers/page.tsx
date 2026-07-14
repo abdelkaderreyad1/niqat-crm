@@ -122,7 +122,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
       for (let i = 0; i < restrictIds.length; i += CH) {
         let sub = supabase.from("customers")
           .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id,created_at")
-          .eq("deleted", false).in("id", restrictIds.slice(i, i + CH));
+          .eq("deleted", false).not("archived", "is", true).in("id", restrictIds.slice(i, i + CH));
         if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
         if (f.stage) sub = sub.eq("stage", f.stage);
         if (f.spec) sub = sub.eq("specialty_id", f.spec);
@@ -139,7 +139,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   } else {
     let cq = supabase.from("customers")
       .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id", { count: "exact" })
-      .eq("deleted", false);
+      .eq("deleted", false).not("archived", "is", true);
     if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
     if (f.stage) cq = cq.eq("stage", f.stage);
     if (f.spec) cq = cq.eq("specialty_id", f.spec);

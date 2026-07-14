@@ -110,6 +110,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
         const f: any = finMap.get(e.id);
         return {
           id: e.id, diploma: dName.get(e.diploma_id || "") || "—", status: e.status || "",
+          batchId: e.batch_id || "", batch: e.batches?.code || "",
           free: !!(e as any).free, freeReason: (e as any).free_reason || "",
           agreed: Number(f?.agreed_amount) || 0, currency: f?.currency || "EGP",
           installments: await Promise.all((insts || []).filter((i: any) => i.enrollment_id === e.id).map(async (i: any) => ({

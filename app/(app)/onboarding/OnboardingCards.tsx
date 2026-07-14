@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import EmptyState from "../EmptyState";
 
 type Item = { id: string; label: string; done: boolean; by: string | null; at: string };
+const REFUND_CLOSE_LABEL = "قفل الأكسس (ريفند)";
 type Card = {
   handoffId: string; custId: string; name: string; phone: string;
   status: string; note: string; onholdReason: string; createdAt: string;
@@ -24,17 +25,19 @@ function ageHours(iso: string) { if (!iso) return 0; return (Date.now() - Date.p
 const CardView = memo(function CardView({
   c, confirming, holding, holdReason, setHoldReason,
   onToggle, onAskComplete, onCancelComplete, onComplete,
-  onAskHold, onCancelHold, onHold, onResume,
+  onAskHold, onCancelHold, onHold, onResume, onArchive,
 }: {
   c: Card; confirming: boolean; holding: boolean; holdReason: string; setHoldReason: (v: string) => void;
   onToggle: (hid: string, iid: string) => void;
   onAskComplete: (hid: string) => void; onCancelComplete: () => void; onComplete: (hid: string) => void;
   onAskHold: (hid: string) => void; onCancelHold: () => void; onHold: (hid: string) => void; onResume: (hid: string) => void;
+  onArchive: (custId: string, handoffId: string) => void;
 }) {
   const tr = useT();
   const total = c.items.length;
   const dn = c.items.filter((i) => i.done).length;
   const allDone = total > 0 && dn === total;
+  const refundCloseDone = c.items.some((i) => i.label === REFUND_CLOSE_LABEL && i.done);
   const onHoldNow = c.status === "onhold";
   const hrs = ageHours(c.createdAt);
   const stale = !onHoldNow && !allDone && hrs > 48;
@@ -119,6 +122,12 @@ const CardView = memo(function CardView({
                 {tr("completeActivation")}
               </button>
             )}
+            {refundCloseDone && (
+              <button className="btn danger sm" style={{ marginInlineStart: allDone ? undefined : "auto" }}
+                onClick={() => onArchive(c.custId, c.handoffId)}>
+                🗄️ {tr("closedArchiveBtn")}
+              </button>
+            )}
             {confirming && (
               <div style={{ display: "flex", gap: 6, alignItems: "center", marginInlineStart: "auto" }}>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>{tr("confirmComplete")}</span>
@@ -170,6 +179,15 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
     await supabase.from("handoffs").update({ status: "pending", onhold_reason: null }).eq("id", hid);
   }, [supabase]);
 
+  const archiveCustomer = useCallback(async (custId: string, hid: string) => {
+    if (!confirm(tr("archiveCustomerQ"))) return;
+    setCards((cs) => cs.filter((c) => c.handoffId !== hid));
+    const { error } = await supabase.from("customers").update({ archived: true }).eq("id", custId);
+    if (error) { alert(tr("archiveFailed") + error.message); return; }
+    // قفل الريفند (best-effort — الفلترة بالأرشفة بتخفيه برضه)
+    await supabase.from("refunds").update({ status: "closed" }).eq("customer_id", custId).neq("status", "closed");
+  }, [supabase, tr]);
+
   const shown = useMemo(() => {
     const qq = q.trim().toLowerCase();
     const isReady = (c: Card) => c.status !== "onhold" && c.items.length > 0 && c.items.every((i) => i.done);
@@ -212,7 +230,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
               onToggle={toggle}
               onAskComplete={setConfirmId} onCancelComplete={() => setConfirmId(null)} onComplete={complete}
               onAskHold={(hid) => { setHoldId(hid); setHoldReason(""); }} onCancelHold={() => setHoldId(null)}
-              onHold={doHold} onResume={resume} />
+              onHold={doHold} onResume={resume} onArchive={archiveCustomer} />
           ))}
         </div>
       ) : (

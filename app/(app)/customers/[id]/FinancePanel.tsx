@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
-import { autoHandoffIfNeeded } from "@/lib/handoff";
 
 type Inst = { id: string; amount: number; currency: string; due: string; status: string; paidAt: string | null; shot: string | null };
-type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[] };
+type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[]; batchId?: string; batch?: string };
+type Opt = { v: string; label: string };
+type Addon = { id: string; name: string; type?: string; paid?: boolean };
 
 function money(n: number, cur: string) {
   return new Intl.NumberFormat("en").format(Math.round(n || 0)) + (cur === "USD" ? " $" : " EGP");
@@ -23,7 +24,7 @@ function payMode(e: Enr): "cash" | "installment" | "none" {
   return "installment";
 }
 
-export default function FinancePanel({ enrollments, customerId, meId }: { enrollments: Enr[]; customerId: string; meId: string }) {
+export default function FinancePanel({ enrollments, customerId, meId, batchOpts = [], addons = [] }: { enrollments: Enr[]; customerId: string; meId: string; batchOpts?: Opt[]; addons?: Addon[] }) {
   const tr = useT();
   const supabase = createClient();
   const router = useRouter();
@@ -36,6 +37,54 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
   const [payFile, setPayFile] = useState<File | null>(null);
   const [editAgreedId, setEditAgreedId] = useState<string | null>(null);
   const [editAgreedVal, setEditAgreedVal] = useState("");
+
+  // ===== قايمة التفعيل المنبثقة (تظهر بعد اكتمال الدفع، قبل تحويل العميل للدعم) =====
+  const [actEnr, setActEnr] = useState<Enr | null>(null);
+  const [actBatchId, setActBatchId] = useState("");
+  const [actAddons, setActAddons] = useState<Record<string, boolean>>({});
+  const [actBusy, setActBusy] = useState(false);
+
+  function openActivation(e: Enr) {
+    setActEnr(e);
+    setActBatchId(e.batchId || "");
+    const preset: Record<string, boolean> = {};
+    addons.forEach((a) => { preset[a.id] = true; });   // كل الإضافات المدفوعة معلّمة افتراضياً
+    setActAddons(preset);
+  }
+
+  async function confirmActivation() {
+    if (!actEnr) return;
+    setActBusy(true);
+    // اسم الباتش: المربوط تلقائياً، وإلا المختار من القائمة
+    const batchCode = actEnr.batch || (batchOpts.find((b) => b.v === actBatchId)?.label || "");
+    const labels: string[] = [`${tr("activatePrefix")} ${actEnr.diploma}${batchCode ? " — " + batchCode : ""}`];
+    addons.forEach((a) => { if (actAddons[a.id]) labels.push(`${tr("activatePrefix")} ${a.name}`); });
+
+    // handoff موجود؟ نعيد استخدامه، وإلا ننشئ واحد جديد (pending) — من غير تغيير المرحلة هنا (نعملها بعدين)
+    const { data: existingHo } = await supabase.from("handoffs").select("id").eq("customer_id", customerId).limit(1).maybeSingle();
+    let hoId = (existingHo as any)?.id as string | undefined;
+    if (!hoId) {
+      const { data: h, error } = await supabase.from("handoffs").insert({ customer_id: customerId, created_by: meId || null, note: "", status: "pending" }).select("id").single();
+      if (error || !h) { setActBusy(false); alert(tr("createHandoffFailed") + (error?.message || "")); return; }
+      hoId = (h as any).id;
+    } else {
+      await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
+    }
+    // منع تكرار البنود
+    const { data: cur } = await supabase.from("handoff_items").select("label").eq("handoff_id", hoId);
+    const already = new Set(((cur as any[]) || []).map((x) => x.label));
+    const rows = labels.filter((l, i) => labels.indexOf(l) === i).filter((l) => !already.has(l)).map((label) => ({ handoff_id: hoId, label, done: false }));
+    if (rows.length) {
+      const { error: e2 } = await supabase.from("handoff_items").insert(rows);
+      if (e2) { setActBusy(false); alert(tr("addItemsFailed") + e2.message); return; }
+    }
+    // المرحلة → enrolled + علّم handed_off
+    await supabase.from("customers").update({ stage: "enrolled", handed_off: true }).eq("id", customerId);
+    await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "auto_handoff", detail: labels.join(" · ") });
+    setActBusy(false);
+    setActEnr(null);
+    toast(tr("sentToActivation")); router.refresh();
+  }
 
   async function logAudit(action: string, detail: string) {
     await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action, detail });
@@ -63,14 +112,14 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
     if (error) { setBusy(null); return alert(tr("updateFailed") + error.message); }
     await logAudit("installment_paid", tr("auditInstallmentPaid") + (shotUrl ? " + " + tr("receipt") : ""));
 
-    // شبكة الأمان: لو الدفعة دي كمّلت المبلغ المتفق عليه → تحويل تلقائي للدعم
+    // لو الدفعة دي كمّلت المبلغ المتفق عليه → افتح قايمة التفعيل (بدل التحويل الصامت)
     if (enr && Number(enr.agreed) > 0) {
       const paidNow = enr.installments.reduce((s, i) => {
         const isPaid = i.id === id ? true : (i.status === "paid" || i.paidAt);
         return s + (isPaid ? (Number(i.amount) || 0) : 0);
       }, 0);
       if (paidNow >= Number(enr.agreed)) {
-        try { await autoHandoffIfNeeded(supabase, customerId, meId); } catch {}
+        openActivation(enr);
       }
     }
 
@@ -192,6 +241,57 @@ export default function FinancePanel({ enrollments, customerId, meId }: { enroll
           );
         })}
       </div>
+
+      {/* ===== مودال قايمة التفعيل ===== */}
+      {actEnr && (
+        <div onClick={() => !actBusy && setActEnr(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} className="card"
+            style={{ padding: 20, width: "100%", maxWidth: 440, maxHeight: "90vh", overflow: "auto" }}>
+            <div className="sec-t" style={{ marginBottom: 4 }}>{tr("activationChecklistTitle")}</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 14 }}>{tr("activationChecklistHint")}</div>
+
+            {/* الدبلومة (ثابتة) */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", marginBottom: 8, background: "var(--brand-soft)" }}>
+              <input type="checkbox" checked disabled />
+              <span style={{ fontWeight: 700, color: "var(--ink)" }}>{tr("activatePrefix")} {actEnr.diploma}</span>
+            </div>
+
+            {/* الباتش: تلقائي لو مربوط، وإلا اختيار */}
+            <div className="fld" style={{ marginBottom: 8 }}>
+              <label>{tr("batch")}</label>
+              {actEnr.batchId ? (
+                <div className="inp" style={{ display: "flex", alignItems: "center", background: "var(--muted-soft)" }} dir="ltr">{actEnr.batch || "—"}</div>
+              ) : (
+                <select className="inp" value={actBatchId} onChange={(e) => setActBatchId(e.target.value)}>
+                  <option value="">{tr("selectBatchOpt")}</option>
+                  {batchOpts.map((b) => <option key={b.v} value={b.v}>{b.label}</option>)}
+                </select>
+              )}
+            </div>
+
+            {/* الإضافات المدفوعة (اختيار اللي يتفعّل) */}
+            {addons.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                <label style={{ fontSize: 12.5, color: "var(--muted)", display: "block", marginBottom: 6 }}>{tr("paidAddons")}</label>
+                {addons.map((a) => (
+                  <label key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 6, cursor: "pointer" }}>
+                    <input type="checkbox" checked={!!actAddons[a.id]} onChange={(e) => setActAddons((m) => ({ ...m, [a.id]: e.target.checked }))} />
+                    <span style={{ color: "var(--ink)" }}>{tr("activatePrefix")} {a.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <button onClick={confirmActivation} disabled={actBusy} className="btn" style={{ flex: 1 }}>
+                {actBusy ? "..." : tr("confirmActivationBtn")}
+              </button>
+              <button onClick={() => setActEnr(null)} disabled={actBusy} className="btn ghost">{tr("cancel")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

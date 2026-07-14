@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -9,10 +9,12 @@ type T = {
   id: string; title: string; due: string; done: boolean;
   custId: string; custName: string; phone: string; assignee: string;
 };
+type Person = { id: string; name: string };
+type Cust = { id: string; name: string; phone1?: string; phone2?: string; email?: string };
 const today = () => new Date().toISOString().slice(0, 10);
 const waLink = (p: string) => "https://wa.me/" + (p || "").replace(/[^\d]/g, "");
 
-export default function TaskList({ initial, meId }: { initial: T[]; meId: string }) {
+export default function TaskList({ initial, meId, people = [] }: { initial: T[]; meId: string; people?: Person[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
@@ -21,17 +23,60 @@ export default function TaskList({ initial, meId }: { initial: T[]; meId: string
   const [ntDue, setNtDue] = useState("");
   const [adding, setAdding] = useState(false);
 
+  // ربط بعميل (بحث سيرفر) + تكليف موظف
+  const [assigneeId, setAssigneeId] = useState(meId);
+  const [custId, setCustId] = useState("");
+  const [custSearch, setCustSearch] = useState("");
+  const [custResults, setCustResults] = useState<Cust[]>([]);
+  const [custOpen, setCustOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const custRef = useRef<HTMLDivElement>(null);
+  const meName = people.find((p) => p.id === meId)?.name || "";
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (custRef.current && !custRef.current.contains(e.target as Node)) setCustOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  // بحث العملاء من السيرفر (كل العملاء، مش محدود بـ 1000): اسم/إيميل/رقم (آخر ٩ أرقام)
+  useEffect(() => {
+    if (custId) return;
+    const raw = custSearch.trim();
+    if (!raw) { setCustResults([]); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const tid = setTimeout(async () => {
+      const safe = raw.replace(/[,()%]/g, " ").trim();
+      const digits = raw.replace(/\D/g, "");
+      const conds: string[] = [];
+      if (safe) conds.push(`name.ilike.%${safe}%`, `email.ilike.%${safe}%`);
+      if (digits.length >= 3) { const d9 = digits.slice(-9); conds.push(`phone1.ilike.%${d9}%`, `phone2.ilike.%${d9}%`); }
+      else if (safe) conds.push(`phone1.ilike.%${safe}%`, `phone2.ilike.%${safe}%`);
+      const { data } = await supabase.from("customers").select("id,name,phone1,phone2,email").or(conds.join(",")).limit(20);
+      if (!cancelled) { setCustResults((data as Cust[]) || []); setSearching(false); }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(tid); };
+  }, [custSearch, custId, supabase]);
+
   async function addMine() {
     const title = nt.trim();
     if (!title) return;
     setAdding(true);
     const { data, error } = await supabase.from("tasks")
-      .insert({ title, assignee_id: meId, due_at: ntDue ? new Date(ntDue).toISOString() : null, done: false })
+      .insert({ title, assignee_id: assigneeId || meId, customer_id: custId || null, due_at: ntDue ? new Date(ntDue).toISOString() : null, done: false })
       .select("id").maybeSingle();
     setAdding(false);
     if (error || !data) return;
-    setTasks((l) => [{ id: data.id as string, title, due: ntDue || "", done: false, custId: "", custName: "", phone: "", assignee: "" }, ...l]);
-    setNt(""); setNtDue("");
+    const cust = custResults.find((c) => c.id === custId);
+    setTasks((l) => [{
+      id: data.id as string, title, due: ntDue || "", done: false,
+      custId: custId || "", custName: cust?.name || "", phone: cust?.phone1 || "",
+      assignee: people.find((p) => p.id === (assigneeId || meId))?.name || "",
+    }, ...l]);
+    setNt(""); setNtDue(""); setCustId(""); setCustSearch(""); setCustResults([]); setAssigneeId(meId);
   }
 
   async function toggle(id: string) {
@@ -103,6 +148,36 @@ export default function TaskList({ initial, meId }: { initial: T[]; meId: string
       <div className="card" style={{ padding: 12, marginBottom: 14, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <input className="inp" placeholder={tr("newTaskPh")} style={{ flex: 1, minWidth: 180 }} value={nt}
           onChange={(e) => setNt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addMine()} />
+
+        {/* ربط بعميل (اختياري) — بحث سيرفر */}
+        <div ref={custRef} style={{ position: "relative", minWidth: 190, flex: "0 1 220px" }}>
+          <input className="inp" placeholder={tr("linkCustomerOpt")} value={custSearch}
+            onChange={(e) => { setCustSearch(e.target.value); setCustOpen(true); setCustId(""); }}
+            onFocus={() => setCustOpen(true)} style={{ width: "100%", boxSizing: "border-box" }} />
+          {custOpen && custSearch.trim() !== "" && (
+            <div className="suggest-drop" style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20 }}>
+              {searching ? (
+                <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>…</div>
+              ) : custResults.length === 0 ? (
+                <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>{tr("noResults")}</div>
+              ) : custResults.map((c) => (
+                <div key={c.id} className="suggest-item" onClick={() => { setCustId(c.id); setCustSearch(c.name); setCustOpen(false); }}>
+                  <span>{c.name}</span>
+                  <span>{c.phone1 && <span dir="ltr">{c.phone1}</span>}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* تكليف موظف */}
+        {people.length > 0 && (
+          <select className="inp" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} style={{ width: 160 }}>
+            {!people.some((p) => p.id === meId) && <option value={meId}>{meName || tr("me")}</option>}
+            {people.map((p) => <option key={p.id} value={p.id}>{p.id === meId ? (p.name + " (" + tr("me") + ")") : p.name}</option>)}
+          </select>
+        )}
+
         <input className="inp num" type="date" dir="ltr" style={{ width: 150 }} value={ntDue} onChange={(e) => setNtDue(e.target.value)} />
         <button className="btn" onClick={addMine} disabled={adding} style={{ height: 40 }}>{adding ? "..." : tr("add")}</button>
       </div>

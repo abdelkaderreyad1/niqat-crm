@@ -29,5 +29,7 @@ export default async function MyTasks() {
     assignee: pMap.get(k.assignee_id || "") || "",
   }));
 
-  return <TaskList initial={tasks} meId={user?.id || ""} />;
+  const people = (profs || []).map((p) => ({ id: p.id as string, name: (p.full_name as string) || "—" }));
+
+  return <TaskList initial={tasks} meId={user?.id || ""} people={people} />;
 }

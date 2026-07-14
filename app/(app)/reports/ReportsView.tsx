@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
-import { useT } from "@/lib/i18n/client";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { useT, useLang } from "@/lib/i18n/client";
+import { toast } from "@/lib/toast";
 import { CountUp, Donut, BarRow, AreaChart } from "../Charts";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
@@ -9,12 +12,12 @@ type StageRow = { key: string; label: string; color: string; n: number };
 type AffRow = { code: string; name: string; discount: number | null; customers: number; enrolled: number; interested: number; refunded: number };
 type SalesRow = { name: string; customers: number; enrolled: number; conv: number; collectedEgp: number; collectedUsd: number };
 type SupportRow = { name: string; total: number; open: number; closed: number };
-type Monthly = { label: string; value: number };
+type Monthly = { key: string; value: number };
 
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd,
   stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma,
-  batchOpts, diplomaOpts, affiliates,
+  batchOpts, diplomaOpts, affiliates, resetAt = "",
 }: {
   canFinance: boolean;
   agreed: number; collected: number; overdueN: number; collectedUsd: number; agreedUsd: number;
@@ -24,8 +27,34 @@ export default function ReportsView({
   batchOpts: { v: string; label: string }[];
   diplomaOpts: { v: string; label: string }[];
   affiliates: { code: string; name: string; rate?: number; discount?: number }[];
+  resetAt?: string;
 }) {
   const tr = useT();
+  const lang = useLang();
+  const router = useRouter();
+  const supabase = createClient();
+  const [resetting, setResetting] = useState(false);
+
+  // ترجمة اسم الشهر حسب اللغة من المفتاح YYYY-MM
+  const monthlyLabeled = monthly.map((m) => {
+    const [y, mm] = m.key.split("-").map(Number);
+    const label = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en", { month: "short", timeZone: "Africa/Cairo" }).format(new Date(y, mm - 1, 1));
+    return { label, value: m.value };
+  });
+  const periodTotal = monthly.reduce((s, m) => s + (m.value || 0), 0);
+  const monthsWithData = monthly.filter((m) => m.value > 0).length;
+  const avgPerMonth = monthsWithData ? Math.round(periodTotal / monthsWithData) : 0;
+  const fmt = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
+
+  async function resetMeasurement() {
+    if (!confirm(tr("resetChartQ"))) return;
+    setResetting(true);
+    const { error } = await supabase.from("app_settings")
+      .upsert({ key: "reports_reset_at", value: new Date().toISOString(), updated_at: new Date().toISOString() });
+    setResetting(false);
+    if (error) { toast(tr("saveFailedColon") + error.message); return; }
+    toast(tr("saved")); router.refresh();
+  }
   const TABS = [
     ...(canFinance ? [{ k: "collection", label: tr("tabCollection") }] : []),
     { k: "sales", label: tr("tabSales") },
@@ -76,8 +105,20 @@ export default function ReportsView({
 
           {/* منحنى التحصيل الشهري */}
           <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-            <div className="card-h"><h3>{tr("collectionTrend")}</h3></div>
-            <div style={{ marginTop: 14 }}><AreaChart points={monthly} color="#18A957" height={130} /></div>
+            <div className="card-h" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+              <h3 style={{ margin: 0 }}>{tr("collectionTrend")}</h3>
+              <button onClick={resetMeasurement} disabled={resetting} className="btn ghost"
+                style={{ height: 30, padding: "0 12px", fontSize: 12 }}>
+                {resetting ? "..." : "↺ " + tr("resetMeasurement")}
+              </button>
+            </div>
+            {/* ملخص سريع */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "10px 0 4px" }}>
+              <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "#18A957" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
+              <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
+              {resetAt && <span style={{ fontSize: 11.5, color: "var(--muted)" }}>· {tr("measuringSince")} <span className="num" dir="ltr">{String(resetAt).slice(0, 10)}</span></span>}
+            </div>
+            <div style={{ marginTop: 6 }}><AreaChart points={monthlyLabeled} color="#18A957" height={112} /></div>
           </div>
 
           {/* نسبة التحصيل */}

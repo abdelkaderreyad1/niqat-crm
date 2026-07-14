@@ -77,6 +77,19 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
     }
   }
 
+  async function archiveColumn(ids: string[]) {
+    if (!ids.length) return;
+    if (!confirm(`${tr("archiveColumnQ")} (${ids.length})`)) return;
+    const idset = new Set(ids);
+    const prev = custs;
+    setCusts((l) => l.filter((x) => !idset.has(x.id)));
+    const CH = 100;
+    for (let i = 0; i < ids.length; i += CH) {
+      const { error } = await supabase.from("customers").update({ board_done: true }).in("id", ids.slice(i, i + CH));
+      if (error) { setCusts(prev); alert(tr("archiveFailed") + error.message); return; }
+    }
+  }
+
   return (
     <div>
       <div className="page-h">
@@ -122,6 +135,13 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
                   {tr(s.labelKey)}
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {items.length > 0 && (
+                    <button title={tr("archiveColumn")}
+                      onClick={(e) => { e.stopPropagation(); archiveColumn(items.map((c) => c.id)); }}
+                      style={{ cursor: "pointer", background: "none", border: "1px solid var(--line)", borderRadius: 8, padding: "2px 6px", fontSize: 13, lineHeight: 1, color: "var(--muted)" }}>
+                      🗄️
+                    </button>
+                  )}
                   <select className="sortsel" value={colSort[s.key] || ""}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => setColSort((q) => ({ ...q, [s.key]: e.target.value }))}>

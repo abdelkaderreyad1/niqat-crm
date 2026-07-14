@@ -53,7 +53,7 @@ export default function CustomerDrawer(props: {
 
         <FollowUpPanel customerId={props.c.id} meId={props.user?.id || ""} open={props.fuOpen} history={props.fuHistory} />
 
-        {props.canFinance && <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} />}
+        {props.canFinance && <FinancePanel enrollments={props.finEnrollments} customerId={props.c.id} meId={props.user?.id || ""} batchOpts={props.batchOpts} addons={(props.addons || []).filter((a: any) => a.paid)} />}
 
         {props.canFinance && <RefundPanel customerId={props.c.id} refund={props.refund} meId={props.user?.id || ""} tableMissing={props.refundTableMissing} accessItems={props.accessItems} />}
       </>}

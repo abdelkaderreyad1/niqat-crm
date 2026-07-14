@@ -68,6 +68,10 @@ export default async function Reports() {
     (refCusts || []).forEach((c: any) => { const code = (c.affiliate_code || "").trim(); if (code) refundCodeCount[code] = (refundCodeCount[code] || 0) + 1; });
   }
 
+  // تاريخ تصفير القياس (اختياري) — يبدأ القياس من عند بدء الشغل الفعلي
+  const { data: resetRow } = await supabase.from("app_settings").select("value").eq("key", "reports_reset_at").maybeSingle();
+  const resetAt: string = typeof resetRow?.value === "string" ? resetRow.value : ((resetRow?.value as any)?.at || "");
+
   // ==== المالية مفصولة بالعملة (دالة fin_totals) + المحصّل لكل مندوب + المتأخرات ====
   let agreed = 0, collected = 0, overdueN = 0, agreedUsd = 0, collectedUsd = 0;
   const monthlyMap: Record<string, number> = {};
@@ -85,23 +89,23 @@ export default async function Reports() {
     for (const r of (oc as any[]) || []) collectedByOwner[r.owner_id] = { egp: Number(r.egp) || 0, usd: Number(r.usd) || 0 };
     overdueN = Number(odn) || 0;
 
-    // شهري (بالجنيه) — أقساط مدفوعة ليها تاريخ فعلي خلال آخر 6 شهور (عددها طبيعي صغير)
+    // شهري (بالجنيه) — أقساط مدفوعة ليها تاريخ فعلي خلال آخر 6 شهور (أو من تاريخ التصفير)
     const sixMo = new Date(); sixMo.setMonth(sixMo.getMonth() - 6);
+    const startFilter = resetAt && resetAt > sixMo.toISOString() ? resetAt : sixMo.toISOString();
     const { data: mInsts } = await supabase.from("installments")
       .select("amount,paid_at,status,currency")
-      .not("paid_at", "is", null).gte("paid_at", sixMo.toISOString()).eq("currency", "EGP");
+      .not("paid_at", "is", null).gte("paid_at", startFilter).eq("currency", "EGP");
     for (const i of (mInsts as any[]) || []) {
       if (i.status === "paid" || i.paid_at) { const m = String(i.paid_at).slice(0, 7); monthlyMap[m] = (monthlyMap[m] || 0) + (Number(i.amount) || 0); }
     }
   }
 
-  // آخر 6 شهور
-  const monthly: { label: string; value: number }[] = [];
+  // آخر 6 شهور — نمرّر المفتاح (YYYY-MM) والعرض يترجم الاسم حسب اللغة
+  const monthly: { key: string; value: number }[] = [];
   for (let k = 5; k >= 0; k--) {
     const d = new Date(); d.setMonth(d.getMonth() - k);
     const key = d.toISOString().slice(0, 7);
-    const label = d.toLocaleDateString("ar-EG", { month: "short" });
-    monthly.push({ label, value: Math.round(monthlyMap[key] || 0) });
+    monthly.push({ key, value: Math.round(monthlyMap[key] || 0) });
   }
 
   // ==== أداء المبيعات (team=sales/admin) — من دالة عدّ العملاء لكل مندوب ====
@@ -155,6 +159,7 @@ export default async function Reports() {
       stageRows={stageRows} totalCust={totalCust} affRows={affRows}
       salesRows={salesRows} supportRows={supportRows} monthly={monthly} byDiploma={byDiploma}
       batchOpts={batchOpts} diplomaOpts={diplomaOpts} affiliates={affiliatesList}
+      resetAt={resetAt}
     />
   );
 }
