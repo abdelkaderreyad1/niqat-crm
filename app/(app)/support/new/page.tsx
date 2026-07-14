@@ -11,11 +11,18 @@ export default async function NewTicketPage({
   searchParams: { customer?: string };
 }) {
   const supabase = createClient();
-  const { data: customers } = await supabase
-    .from("customers")
-    .select("id,name,phone1,phone2,email")
-    .eq("deleted", false)
-    .order("name", { ascending: true });
+
+  // جِب اسم العميل بالـ id مباشرة (مش من قائمة محدودة بـ 1000)
+  let presetCustomerName = "";
+  const presetCustomer = searchParams.customer || "";
+  if (presetCustomer) {
+    const { data: c } = await supabase
+      .from("customers")
+      .select("name")
+      .eq("id", presetCustomer)
+      .maybeSingle();
+    presetCustomerName = (c?.name as string) || "";
+  }
 
   const { data: probRow } = await supabase.from("app_settings").select("value").eq("key", "ticket_problems").maybeSingle();
   const problems = Array.isArray(probRow?.value) ? (probRow!.value as string[]) : [];
@@ -27,8 +34,8 @@ export default async function NewTicketPage({
       </div>
       <div className="page-h"><h1>{tr("newTicket")}</h1></div>
       <NewTicketForm
-        customers={(customers as any) || []}
-        presetCustomer={searchParams.customer || ""}
+        presetCustomer={presetCustomer}
+        presetCustomerName={presetCustomerName}
         problems={problems}
       />
     </div>

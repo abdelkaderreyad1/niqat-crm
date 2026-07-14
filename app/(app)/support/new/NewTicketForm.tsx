@@ -13,9 +13,9 @@ const PRIOS = [
 ];
 
 export default function NewTicketForm({
-  customers, presetCustomer, problems = [],
+  presetCustomer, presetCustomerName = "", problems = [],
 }: {
-  customers: Cust[]; presetCustomer: string; problems?: string[];
+  presetCustomer: string; presetCustomerName?: string; problems?: string[];
 }) {
   const tr = useT();
   const router = useRouter();
@@ -26,24 +26,39 @@ export default function NewTicketForm({
   const [priority, setPriority] = useState("medium");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(presetCustomerName || "");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  const [results, setResults] = useState<Cust[]>([]);
+  const [searching, setSearching] = useState(false);
+
   const locked = !!presetCustomer;
 
-  const filtered = customers.filter((c) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      c.name.toLowerCase().includes(q) ||
-      (c.phone1 || "").includes(q) ||
-      (c.phone2 || "").includes(q) ||
-      (c.email || "").toLowerCase().includes(q)
-    );
-  });
-
-  const selected = customers.find((c) => c.id === customerId);
+  // بحث من السيرفر مباشرة — بيدوّر في كل العملاء (مش محدود بـ 1000)، بالاسم/الإيميل/الرقم (آخر ٩ أرقام)
+  useEffect(() => {
+    if (locked || customerId) return;       // مقفول على preset أو اختار عميل بالفعل
+    const raw = search.trim();
+    if (!raw) { setResults([]); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const tid = setTimeout(async () => {
+      const safe = raw.replace(/[,()%]/g, " ").trim();
+      const digits = raw.replace(/\D/g, "");
+      const conds: string[] = [];
+      if (safe) conds.push(`name.ilike.%${safe}%`, `email.ilike.%${safe}%`);
+      if (digits.length >= 3) {
+        const d9 = digits.slice(-9);        // يطابق 01xxx و 201xxx معاً
+        conds.push(`phone1.ilike.%${d9}%`, `phone2.ilike.%${d9}%`);
+      } else if (safe) {
+        conds.push(`phone1.ilike.%${safe}%`, `phone2.ilike.%${safe}%`);
+      }
+      const { data } = await supabase.from("customers")
+        .select("id,name,phone1,phone2,email").or(conds.join(",")).limit(20);
+      if (!cancelled) { setResults((data as Cust[]) || []); setSearching(false); }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(tid); };
+  }, [search, customerId, locked, supabase]);
 
   useEffect(() => {
     function handle(e: MouseEvent) {
@@ -52,13 +67,6 @@ export default function NewTicketForm({
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, []);
-
-  useEffect(() => {
-    if (presetCustomer) {
-      const c = customers.find((x) => x.id === presetCustomer);
-      if (c) setSearch(c.name);
-    }
-  }, [presetCustomer, customers]);
 
   async function create() {
     setErr("");
@@ -83,16 +91,17 @@ export default function NewTicketForm({
       <div className="fld">
         <label>{tr("customer")}</label>
         <div ref={ref} style={{ position: "relative" }}>
-          <input className="inp" value={locked ? search : search} onChange={(e) => { setSearch(e.target.value); setOpen(true); if (!locked) setCustomerId(""); }}
+          <input className="inp" value={search}
+            onChange={(e) => { setSearch(e.target.value); setOpen(true); if (!locked) setCustomerId(""); }}
             onFocus={() => setOpen(true)} placeholder={tr("selectCustomer")} disabled={locked}
             style={{ width: "100%", boxSizing: "border-box", ...(locked ? { background: "var(--muted-soft)" } : {}) }} />
-          {open && !locked && (
-            <div className="suggest-drop" style={{
-              position: "absolute", top: "100%", left: 0, right: 0,
-            }}>
-              {filtered.length === 0 ? (
+          {open && !locked && (search.trim() !== "") && (
+            <div className="suggest-drop" style={{ position: "absolute", top: "100%", left: 0, right: 0 }}>
+              {searching ? (
+                <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>…</div>
+              ) : results.length === 0 ? (
                 <div style={{ padding: "10px 14px", fontSize: 13, color: "var(--muted)" }}>{tr("noResults")}</div>
-              ) : filtered.map((c) => (
+              ) : results.map((c) => (
                 <div key={c.id} className="suggest-item" onClick={() => { setCustomerId(c.id); setSearch(c.name); setOpen(false); }}>
                   <span>{c.name}</span>
                   <span>

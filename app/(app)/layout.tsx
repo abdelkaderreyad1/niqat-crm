@@ -48,6 +48,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const dueCount = dueRes.count ?? 0;
   const handoffCount = handoffRes.count ?? 0;
 
+  // عدّاد المستردات النشطة (requested/refunded) لعملاء غير مؤرشفين — محمي بصلاحية المالية (RLS)
+  let refundCount = 0;
+  if (profile?.can_see_finance) {
+    const { data: rfRows } = await supabase
+      .from("refunds").select("customer_id,status").in("status", ["requested", "refunded"]);
+    const rf = (rfRows as any[]) || [];
+    if (rf.length) {
+      const cids = Array.from(new Set(rf.map((r) => r.customer_id)));
+      const { data: arch } = await supabase
+        .from("customers").select("id,archived").in("id", cids);
+      const archivedSet = new Set(((arch as any[]) || []).filter((c) => (c as any).archived).map((c) => c.id));
+      refundCount = rf.filter((r) => !archivedSet.has(r.customer_id)).length;
+    }
+  }
+
   const nowIso = new Date().toISOString();
   const [fuRes, hoListRes, profRes] = await Promise.all([
     supabase.from("follow_ups").select("id,customer_id,due_at,note").eq("done", false).lte("due_at", nowIso).order("due_at").limit(10),
@@ -106,6 +121,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           canGrant={!!profile?.can_grant_access}
           dueCount={dueCount}
           handoffCount={handoffCount}
+          refundCount={refundCount}
         />
 
         <div className="sb-foot">

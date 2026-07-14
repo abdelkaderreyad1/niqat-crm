@@ -72,6 +72,40 @@ export default function RefundPanel({
     toast(tr("updated")); router.refresh();
   }
 
+  // الخيار (أ): بدل الأرشفة المباشرة، نحوّل للدعم لقفل الأكسس.
+  // مانستخدمش autoHandoffIfNeeded عشان مايغيّرش المرحلة لـ enrolled. الدعم هو اللي يأرشف بعد القفل.
+  async function sendToSupportForClose() {
+    if (!refund) return;
+    setBusy(true);
+    const LABEL = "قفل الأكسس (ريفند)";
+    // نعيد استخدام handoff مفتوح لو موجود، وإلا ننشئ واحد جديد (pending)
+    const { data: existingHo } = await supabase
+      .from("handoffs").select("id").eq("customer_id", customerId).limit(1).maybeSingle();
+    let hoId = (existingHo as any)?.id as string | undefined;
+    if (!hoId) {
+      const { data: h, error } = await supabase.from("handoffs")
+        .insert({ customer_id: customerId, created_by: meId || null, note: "", status: "pending" })
+        .select("id").single();
+      if (error || !h) { setBusy(false); alert(tr("createHandoffFailed") + (error?.message || "")); return; }
+      hoId = (h as any).id;
+    } else {
+      await supabase.from("handoffs").update({ status: "pending" }).eq("id", hoId);
+    }
+    // منع تكرار نفس البند داخل الـ handoff
+    const { data: cur } = await supabase.from("handoff_items").select("label").eq("handoff_id", hoId);
+    const already = new Set(((cur as any[]) || []).map((x) => x.label));
+    if (!already.has(LABEL)) {
+      const { error: e2 } = await supabase.from("handoff_items").insert({ handoff_id: hoId, label: LABEL, done: false });
+      if (e2) { setBusy(false); alert(tr("addItemsFailed") + e2.message); return; }
+    }
+    await supabase.from("audit_log").insert({
+      customer_id: customerId, actor_id: meId || null,
+      action: "refund_handoff", detail: tr("refundHandoffToSupport"),
+    });
+    setBusy(false);
+    toast(tr("sentToSupportForClose")); router.refresh();
+  }
+
   if (tableMissing) {
     return (
       <div className="card" style={{ padding: 18, marginBottom: 14 }}>
@@ -130,8 +164,8 @@ export default function RefundPanel({
             )}
             {refund.status === "refunded" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("supportCloseHint")}</div>
-                <button onClick={() => setStatus("closed", true)} disabled={busy} className="btn ghost">{tr("closedArchiveBtn")}</button>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{tr("supportWillCloseHint")}</div>
+                <button onClick={sendToSupportForClose} disabled={busy} className="btn">{busy ? "..." : tr("refundHandoffToSupport")}</button>
               </div>
             )}
           </div>

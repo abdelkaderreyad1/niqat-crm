@@ -27,8 +27,8 @@ export default async function Refunds() {
   }
 
   const [{ data: rf, error }, { data: custs }] = await Promise.all([
-    supabase.from("refunds").select("id,customer_id,amount,currency,reason,status,created_at").order("created_at", { ascending: false }),
-    supabase.from("customers").select("id,name"),
+    supabase.from("refunds").select("id,customer_id,amount,currency,reason,status,created_at").neq("status", "closed").order("created_at", { ascending: false }),
+    supabase.from("customers").select("id,name,archived"),
   ]);
 
   if (error) {
@@ -45,8 +45,9 @@ export default async function Refunds() {
     );
   }
 
-  const rows = rf || [];
   const cName = new Map((custs || []).map((c) => [c.id, c.name]));
+  const archivedSet = new Set((custs || []).filter((c) => (c as any).archived).map((c) => c.id));
+  const rows = (rf || []).filter((r) => !archivedSet.has(r.customer_id));
 
   return (
     <div>
