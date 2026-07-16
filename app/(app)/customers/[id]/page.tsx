@@ -56,7 +56,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
     { data: accredRows },
     { data: projRows },
   ] = await Promise.all([
-    supabase.from("profiles").select("can_see_finance,can_message").eq("id", user?.id || "").maybeSingle(),
+    supabase.from("profiles").select("can_see_finance,can_message,can_manage_batches").eq("id", user?.id || "").maybeSingle(),
     supabase.from("customers").select("id,name,phone1,phone2,email,company,residency,grad_year,stage,specialty_id,lms_status,source,affiliate_code,onhold_reason,created_at,terms_signed,terms_signed_at,handed_off").eq("id", params.id).maybeSingle(),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("enrollments").select("id,status,diploma_id,batch_id, diplomas(name_ar), batches(code)").eq("customer_id", params.id),
@@ -80,6 +80,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
 
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
+  const canManageBatches = !!meProf?.can_manage_batches;
 
   if (!c) notFound();
 
@@ -188,7 +189,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             fuOpen={fuOpen} fuHistory={(fuAll || []).filter((x: any) => x.done).slice(0, 5)}
             finEnrollments={finEnrollments}
             refund={refund} refundTableMissing={refundTableMissing}
-            canFinance={canFinance} canMessage={canMessage}
+            canFinance={canFinance} canMessage={canMessage} canManageBatches={canManageBatches}
             docs={docs} docsMissing={docsMissing}
             waCtx={waCtx} templates={templates as any}
             tasks={tasks} notes={notes}

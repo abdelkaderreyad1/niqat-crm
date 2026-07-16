@@ -84,7 +84,7 @@ export default function AccessPanel({
     setBusy(null);
     if (e2) { alert(tr("addItemsFailed") + e2.message); return; }
     setNote(""); setPicked([]); setQ(""); setOpenAdd(false);
-    router.refresh();
+    toast(tr("sentToSupportOk")); router.refresh();
   }
 
   const done = items.filter((i) => i.done).length;
@@ -211,12 +211,11 @@ export default function AccessPanel({
             ))}
           </div>
 
-          {/* زر تحويل عناصر جديدة — يفضل ظاهر دايمًا */}
-          {!openAdd ? (
-            <button onClick={() => setOpenAdd(true)} className="btn ghost" style={{ marginTop: 12 }}>
-              ＋ {tr("accTransferNew")}
-            </button>
-          ) : picker}
+          {/* لوحة التحويل ظاهرة دايماً — اختار وحوّل بضغطة واحدة */}
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)" }}>＋ {tr("accTransferNew")}</div>
+            {picker}
+          </div>
         </div>
       )}
     </div>

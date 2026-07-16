@@ -1,6 +1,10 @@
 "use client";
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import { revalidateCustomers } from "../actions";
 import DrawerTabs from "./DrawerTabs";
 import CustomerEdit, { type CustomerEditHandle } from "./CustomerEdit";
 import ServicesPanel from "./ServicesPanel";
@@ -20,15 +24,28 @@ export default function CustomerDrawer(props: {
   fuOpen: any; fuHistory: any[];
   finEnrollments: any[];
   refund: any; refundTableMissing: boolean;
-  canFinance: boolean; canMessage: boolean;
+  canFinance: boolean; canMessage: boolean; canManageBatches: boolean;
   docs: any[]; docsMissing: boolean;
   waCtx: any; templates: any[];
   tasks: any[]; notes: any[];
   tickets: any[]; auditRows: any[]; pMap: any; AUDIT_KEYS: any; TK: any;
 }) {
   const tr = useT();
+  const router = useRouter();
+  const supabase = createClient();
   const editRef = useRef<CustomerEditHandle>(null);
   const [tab, setTab] = useState<"basic" | "sales" | "docs">("basic");
+  const [archiving, setArchiving] = useState(false);
+
+  async function archiveCustomer() {
+    if (!confirm(tr("archiveCustomerQ"))) return;
+    setArchiving(true);
+    const { error } = await supabase.from("customers").update({ archived: true }).eq("id", props.c.id);
+    if (error) { setArchiving(false); alert(tr("archiveFailed") + error.message); return; }
+    await revalidateCustomers();
+    toast(tr("customerArchived"));
+    router.push("/customers");
+  }
 
   function goTo(t: "basic" | "sales" | "docs", panelId: string) {
     setTab(t);
@@ -72,6 +89,14 @@ export default function CustomerDrawer(props: {
       tab={tab} onTab={setTab} quickBar={quickBar}
       basic={<div className="px-5 py-5">
         <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} />
+        {props.canManageBatches && !(props.c as any).archived && (
+          <div style={{ marginTop: 22, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 8 }}>{tr("dangerZone")}</div>
+            <button onClick={archiveCustomer} disabled={archiving} className="btn danger" style={{ width: "100%" }}>
+              {archiving ? "..." : "🗄️ " + tr("archiveCustomerBtn")}
+            </button>
+          </div>
+        )}
       </div>}
       sales={<>
         <div id="panel-services">
