@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useT } from "@/lib/i18n/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
@@ -8,6 +8,58 @@ import { getSegmentPhones } from "./segmentPhones";
 type Opt = { v: string; label: string };
 type Tpl = { id: string; name: string; body: string };
 type Filters = { q?: string; stage?: string; owner?: string; company?: string; dip?: string; spec?: string; batch?: string; pay?: string };
+
+// فلتر متعدد الاختيار (checkboxes) — يخزّن القيم كـ CSV في الـ URL
+function MultiSel({ label, paramKey, opts }: { label: string; paramKey: string; opts: Opt[] }) {
+  const router = useRouter();
+  const sp = useSearchParams();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = (sp.get(paramKey) || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const [draft, setDraft] = useState<string[]>(selected);
+
+  function commit(next: string[]) {
+    const cur = (sp.get(paramKey) || "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (JSON.stringify([...cur].sort()) === JSON.stringify([...next].sort())) { setOpen(false); return; }
+    const p = new URLSearchParams(sp.toString());
+    if (next.length) p.set(paramKey, next.join(",")); else p.delete(paramKey);
+    p.delete("page");
+    setOpen(false);
+    router.push("/customers" + (p.toString() ? "?" + p.toString() : ""));
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) commit(draft); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open, draft]);
+
+  const count = selected.length;
+  return (
+    <div ref={ref} style={{ position: "relative", flex: "0 0 auto" }}>
+      <button type="button" className="inp"
+        onClick={() => { if (open) commit(draft); else { setDraft(selected); setOpen(true); } }}
+        style={{ width: "auto", minWidth: 150, height: 36, display: "flex", alignItems: "center", gap: 8, cursor: "pointer", justifyContent: "space-between" }}>
+        <span style={{ color: count ? "var(--ink)" : "var(--muted)", whiteSpace: "nowrap" }}>{label}{count ? " · " + count : ""}</span>
+        <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} style={{ opacity: .6 }}><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", insetInlineStart: 0, zIndex: 50, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", padding: 6, minWidth: 210, maxHeight: 300, overflow: "auto" }}>
+          {opts.map((o) => {
+            const on = draft.includes(o.v);
+            return (
+              <label key={o.v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "var(--ink)" }}>
+                <input type="checkbox" checked={on} onChange={() => setDraft((d) => on ? d.filter((x) => x !== o.v) : [...d, o.v])} />
+                <span>{o.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function CustomersTools({
   stages, owners, diplomas, specialties, batches, companies, canFinance, canMessage,
@@ -23,21 +75,6 @@ export default function CustomersTools({
   const [openBulk, setOpenBulk] = useState(false);
   const [loading, setLoading] = useState(false);
   const [nums, setNums] = useState<string[]>([]);
-
-  function setParam(key: string, val: string) {
-    const p = new URLSearchParams(sp.toString());
-    if (val) p.set(key, val); else p.delete(key);
-    p.delete("page");
-    router.push("/customers" + (p.toString() ? "?" + p.toString() : ""));
-  }
-  const cur = (k: string) => sp.get(k) || "";
-
-  const Sel = (key: string, ph: string, opts: Opt[]) => (
-    <select className="inp" style={{ width: "auto", minWidth: 150, height: 36, flex: "0 0 auto" }} value={cur(key)} onChange={(e) => setParam(key, e.target.value)}>
-      <option value="">{ph}</option>
-      {opts.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-    </select>
-  );
 
   function setSort(v: string) {
     const p = new URLSearchParams(sp.toString());
@@ -71,15 +108,15 @@ export default function CustomersTools({
   return (
     <>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, alignItems: "center" }}>
-        {Sel("stage", tr("filterStage"), stages)}
-        {Sel("dip", tr("filterDip"), diplomas)}
-        {specialties.length > 0 && Sel("spec", tr("filterSpec"), specialties)}
-        {Sel("batch", tr("filterBatch"), batches)}
-        {owners.length > 0 && Sel("owner", tr("filterOwner"), owners)}
-        {companies.length > 0 && Sel("company", tr("filterCompany"), companies)}
-        {canFinance && Sel("pay", tr("filterPay"), [
+        <MultiSel label={tr("filterStage")} paramKey="stage" opts={stages} />
+        <MultiSel label={tr("filterDip")} paramKey="dip" opts={diplomas} />
+        {specialties.length > 0 && <MultiSel label={tr("filterSpec")} paramKey="spec" opts={specialties} />}
+        <MultiSel label={tr("filterBatch")} paramKey="batch" opts={batches} />
+        {owners.length > 0 && <MultiSel label={tr("filterOwner")} paramKey="owner" opts={owners} />}
+        {companies.length > 0 && <MultiSel label={tr("filterCompany")} paramKey="company" opts={companies} />}
+        {canFinance && <MultiSel label={tr("filterPay")} paramKey="pay" opts={[
           { v: "bal", label: tr("payBal") }, { v: "due", label: tr("payDue") }, { v: "overdue", label: tr("overdue") },
-        ])}
+        ]} />}
         {sortOpts && (
           <select className="inp" style={{ width: "auto", minWidth: 130, height: 36, flex: "0 0 auto" }} value={sortVal} onChange={(e) => setSort(e.target.value)}>
             <option value="created_at:desc">{tr("sortLabel")}: {tr("sortNew")}</option>

@@ -25,6 +25,15 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const STAGE_OPTS = Object.entries(STAGES).map(([v, x]) => ({ v, label: tr(x.labelKey) }));
   const q = (searchParams?.q || "").trim();
   const f = searchParams || {};
+  // فلاتر متعددة القيم (CSV في الـ URL). داخل نفس الفلتر = OR، بين الفلاتر = AND.
+  const arr = (s?: string) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const stageVals = arr(f.stage);
+  const specVals = arr(f.spec);
+  const ownerVals = arr(f.owner);
+  const companyVals = arr(f.company);
+  const dipVals = arr(f.dip);
+  const batchVals = arr(f.batch);
+  const payVals = arr(f.pay);
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: meProf } = await supabase.from("profiles")
@@ -42,7 +51,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const payBalanceSet = new Set<string>();       // فلتر: عليه مبلغ متبقّي
   const payDueSet = new Set<string>();           // فلتر: عليه قسط بتاريخ استحقاق
   const payOverdueSet = new Set<string>();       // فلتر: متأخر
-  if (f.pay && canFinance) {
+  if (payVals.length && canFinance) {
     const PAGE = 1000, CAP = 60000, CHUNK = 150, today = todayStr();
     // (1) الأقساط غير المدفوعة → أعلام لكل اشتراك
     const enrFlags = new Map<string, { due: boolean; over: boolean }>();
@@ -75,11 +84,11 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   }
 
   // فلاتر مبنية على الاشتراكات (دبلومة/باتش/دفع) — تُطبّق على كل الداتا عبر مجموعة IDs
-  async function enrollCustomerIds(col: "diploma_id" | "batch_id", val: string) {
+  async function enrollCustomerIds(col: "diploma_id" | "batch_id", vals: string[]) {
     const set = new Set<string>();
     const P = 1000, C = 60000;
     for (let from = 0; from < C; from += P) {
-      const { data } = await supabase.from("enrollments").select("customer_id").eq(col, val).range(from, from + P - 1);
+      const { data } = await supabase.from("enrollments").select("customer_id").in(col, vals).range(from, from + P - 1);
       const rows = (data as any[]) || [];
       for (const r of rows) if (r.customer_id) set.add(r.customer_id);
       if (rows.length < P) break;
@@ -87,11 +96,33 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     return set;
   }
 
-  const payActive = !!(f.pay && canFinance);
+  const payActive = !!(payVals.length && canFinance);
   const restrictSets: Set<string>[] = [];
-  if (payActive) restrictSets.push((f.pay === "overdue" || f.pay === "over") ? payOverdueSet : f.pay === "due" ? payDueSet : payBalanceSet);
-  if (f.dip) restrictSets.push(await enrollCustomerIds("diploma_id", f.dip));
-  if (f.batch) restrictSets.push(await enrollCustomerIds("batch_id", f.batch));
+  if (payActive) {
+    const u = new Set<string>();
+    if (payVals.includes("overdue") || payVals.includes("over")) payOverdueSet.forEach((x) => u.add(x));
+    if (payVals.includes("due")) payDueSet.forEach((x) => u.add(x));
+    if (payVals.includes("bal")) payBalanceSet.forEach((x) => u.add(x));
+    restrictSets.push(u);
+  }
+  if (dipVals.length) restrictSets.push(await enrollCustomerIds("diploma_id", dipVals));
+  if (batchVals.length) restrictSets.push(await enrollCustomerIds("batch_id", batchVals));
+
+  // فلاتر أعمدة العميل (بحث/مرحلة/تخصص/مسؤول/شركة) — تُطبّق في الفرعين
+  const applyCols = (sub: any) => {
+    if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
+    if (stageVals.length) sub = sub.in("stage", stageVals);
+    if (specVals.length) sub = sub.in("specialty_id", specVals);
+    if (companyVals.length) sub = sub.in("company", companyVals);
+    if (ownerVals.length) {
+      const hasNone = ownerVals.includes("none");
+      const ids = ownerVals.filter((v) => v !== "none");
+      if (hasNone && ids.length) sub = sub.or(`owner_id.is.null,owner_id.in.(${ids.join(",")})`);
+      else if (hasNone) sub = sub.is("owner_id", null);
+      else sub = sub.in("owner_id", ids);
+    }
+    return sub;
+  };
   const restrictActive = restrictSets.length > 0;
   // تقاطع كل القيود المفعّلة (العميل لازم يحقّقها كلها)
   let restrictIds: string[] = [];
@@ -123,12 +154,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         let sub = supabase.from("customers")
           .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id,created_at")
           .eq("deleted", false).not("archived", "is", true).in("id", restrictIds.slice(i, i + CH));
-        if (q) sub = sub.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
-        if (f.stage) sub = sub.eq("stage", f.stage);
-        if (f.spec) sub = sub.eq("specialty_id", f.spec);
-        if (f.owner === "none") sub = sub.is("owner_id", null);
-        else if (f.owner) sub = sub.eq("owner_id", f.owner);
-        if (f.company) sub = sub.eq("company", f.company);
+        sub = applyCols(sub);
         const { data } = await sub;
         all = all.concat((data as any[]) || []);
       }
@@ -140,12 +166,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     let cq = supabase.from("customers")
       .select("id,name,phone1,phone2,email,company,stage,owner_id,specialty_id", { count: "exact" })
       .eq("deleted", false).not("archived", "is", true);
-    if (q) cq = cq.or(`name.ilike.%${q}%,phone1.ilike.%${q}%,email.ilike.%${q}%`);
-    if (f.stage) cq = cq.eq("stage", f.stage);
-    if (f.spec) cq = cq.eq("specialty_id", f.spec);
-    if (f.owner === "none") cq = cq.is("owner_id", null);
-    else if (f.owner) cq = cq.eq("owner_id", f.owner);
-    if (f.company) cq = cq.eq("company", f.company);
+    cq = applyCols(cq);
     const custRes = await cq.order("created_at", { ascending: false }).range(offset, offset + LIST_LIMIT - 1);
     customers = (custRes.data as any[]) || [];
     totalCount = (custRes as any).count ?? customers.length;
@@ -219,9 +240,14 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     const s = p.toString();
     return s ? `/customers?${s}` : "/customers";
   };
-  // شيب سريع: نشط لو المفتاح مطابق
+  // شيب سريع: بيضيف/يشيل القيمة من فلتر متعدد (CSV) — نشط لو القيمة موجودة
+  const chipToggle = (key: keyof SP, val: string) => {
+    const cur = arr(f[key] as string | undefined);
+    const next = cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val];
+    return qs({ [key]: (next.length ? next.join(",") : undefined) as any, page: undefined });
+  };
   const chip = (label: string, key: keyof SP, val: string, active: boolean) => (
-    <Link href={active ? qs({ [key]: undefined, page: undefined } as Partial<SP>) : qs({ [key]: val, page: undefined } as Partial<SP>)}
+    <Link href={chipToggle(key, val)}
       className="opt-chip" style={active ? { background: "var(--brand)", color: "#fff", borderColor: "var(--brand)" } : undefined}>
       {label}
     </Link>
@@ -270,10 +296,10 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         templates={(tplRows as any) || []} />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "4px 0 14px" }}>
-        {chip(tr("dashStageInterested"), "stage", "interested", f.stage === "interested")}
-        {chip(tr("dashStageOnhold"), "stage", "onhold", f.stage === "onhold")}
-        {chip(tr("unassigned"), "owner", "none", f.owner === "none")}
-        {canFinance && chip(tr("overdueWord"), "pay", "over", f.pay === "over")}
+        {chip(tr("dashStageInterested"), "stage", "interested", stageVals.includes("interested"))}
+        {chip(tr("dashStageOnhold"), "stage", "onhold", stageVals.includes("onhold"))}
+        {chip(tr("unassigned"), "owner", "none", ownerVals.includes("none"))}
+        {canFinance && chip(tr("overdueWord"), "pay", "over", payVals.includes("over") || payVals.includes("overdue"))}
       </div>
 
       <div className="tbl-wrap">
