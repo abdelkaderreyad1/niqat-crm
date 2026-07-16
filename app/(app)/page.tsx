@@ -8,13 +8,9 @@ import { CountUp, Donut, BarRow } from "./Charts";
 export const dynamic = "force-dynamic";
 
 const STAGES = [
-  { key: "new", labelKey: "dashStageNew", color: "#2F6BFF" },
   { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
   { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
-  { key: "quote", labelKey: "dashStageQuote", color: "#E6A700" },
-  { key: "negotiation", labelKey: "dashStageNegotiation", color: "#F08A24" },
   { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
-  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
   { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
 ];
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];

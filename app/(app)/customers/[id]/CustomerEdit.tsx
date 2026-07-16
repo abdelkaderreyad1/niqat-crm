@@ -14,12 +14,8 @@ type C = {
 };
 
 const STAGES = [
-  { key: "new", labelKey: "dashStageNew" },
   { key: "contacted", labelKey: "dashStageContacted" },
   { key: "interested", labelKey: "dashStageInterested" },
-  { key: "quote", labelKey: "dashStageQuote" },
-  { key: "negotiation", labelKey: "dashStageNegotiation" },
-  { key: "onhold", labelKey: "dashStageOnhold" },
   { key: "enrolled", labelKey: "dashStageEnrolled" },
   { key: "lost", labelKey: "dashStageLost" },
 ];
@@ -40,7 +36,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
     name: customer.name || "", phone1: customer.phone1 || "", phone2: customer.phone2 || "",
     email: customer.email || "", company: customer.company || "", residency: customer.residency || "",
     grad_year: customer.grad_year ? String(customer.grad_year) : "",
-    specialty_id: customer.specialty_id || "", stage: customer.stage || "new",
+    specialty_id: customer.specialty_id || "", stage: customer.stage || "interested",
     affiliate_code: customer.affiliate_code || "",
     source: customer.source || "", lms_status: customer.lms_status || "",
   });

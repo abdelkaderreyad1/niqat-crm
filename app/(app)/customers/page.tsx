@@ -8,10 +8,9 @@ import CustomerBrief from "./CustomerBrief";
 export const dynamic = "force-dynamic";
 
 const STAGES: Record<string, { labelKey: string; color: string }> = {
-  new: { labelKey: "dashStageNew", color: "#2F6BFF" }, contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
-  interested: { labelKey: "dashStageInterested", color: "#7B61FF" }, quote: { labelKey: "dashStageQuote", color: "#E6A700" },
-  negotiation: { labelKey: "dashStageNegotiation", color: "#F08A24" },
-  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" }, onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
+  contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
+  interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
   lost: { labelKey: "dashStageLost", color: "#94A2BB" },
 };
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
@@ -268,7 +267,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     name: c.name || "", diploma: (custDips.get(c.id) || []).join(" / "),
     specialty: spName.get(c.specialty_id) || "",
     phone1: c.phone1 || "", phone2: c.phone2 || "", email: c.email || "", company: c.company || "",
-    stage: tr((STAGES[c.stage] || STAGES.new).labelKey), owner: pName.get(c.owner_id) || tr("unassigned"),
+    stage: tr((STAGES[c.stage] || STAGES.interested).labelKey), owner: pName.get(c.owner_id) || tr("unassigned"),
     ...(canFinance ? { remaining: money(remMap.get(c.id) || 0) + " " + (curMap.get(c.id) || "EGP") } : {}),
   }));
   const exportHeaders: [string, string][] = [
@@ -297,7 +296,6 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "4px 0 14px" }}>
         {chip(tr("dashStageInterested"), "stage", "interested", stageVals.includes("interested"))}
-        {chip(tr("dashStageOnhold"), "stage", "onhold", stageVals.includes("onhold"))}
         {chip(tr("unassigned"), "owner", "none", ownerVals.includes("none"))}
         {canFinance && chip(tr("overdueWord"), "pay", "over", payVals.includes("over") || payVals.includes("overdue"))}
       </div>
@@ -312,7 +310,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
           </thead>
           <tbody>
             {customers.map((r) => {
-              const st = STAGES[r.stage] || STAGES.new;
+              const st = STAGES[r.stage] || STAGES.interested;
               const dips = custDips.get(r.id) || [];
               const rem = remMap.get(r.id) || 0;
               const od = overdueSet.has(r.id);

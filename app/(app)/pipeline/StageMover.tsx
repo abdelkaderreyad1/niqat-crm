@@ -5,13 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n/client";
 
 const STAGES = [
-  { key: "new", labelKey: "dashStageNew" },
   { key: "contacted", labelKey: "dashStageContacted" },
   { key: "interested", labelKey: "dashStageInterested" },
-  { key: "quote", labelKey: "dashStageQuote" },
-  { key: "negotiation", labelKey: "dashStageNegotiation" },
   { key: "enrolled", labelKey: "dashStageEnrolled" },
-  { key: "onhold", labelKey: "dashStageOnhold" },
   { key: "lost", labelKey: "dashStageLost" },
 ];
 

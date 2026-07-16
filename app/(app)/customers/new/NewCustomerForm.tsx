@@ -9,8 +9,8 @@ import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/p
 type Opt = { id: string; name: string };
 type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
 const STAGES = [
-  ["new", "dashStageNew"], ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
-  ["quote", "dashStageQuote"], ["negotiation", "dashStageNegotiation"], ["enrolled", "dashStageEnrolled"], ["lost", "dashStageLost"],
+  ["contacted", "dashStageContacted"], ["interested", "dashStageInterested"],
+  ["enrolled", "dashStageEnrolled"], ["lost", "dashStageLost"],
 ];
 
 type Aff = { name: string; code: string; discount: number };
@@ -23,7 +23,7 @@ export default function NewCustomerForm({
   const supabase = createClient();
   const [f, setF] = useState({
     name: "", phone1: "", phone2: "", email: "", company: "", affiliate_code: "",
-    specialty_id: "", stage: "new", residency: "", grad_year: "", source: "",
+    specialty_id: "", stage: "interested", residency: "", grad_year: "", source: "",
     follow: "", diploma_id: "", batch_id: "", free: false, note: "",
     amount: "", currency: "EGP",
   });
@@ -85,7 +85,7 @@ export default function NewCustomerForm({
     if (p > 0) setF((s) => ({ ...s, amount: String(p) }));
   }, [f.batch_id, f.currency]);
   // بند 2: قسم الاشتراك يظهر لما المرحلة (عرض سعر/تفاوض/مسجّل) أو بزر يدوي
-  const stageOpensSub = ["quote", "negotiation", "enrolled"].includes(f.stage);
+  const stageOpensSub = f.stage === "enrolled";
   const showSub = stageOpensSub || showSubManual;
   // الاسم: لو إنجليزي خليه CAPITAL تلقائيًا (العربي زي ما هو)
   // الاسم إنجليزي فقط: يشيل أي حروف مش لاتينية (بما فيها العربي) ويحوّل كابيتال أوتوماتيك

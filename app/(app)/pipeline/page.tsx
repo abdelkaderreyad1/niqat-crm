@@ -60,7 +60,7 @@ export default async function Pipeline({ searchParams }: { searchParams: { q?: s
     id: c.id as string,
     name: (c.name as string) || "—",
     diploma: dipName.get(c.id as string) || "",
-    stage: (c.stage as string) || "new",
+    stage: (c.stage as string) || "interested",
     ownerId: (c.owner_id as string) || "",
     ownerName: pName.get(c.owner_id || "") || "",
     createdAt: (c.created_at as string) || "",

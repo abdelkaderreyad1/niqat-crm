@@ -5,13 +5,9 @@ import ReportsView from "./ReportsView";
 export const dynamic = "force-dynamic";
 
 const STAGES: Record<string, { labelKey: string; color: string }> = {
-  new: { labelKey: "dashStageNew", color: "#2F6BFF" },
   contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
   interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
-  quote: { labelKey: "dashStageQuote", color: "#E6A700" },
-  negotiation: { labelKey: "dashStageNegotiation", color: "#F08A24" },
   enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
-  onhold: { labelKey: "dashStageOnhold", color: "#E6A700" },
   lost: { labelKey: "dashStageLost", color: "#94A2BB" },
 };
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];

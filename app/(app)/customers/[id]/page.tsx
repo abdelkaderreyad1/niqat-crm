@@ -9,10 +9,9 @@ import { receiptSignedUrl } from "@/lib/supabase/receipts";
 export const dynamic = "force-dynamic";
 
 const STAGE: Record<string, { labelKey: string; color: string }> = {
-  new: { labelKey: "dashStageNew", color: "#2F6BFF" }, contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
-  interested: { labelKey: "dashStageInterested", color: "#7B61FF" }, negotiation: { labelKey: "dashStageNegotiation", color: "#F08A24" },
-  quote: { labelKey: "dashStageQuote", color: "#E6A700" },
-  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" }, onhold: { labelKey: "dashStageOnhold", color: "#7C8AA5" },
+  contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
+  interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
+  enrolled: { labelKey: "dashStageEnrolled", color: "#18A957" },
   lost: { labelKey: "dashStageLost", color: "#94A2BB" },
 };
 
@@ -157,7 +156,7 @@ export default async function CustomerDetail({ params }: { params: { id: string 
   const accredList = (accredRows || []).map((x: any) => x.name);
   const projList = (projRows || []).map((x: any) => x.name);
 
-  const st = STAGE[c.stage as string] || STAGE.new;
+  const st = STAGE[c.stage as string] || STAGE.interested;
   const ini = (n: string) => { const p = (n || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); };
 
   return (
@@ -170,9 +169,6 @@ export default async function CustomerDetail({ params }: { params: { id: string 
             <h2>{c.name}</h2>
             <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="stg" style={{ background: st.color + "1a", color: st.color }}>{tr(st.labelKey)}</span>
-              {c.stage === "onhold" && (c as any).onhold_reason && (
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>⏸️ {(c as any).onhold_reason}</span>
-              )}
               <CopyNumbers phones={[c.phone1 as string, c.phone2 as string]} />
             </div>
           </div>

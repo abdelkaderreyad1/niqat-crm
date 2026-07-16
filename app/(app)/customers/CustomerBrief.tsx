@@ -5,10 +5,10 @@ import { useT } from "@/lib/i18n/client";
 import { createClient } from "@/lib/supabase/client";
 
 const STG: Record<string, { k: string; c: string }> = {
-  new: { k: "dashStageNew", c: "#2F6BFF" }, contacted: { k: "dashStageContacted", c: "#0FA3A3" },
-  interested: { k: "dashStageInterested", c: "#7B61FF" }, quote: { k: "dashStageQuote", c: "#E6A700" },
-  negotiation: { k: "dashStageNegotiation", c: "#F08A24" }, enrolled: { k: "dashStageEnrolled", c: "#18A957" },
-  onhold: { k: "dashStageOnhold", c: "#E6A700" }, lost: { k: "dashStageLost", c: "#94A2BB" },
+  contacted: { k: "dashStageContacted", c: "#0FA3A3" },
+  interested: { k: "dashStageInterested", c: "#7B61FF" },
+  enrolled: { k: "dashStageEnrolled", c: "#18A957" },
+  lost: { k: "dashStageLost", c: "#94A2BB" },
 };
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 function waLink(p: string) { const d = (p || "").replace(/\D/g, ""); return d ? "https://wa.me/" + d : "#"; }
@@ -67,7 +67,7 @@ export default function CustomerBrief({ customerId, canFinance }: { customerId: 
 
       setData({
         name: cc.name || "—", phone1: cc.phone1 || "", company: cc.company || "",
-        stage: cc.stage || "new", specialty: (spRes as any).data?.name_ar || "",
+        stage: cc.stage || "interested", specialty: (spRes as any).data?.name_ar || "",
         owner: (ownRes as any).data?.full_name || "", source: cc.source || "",
         created: cc.created_at ? String(cc.created_at).slice(0, 10) : "",
         diplomas, batches, agreed, paid, remaining, nextDue, transfers,
@@ -78,7 +78,7 @@ export default function CustomerBrief({ customerId, canFinance }: { customerId: 
 
   function openModal() { setOpen(true); if (!data) load(); }
 
-  const st = data ? (STG[data.stage] || STG.new) : STG.new;
+  const st = data ? (STG[data.stage] || STG.interested) : STG.interested;
   const Row = ({ label, value }: { label: string; value: any }) => (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "7px 0", fontSize: 13, borderBottom: "1px solid var(--line)" }}>
       <span style={{ color: "var(--muted)" }}>{label}</span>

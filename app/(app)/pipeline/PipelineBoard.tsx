@@ -20,13 +20,9 @@ const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 
 
 // مراحل قاعدة البيانات (stage_t) + ألوان وتسميات البروتوتايب
 const STAGES = [
-  { key: "new", labelKey: "dashStageNew", color: "#2F6BFF" },
   { key: "contacted", labelKey: "dashStageContacted", color: "#0FA3A3" },
   { key: "interested", labelKey: "dashStageInterested", color: "#7B61FF" },
-  { key: "quote", labelKey: "dashStageQuote", color: "#E6A700" },
-  { key: "negotiation", labelKey: "dashStageNegotiation", color: "#F08A24" },
   { key: "enrolled", labelKey: "dashStageEnrolled", color: "#18A957" },
-  { key: "onhold", labelKey: "dashStageOnhold", color: "#E6A700" },
   { key: "lost", labelKey: "dashStageLost", color: "#94A2BB" },
 ];
 
@@ -108,7 +104,7 @@ export default function PipelineBoard({ initial, canFinance = false }: { initial
       <div className="pipe">
         {STAGES.map((s) => {
           const sortKey = colSort[s.key] || "";
-          let items = custs.filter((c) => (c.stage || "new") === s.key);
+          let items = custs.filter((c) => (c.stage || "interested") === s.key);
           if (sortKey === "name") items = [...items].sort((a, b) => (a.name || "").localeCompare(b.name || "", "ar"));
           else if (sortKey === "new") items = [...items].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
           const colValue = canFinance ? items.reduce((s2, c) => s2 + (c.value || 0), 0) : 0;
