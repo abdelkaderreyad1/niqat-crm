@@ -169,3 +169,54 @@ export function AreaChart({ points, color = "#F08A24", height = 160 }: {
     </svg>
   );
 }
+
+// ===== أيقونة خط (ستايل lucide) — مشتركة =====
+export function LineIcon({ name, size = 18 }: { name: string; size?: number }) {
+  const p: Record<string, React.ReactNode> = {
+    users: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.9" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /></>,
+    target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></>,
+    trending: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></>,
+    check: <><polyline points="9 11 12 14 22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></>,
+    ticket: <><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z" /><line x1="12" y1="6" x2="12" y2="18" strokeDasharray="2 3" /></>,
+    wallet: <><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4" /><path d="M4 6v12a2 2 0 0 0 2 2h14v-4" /><circle cx="16" cy="14" r="1.5" /></>,
+    calendarCheck: <><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><polyline points="9 15 11 17 15 13" /></>,
+    clipboard: <><rect x="8" y="3" width="8" height="4" rx="1" /><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2" /><path d="M9 13l2 2 4-4" /></>,
+    funnel: <><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4" /></>,
+    trophy: <><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 5h3v2a3 3 0 0 1-3 3" /><path d="M7 5H4v2a3 3 0 0 0 3 3" /></>,
+    dot: <><circle cx="12" cy="12" r="5" /></>,
+    undo: <><polyline points="9 14 4 9 9 4" /><path d="M20 20v-7a4 4 0 0 0-4-4H4" /></>,
+  };
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{p[name] || null}</svg>;
+}
+
+// ===== كارت KPI موحّد (مشترك بين الداشبورد والتقارير) =====
+export function Kpi({ label, value, color, icon, suffix = "", prefix = "", trend, animate = true }: {
+  label: string; value: number | string; color: string; icon?: string;
+  suffix?: string; prefix?: string;
+  trend?: { dir: string; pct: number; note?: string } | null;
+  animate?: boolean;
+}) {
+  return (
+    <div className="card rise" style={{ padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 12.5, marginBottom: 8 }}>
+        {icon && (
+          <span style={{ width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", flexShrink: 0, background: color + "1a", color }}>
+            <LineIcon name={icon} size={15} />
+          </span>
+        )}
+        <span>{label}</span>
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 800, color }}>
+        {typeof value === "number" && animate ? <CountUp value={value} prefix={prefix} suffix={suffix} /> : <span>{prefix}{value}{suffix}</span>}
+      </div>
+      {trend && (
+        <div style={{ marginTop: 4, fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 4,
+          color: trend.dir === "up" ? "#18A957" : trend.dir === "down" ? "#E0483B" : "var(--muted)" }}>
+          <span>{trend.dir === "up" ? "▲" : trend.dir === "down" ? "▼" : "■"}</span>
+          <span dir="ltr">{trend.pct}%</span>
+          {trend.note && <span style={{ color: "var(--muted)", fontWeight: 500 }}>{trend.note}</span>}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchDoneBtn from "./batches/BatchDoneBtn";
 import BatchesByDiploma from "./BatchesByDiploma";
-import { CountUp, Donut, BarRow } from "./Charts";
+import { CountUp, Donut, BarRow, Kpi, LineIcon } from "./Charts";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ export default async function Dashboard() {
 
   const [meRes, dsRes, specsRes, dipRes, btRes, tkRes, fuRes, hoRes, logRes, profRes,
          scRes, seRes, edRes, ebRes] = await Promise.all([
-    supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches").eq("id", user?.id || "").maybeSingle(),
+    supabase.from("profiles").select("can_see_finance,can_grant_access,can_manage_batches,team").eq("id", user?.id || "").maybeSingle(),
     supabase.from("profiles").select("can_see_daily_sales").eq("id", user?.id || "").maybeSingle(),
     supabase.from("specialties").select("id,name_ar"),
     supabase.from("diplomas").select("id,name_ar"),
@@ -44,6 +44,8 @@ export default async function Dashboard() {
   const me = meRes.data;
   const canFinance = !!me?.can_see_finance;
   const canManageBatches = !!me?.can_manage_batches;
+  const isAdmin = (me as any)?.team === "admin";
+  const isSales = (me as any)?.team === "sales" && !isAdmin;
   const canDailySales = !!dsRes.data?.can_see_daily_sales;
   const spName = new Map(((specsRes.data as any[]) || []).map((s: any) => [s.id, s.name_ar]));
   const diplomas = (dipRes.data as any[]) || [];
@@ -72,6 +74,26 @@ export default async function Dashboard() {
   const { count: tasksToday } = await supabase.from("tasks")
     .select("*", { count: "exact", head: true })
     .eq("assignee_id", user?.id || "").eq("done", false).lte("due_at", endToday.toISOString());
+
+  // ===== «شغلي» (لموظف المبيعات) — عملائي/متابعات اليوم/مهامي/مساري =====
+  const myUid = user?.id || "";
+  let myCustCount = 0, myFollowToday = 0, myTasksOpen = 0;
+  const myPipe: Record<string, number> = {};
+  if (isSales) {
+    const startTodayIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+    const endTodayIso = endToday.toISOString();
+    const [mc, mf, mt, ...stageCounts] = await Promise.all([
+      supabase.from("customers").select("*", { count: "exact", head: true }).eq("owner_id", myUid).eq("deleted", false).eq("archived", false),
+      supabase.from("follow_ups").select("*", { count: "exact", head: true }).eq("owner_id", myUid).eq("done", false).gte("due_at", startTodayIso).lte("due_at", endTodayIso),
+      supabase.from("tasks").select("*", { count: "exact", head: true }).eq("assignee_id", myUid).eq("done", false),
+      ...STAGES.map((s) => supabase.from("customers").select("*", { count: "exact", head: true }).eq("owner_id", myUid).eq("deleted", false).eq("archived", false).eq("stage", s.key)),
+    ]);
+    myCustCount = mc.count || 0;
+    myFollowToday = mf.count || 0;
+    myTasksOpen = mt.count || 0;
+    STAGES.forEach((s, i) => { myPipe[s.key] = (stageCounts[i] as any)?.count || 0; });
+  }
+  const myPipeMax = Math.max(1, ...Object.values(myPipe));
 
   // ===== المالية: إجماليات مفصولة بالعملة (من دالة fin_totals) + تنبيهات =====
   let egpCollected = 0, egpDue = 0, usdCollected = 0, usdDue = 0;
@@ -198,11 +220,11 @@ export default async function Dashboard() {
   })();
 
   const generalKpis = [
-    { label: tr("totalCust"), value: total, color: "#2F6BFF", emoji: "👥", trend: custTrend },
-    { label: tr("newLeads"), value: leads, color: "#F08A24", emoji: "🎯" },
-    { label: tr("convRate"), value: conv, suffix: "%", color: "#18A957", emoji: "📈" },
-    { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", emoji: "✅" },
-    { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", emoji: "🎫" },
+    { label: tr("totalCust"), value: total, color: "#2F6BFF", icon: "users", trend: custTrend },
+    { label: tr("newLeads"), value: leads, color: "#F08A24", icon: "target" },
+    { label: tr("convRate"), value: conv, suffix: "%", color: "#18A957", icon: "trending" },
+    { label: tr("tasksToday"), value: tasksToday ?? 0, color: "#7B61FF", icon: "check" },
+    { label: tr("openTk"), value: tkRes.count ?? 0, color: "#E0483B", icon: "ticket" },
   ];
 
   // تحويلات النهاردة الفعلية (أقساط + إضافات مدفوعة) — جنيه ودولار منفصلين
@@ -252,12 +274,40 @@ export default async function Dashboard() {
     <div>
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
 
-      {/* ===== شريط الفلوس: تحويلات اليوم + المالية ===== */}
+      {/* ===== «شغلي» — لموظف المبيعات فوق خالص ===== */}
+      {isSales && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>
+            <span style={{ width: 26, height: 26, borderRadius: 8, display: "grid", placeItems: "center", background: "var(--brand-soft)", color: "var(--brand)" }}><LineIcon name="clipboard" size={15} /></span>
+            {tr("myWork")}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 16 }}>
+            <Link href={`/customers?owner=${myUid}`} style={{ textDecoration: "none" }}><Kpi label={tr("myCustomers")} value={myCustCount} color="#2F6BFF" icon="users" /></Link>
+            <Kpi label={tr("myFollowToday")} value={myFollowToday} color="#E6A700" icon="calendarCheck" />
+            <Link href="/my-tasks" style={{ textDecoration: "none" }}><Kpi label={tr("myTasks")} value={myTasksOpen} color="#7B61FF" icon="check" /></Link>
+            <Kpi label={tr("myPipelineTotal")} value={myCustCount} color="#18A957" icon="funnel" animate={false} />
+          </div>
+          {/* مساري */}
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, display: "grid", placeItems: "center", background: "rgba(24,169,87,.12)", color: "#18A957" }}><LineIcon name="funnel" size={17} /></span>
+              <h3 style={{ margin: 0, fontSize: 15 }}>{tr("myPipeline")}</h3><span className="chip" style={{ marginInlineStart: 2 }}>{myCustCount}</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+              {STAGES.map((s) => (
+                <BarRow key={s.key} label={<span><span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{tr(s.labelKey)}</span>} value={myPipe[s.key] || 0} max={myPipeMax} color={s.color} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== شريط الفلوس: تحويلات اليوم + المالية (بؤرة للأدمن/الماليات) ===== */}
       {(canDailySales || canFinance) && (
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16, alignItems: "stretch" }}>
           {canFinance && (
             <div className="card" style={{ padding: 20, flex: "1.7 1 340px", display: "flex", flexDirection: "column" }}>
-              <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 14, fontWeight: 700 }}>💰 {tr("financeOverview")}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--muted)", fontSize: 13, marginBottom: 14, fontWeight: 700 }}><LineIcon name="wallet" size={16} /> {tr("financeOverview")}</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, flex: 1 }}>
                 {[
                   { badge: tr("egpShort"), pre: "", collected: egpCollected, due: egpDue, accent: "#0FA3A3" },
@@ -281,7 +331,7 @@ export default async function Dashboard() {
           {canDailySales && (
             <div className="card" style={{ padding: 20, flex: "1 1 240px", display: "flex", flexDirection: "column", background: "linear-gradient(135deg,#18A95712,#0FA3A312)", border: "1px solid #18A95733" }}>
               <div style={{ color: "var(--muted)", fontSize: 13, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontWeight: 700 }}><span style={{ marginInlineEnd: 6 }}>🟢</span>{tr("todayCollections")}</span>
+                <span style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 6, color: "#18A957" }}><LineIcon name="dot" size={13} />{tr("todayCollections")}</span>
                 {todayCount > 0 && <span className="chip" style={{ background: "#18A95722", color: "#18A957" }}>{todayCount}</span>}
               </div>
               <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 14 }}>
@@ -299,23 +349,12 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* ===== KPIs عامة مكثّفة ===== */}
+      {/* ===== KPIs عامة مكثّفة (كومبوننت موحّد) ===== */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
         {generalKpis.map((k) => (
-          <div key={k.label} className="card rise" style={{ padding: 16 }}>
-            <div style={{ color: "var(--muted)", fontSize: 12.5, marginBottom: 4 }}><span style={{ marginInlineEnd: 5 }}>{(k as any).emoji}</span>{k.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: k.color }}>
-              {typeof k.value === "number" ? <CountUp value={k.value} suffix={(k as any).suffix || ""} /> : k.value}
-            </div>
-            {(k as any).trend && (
-              <div style={{ marginTop: 4, fontSize: 11.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 4,
-                color: (k as any).trend.dir === "up" ? "#18A957" : (k as any).trend.dir === "down" ? "#E0483B" : "var(--muted)" }}>
-                <span>{(k as any).trend.dir === "up" ? "▲" : (k as any).trend.dir === "down" ? "▼" : "■"}</span>
-                <span dir="ltr">{(k as any).trend.pct}%</span>
-                <span style={{ color: "var(--muted)", fontWeight: 500 }}>· +{(k as any).trend.newThis} {tr("thisMonth")}</span>
-              </div>
-            )}
-          </div>
+          <Kpi key={k.label} label={k.label} value={k.value} color={k.color} icon={(k as any).icon}
+            suffix={(k as any).suffix || ""}
+            trend={(k as any).trend ? { dir: (k as any).trend.dir, pct: (k as any).trend.pct, note: `· +${(k as any).trend.newThis} ${tr("thisMonth")}` } : null} />
         ))}
       </div>
 
@@ -412,7 +451,7 @@ export default async function Dashboard() {
           <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
             {spRows.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noEnrolledYet")}</div>}
             {spRows.map((x, i) => (
-              <BarRow key={x.name} label={<span>{i === 0 ? "🏆 " : ""}{x.name}</span>} value={x.n} max={spMax} color="#2F6BFF" />
+              <BarRow key={x.name} label={<span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>{i === 0 && <span style={{ color: "#E6A700", display: "inline-flex" }}><LineIcon name="trophy" size={13} /></span>}{x.name}</span>} value={x.n} max={spMax} color="#2F6BFF" />
             ))}
           </div>
         </div>
@@ -448,7 +487,7 @@ export default async function Dashboard() {
       {canFinance && refundGroups.length > 0 && (
         <details className="card" style={{ padding: 0 }}>
           <summary style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13.5, color: "var(--ink)", listStyle: "none" }}>
-            <span>↩️ {tr("refundByDiplomaTitle")}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><LineIcon name="undo" size={15} /> {tr("refundByDiplomaTitle")}</span>
             <span className="chip" style={{ marginInlineStart: 4 }}>{refundGroups.reduce((a, g) => a + g.count, 0)}</span>
             <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} style={{ marginInlineStart: "auto", color: "var(--muted)" }}><path d="M6 9l6 6 6-6" /></svg>
           </summary>
