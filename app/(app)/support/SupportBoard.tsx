@@ -215,10 +215,20 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
               <div className="col-b enter">
                 {items.map((t) => {
                   const pc = PRC[t.priority] || PRC.normal;
+                  const isHigh = t.priority === "high";
+                  const prLabel = t.priority === "high" ? tr("priorityHigh") : t.priority === "medium" ? tr("priorityMedium") : tr("priorityLow");
+                  const ageMs = (() => { const d = new Date(String(t.date).replace(" ", "T")); return isNaN(d.getTime()) ? 0 : Date.now() - d.getTime(); })();
+                  const ageDays = Math.floor(ageMs / 86400000);
+                  const ageHrs = Math.floor(ageMs / 3600000);
+                  const ageTxt = ageMs <= 0 ? tr("ageJustNow")
+                    : ageDays >= 1 ? `${tr("ageSince")} ${ageDays} ${tr("ageDay")}`
+                    : ageHrs >= 1 ? `${tr("ageSince")} ${ageHrs} ${tr("ageHour")}`
+                    : tr("ageJustNow");
+                  const ageLate = ageDays >= 3 && t.status !== "closed";
                   return (
                     <div
                       key={t.id}
-                      className={"tk" + (dragId === t.id ? " ghost" : "")}
+                      className={"tk" + (isHigh ? " tk-high" : "") + (dragId === t.id ? " ghost" : "")}
                       draggable
                       onDragStart={() => setDragId(t.id)}
                       onDragEnd={() => {
@@ -231,19 +241,18 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
                         if (!d) return;
                         if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) openTicket(t.id);
                       }}
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: "pointer", borderInlineStart: `4px solid ${pc}` }}
                     >
                       <button className="cardx" title={tr("doneHideBoard")} onMouseDown={(ev) => ev.stopPropagation()} onClick={(ev) => { ev.stopPropagation(); archive(t.id); }}>
                         <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
                       </button>
                       <div className="th">
-                        <span className="pr" style={{ background: pc }} />
+                        <span className="pr-pill" style={{ color: pc, background: pc + "1a" }}>{prLabel}</span>
                         <span className="tt">{t.title}</span>
                       </div>
+                      {t.body && <div className="tk-body">{t.body}</div>}
                       <div className="tm">
                         <span>{t.customerName}</span>
-                        <span>•</span>
-                        <span className="num">{t.date}</span>
                         <span>•</span>
                         <span className="who-mini">
                           <span
@@ -259,6 +268,7 @@ export default function SupportBoard({ initial, assignees, subjects, meId }: {
                           </span>
                           {t.assigneeName}
                         </span>
+                        <span className={"tk-age" + (ageLate ? " late" : "")} style={{ marginInlineStart: "auto" }}>⏱ {ageTxt}</span>
                       </div>
                     </div>
                   );
