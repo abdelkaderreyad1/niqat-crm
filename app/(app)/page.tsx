@@ -76,6 +76,7 @@ export default async function Dashboard() {
   // ===== المالية: إجماليات مفصولة بالعملة (من دالة fin_totals) + تنبيهات =====
   let egpCollected = 0, egpDue = 0, usdCollected = 0, usdDue = 0;
   let overdueInst: any[] = [], soonInst: any[] = [];
+  let refundGroups: { diploma: string; batch: string; egp: number; usd: number; count: number }[] = [];
   if (canFinance) {
     const { data: ft } = await supabase.rpc("fin_totals");
     for (const r of (ft as any[]) || []) {
@@ -89,6 +90,28 @@ export default async function Dashboard() {
       .not("due_date", "is", null).lte("due_date", in7)
       .order("due_date").limit(200);
     for (const i of (al as any[]) || []) { if (i.due_date < todayStr) overdueInst.push(i); else soonInst.push(i); }
+
+    // ريفند لكل دبلومة/باتش — المرتجع فعلاً بس (refunded/closed)، جنيه ودولار منفصلين
+    const { data: refR } = await supabase.from("refunds")
+      .select("amount,currency,status,enrollment_id,enrollments(diploma_id,batch_id)")
+      .in("status", ["refunded", "closed"]);
+    const bCode = new Map(batches.map((b: any) => [b.id, b.code]));
+    const rMap: Record<string, { diploma: string; batch: string; egp: number; usd: number; count: number }> = {};
+    for (const r of (refR as any[]) || []) {
+      const enr = (r as any).enrollments;
+      const dipId = enr?.diploma_id || null;
+      const btId = enr?.batch_id || null;
+      const key = (dipId || "none") + "|" + (btId || "none");
+      if (!rMap[key]) rMap[key] = {
+        diploma: dipId ? (dName.get(dipId) || "—") : tr("undefinedGroup"),
+        batch: btId ? (bCode.get(btId) || "—") : "—",
+        egp: 0, usd: 0, count: 0,
+      };
+      if (r.currency === "USD") rMap[key].usd += Number(r.amount) || 0;
+      else rMap[key].egp += Number(r.amount) || 0;
+      rMap[key].count += 1;
+    }
+    refundGroups = Object.values(rMap).sort((a, b) => (b.egp + b.usd) - (a.egp + a.usd));
   }
 
   // ===== أسماء العملاء المطلوبة للعرض فقط (تنبيهات + نشاطات) =====
@@ -273,6 +296,36 @@ export default async function Dashboard() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ===== كارت الريفند لكل دبلومة/باتش ===== */}
+      {canFinance && refundGroups.length > 0 && (
+        <div className="card">
+          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3>↩️ {tr("refundByDiplomaTitle")}</h3>
+            <span className="chip">{refundGroups.reduce((a, g) => a + g.count, 0)}</span>
+          </div>
+          <div className="tbl-wrap" style={{ marginTop: 12 }}>
+            <table style={{ minWidth: 480 }}>
+              <thead><tr>
+                <th>{tr("theDiploma")}</th><th>{tr("theBatch")}</th>
+                <th>{tr("refundCount")}</th><th>{tr("egpShort")}</th><th>$</th>
+              </tr></thead>
+              <tbody>
+                {refundGroups.map((g, i) => (
+                  <tr key={i}>
+                    <td style={{ fontWeight: 700 }}>{g.diploma}</td>
+                    <td>{g.batch}</td>
+                    <td className="num"><span dir="ltr">{g.count}</span></td>
+                    <td className="num" style={{ color: g.egp > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span></td>
+                    <td className="num" style={{ color: g.usd > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.usd > 0 ? "$" + new Intl.NumberFormat("en").format(Math.round(g.usd)) : "—"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.6 }}>{tr("refundByDiplomaHint")}</div>
         </div>
       )}
 
