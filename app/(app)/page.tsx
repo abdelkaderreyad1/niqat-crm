@@ -299,36 +299,6 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {/* ===== كارت الريفند لكل دبلومة/باتش ===== */}
-      {canFinance && refundGroups.length > 0 && (
-        <div className="card">
-          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3>↩️ {tr("refundByDiplomaTitle")}</h3>
-            <span className="chip">{refundGroups.reduce((a, g) => a + g.count, 0)}</span>
-          </div>
-          <div className="tbl-wrap" style={{ marginTop: 12 }}>
-            <table style={{ minWidth: 480 }}>
-              <thead><tr>
-                <th>{tr("theDiploma")}</th><th>{tr("theBatch")}</th>
-                <th>{tr("refundCount")}</th><th>{tr("egpShort")}</th><th>$</th>
-              </tr></thead>
-              <tbody>
-                {refundGroups.map((g, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 700 }}>{g.diploma}</td>
-                    <td>{g.batch}</td>
-                    <td className="num"><span dir="ltr">{g.count}</span></td>
-                    <td className="num" style={{ color: g.egp > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span></td>
-                    <td className="num" style={{ color: g.usd > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.usd > 0 ? "$" + new Intl.NumberFormat("en").format(Math.round(g.usd)) : "—"}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.6 }}>{tr("refundByDiplomaHint")}</div>
-        </div>
-      )}
-
       {/* ===== KPIs عامة مكثّفة ===== */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
         {generalKpis.map((k) => (
@@ -473,6 +443,39 @@ export default async function Dashboard() {
           ))}
         </div>
       </div>
+
+      {/* ===== الريفند لكل دبلومة/باتش — مطوي في الآخر (مرجع تشوفه لما تحتاجه) ===== */}
+      {canFinance && refundGroups.length > 0 && (
+        <details className="card" style={{ padding: 0 }}>
+          <summary style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13.5, color: "var(--ink)", listStyle: "none" }}>
+            <span>↩️ {tr("refundByDiplomaTitle")}</span>
+            <span className="chip" style={{ marginInlineStart: 4 }}>{refundGroups.reduce((a, g) => a + g.count, 0)}</span>
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} style={{ marginInlineStart: "auto", color: "var(--muted)" }}><path d="M6 9l6 6 6-6" /></svg>
+          </summary>
+          <div style={{ padding: "0 16px 16px" }}>
+            <div className="tbl-wrap">
+              <table style={{ minWidth: 480 }}>
+                <thead><tr>
+                  <th>{tr("theDiploma")}</th><th>{tr("theBatch")}</th>
+                  <th>{tr("refundCount")}</th><th>{tr("egpShort")}</th><th>$</th>
+                </tr></thead>
+                <tbody>
+                  {refundGroups.map((g, i) => (
+                    <tr key={i}>
+                      <td style={{ fontWeight: 700 }}>{g.diploma}</td>
+                      <td>{g.batch}</td>
+                      <td className="num"><span dir="ltr">{g.count}</span></td>
+                      <td className="num" style={{ color: g.egp > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.egp > 0 ? new Intl.NumberFormat("en").format(Math.round(g.egp)) : "—"}</span></td>
+                      <td className="num" style={{ color: g.usd > 0 ? "#E0483B" : "var(--muted)" }}><span dir="ltr">{g.usd > 0 ? "$" + new Intl.NumberFormat("en").format(Math.round(g.usd)) : "—"}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10, lineHeight: 1.6 }}>{tr("refundByDiplomaHint")}</div>
+          </div>
+        </details>
+      )}
     </div>
   );
 }
