@@ -14,6 +14,63 @@ type SalesRow = { name: string; customers: number; enrolled: number; conv: numbe
 type SupportRow = { name: string; total: number; open: number; closed: number };
 type Monthly = { key: string; value: number };
 
+/* ===== أيقونات خط (ستايل lucide) ===== */
+function Icon({ name, size = 16 }: { name: string; size?: number }) {
+  const p: Record<string, React.ReactNode> = {
+    trending: <><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></>,
+    bars: <><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></>,
+    target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.5" /></>,
+    headset: <><path d="M4 14v-2a8 8 0 0 1 16 0v2" /><rect x="2.5" y="14" width="4" height="6" rx="1.5" /><rect x="17.5" y="14" width="4" height="6" rx="1.5" /><path d="M20 19a4 4 0 0 1-4 3h-2" /></>,
+    link: <><path d="M9 15l6-6" /><path d="M11 7l1-1a4 4 0 0 1 6 6l-1 1" /><path d="M13 17l-1 1a4 4 0 0 1-6-6l1-1" /></>,
+    pie: <><path d="M21.2 15.9A10 10 0 1 1 8.1 2.8" /><path d="M22 12A10 10 0 0 0 12 2v10z" /></>,
+    percent: <><line x1="19" y1="5" x2="5" y2="19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></>,
+    users: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.9" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /></>,
+    wallet: <><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4" /><path d="M4 6v12a2 2 0 0 0 2 2h14v-4" /><circle cx="16" cy="14" r="1.5" /></>,
+    coins: <><circle cx="9" cy="9" r="6" /><path d="M18.1 6.6a6 6 0 0 1 0 10.9" /><path d="M14.5 20.9a6 6 0 0 0 0-10.9" /></>,
+    gauge: <><path d="M12 14l4-4" /><path d="M3.3 17a9 9 0 1 1 17.4 0" /></>,
+    refresh: <><polyline points="23 4 23 10 17 10" /><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10" /></>,
+    award: <><circle cx="12" cy="8" r="6" /><path d="M8.2 13.3 7 22l5-3 5 3-1.2-8.7" /></>,
+  };
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
+}
+
+/* ===== عنوان قسم موحّد: أيقونة في مربّع + عنوان + عدّاد/إضافي ===== */
+function SecHead({ icon, tint, title, count, extra }: { icon: string; tint: string; title: string; count?: number; extra?: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+      <span style={{ width: 30, height: 30, borderRadius: 9, display: "grid", placeItems: "center", flexShrink: 0, background: tint + "1a", color: tint }}>
+        <Icon name={icon} size={17} />
+      </span>
+      <h3 style={{ margin: 0, fontSize: 15 }}>{title}</h3>
+      {typeof count === "number" && <span className="chip" style={{ marginInlineStart: 2 }}>{count}</span>}
+      {extra && <span style={{ marginInlineStart: "auto" }}>{extra}</span>}
+    </div>
+  );
+}
+
+const AV = ["#F08A24", "#0FA3A3", "#2F6BFF", "#7B61FF", "#18A957", "#E0483B", "#E6A700"];
+function avColor(s: string) { let h = 0; for (const ch of s || "") h += ch.charCodeAt(0); return AV[h % AV.length]; }
+function initials(name: string) { const p = (name || "?").trim().split(/\s+/); return p.length > 1 ? p[0][0] + p[1][0] : p[0].slice(0, 2); }
+const MEDALS = ["🥇", "🥈", "🥉"];
+
+/* صف ليدربورد موحّد */
+function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: string; sub: string; value: string; valueColor: string }) {
+  const av = avColor(name);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", borderBottom: "1px solid var(--line)" }}>
+      <span style={{ width: 26, textAlign: "center", fontSize: rank <= 3 ? 18 : 13, fontWeight: 800, color: "var(--muted)", flexShrink: 0 }}>
+        {rank <= 3 ? MEDALS[rank - 1] : rank}
+      </span>
+      <span style={{ width: 34, height: 34, borderRadius: "50%", display: "grid", placeItems: "center", color: "#fff", fontWeight: 800, fontSize: 12.5, background: av, flexShrink: 0 }}>{initials(name)}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 13.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>{sub}</div>
+      </div>
+      <div className="num" style={{ fontWeight: 800, fontSize: 16, color: valueColor, flexShrink: 0 }} dir="ltr">{value}</div>
+    </div>
+  );
+}
+
 export default function ReportsView({
   canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd,
   stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma,
@@ -35,7 +92,6 @@ export default function ReportsView({
   const supabase = createClient();
   const [resetting, setResetting] = useState(false);
 
-  // ترجمة اسم الشهر حسب اللغة من المفتاح YYYY-MM
   const monthlyLabeled = monthly.map((m) => {
     const [y, mm] = m.key.split("-").map(Number);
     const label = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en", { month: "short", timeZone: "Africa/Cairo" }).format(new Date(y, mm - 1, 1));
@@ -55,6 +111,7 @@ export default function ReportsView({
     if (error) { toast(tr("saveFailedColon") + error.message); return; }
     toast(tr("saved")); router.refresh();
   }
+
   const TABS = [
     ...(canFinance ? [{ k: "collection", label: tr("tabCollection") }] : []),
     { k: "sales", label: tr("tabSales") },
@@ -63,8 +120,6 @@ export default function ReportsView({
   ];
   const [tab, setTab] = useState(TABS[0]?.k || "sales");
   const maxStage = Math.max(1, ...stageRows.map((s) => s.n));
-  const salesMax = Math.max(1, ...salesRows.map((s) => s.customers));
-  const supMax = Math.max(1, ...supportRows.map((s) => s.total));
   const salesTot = {
     customers: salesRows.reduce((a, s) => a + s.customers, 0),
     enrolled: salesRows.reduce((a, s) => a + s.enrolled, 0),
@@ -75,6 +130,8 @@ export default function ReportsView({
     open: supportRows.reduce((a, s) => a + s.open, 0),
     closed: supportRows.reduce((a, s) => a + s.closed, 0),
   };
+  const salesRanked = [...salesRows].sort((a, b) => (canFinance ? b.collectedEgp - a.collectedEgp : b.enrolled - a.enrolled) || b.customers - a.customers);
+  const supRanked = [...supportRows].sort((a, b) => b.total - a.total);
 
   return (
     <div>
@@ -113,17 +170,12 @@ export default function ReportsView({
             </div>
           )}
 
-          {/* منحنى التحصيل الشهري */}
           <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-            <div className="card-h" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-              <h3 style={{ margin: 0 }}>{tr("collectionTrend")}</h3>
-              <button onClick={resetMeasurement} disabled={resetting} className="btn ghost"
-                style={{ height: 30, padding: "0 12px", fontSize: 12 }}>
-                {resetting ? "..." : "↺ " + tr("resetMeasurement")}
-              </button>
-            </div>
-            {/* ملخص سريع */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "10px 0 4px" }}>
+            <SecHead icon="trending" tint="#18A957" title={tr("collectionTrend")}
+              extra={<button onClick={resetMeasurement} disabled={resetting} className="btn ghost" style={{ height: 30, padding: "0 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Icon name="refresh" size={13} /> {resetting ? "..." : tr("resetMeasurement")}
+              </button>} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "12px 0 4px" }}>
               <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "#18A957" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
               <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
               {resetAt && <span style={{ fontSize: 11.5, color: "var(--muted)" }}>· {tr("measuringSince")} <span className="num" dir="ltr">{String(resetAt).slice(0, 10)}</span></span>}
@@ -131,10 +183,9 @@ export default function ReportsView({
             <div style={{ marginTop: 6 }}><AreaChart points={monthlyLabeled} color="#18A957" height={112} /></div>
           </div>
 
-          {/* نسبة التحصيل */}
           <div className="card" style={{ padding: 18 }}>
-            <div className="card-h"><h3>{tr("collectionRate")}</h3></div>
-            <div style={{ marginTop: 14 }}>
+            <SecHead icon="gauge" tint="#0FA3A3" title={tr("collectionRate")} />
+            <div style={{ marginTop: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
                 <span style={{ color: "var(--muted)" }}>{tr("totalCollected")}</span>
                 <b className="num" style={{ color: "#18A957" }}>{agreed ? Math.round((collected / agreed) * 100) : 0}%</b>
@@ -151,24 +202,20 @@ export default function ReportsView({
       {tab === "sales" && (
         <div className="fade-in">
           <div className="grid2" style={{ marginBottom: 16 }}>
-            {/* توزيع المراحل */}
             <div className="card" style={{ padding: 18 }}>
-              <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h3>{tr("stageDistribution")}</h3><span className="chip">{totalCust}</span>
-              </div>
-              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+              <SecHead icon="bars" tint="#7B61FF" title={tr("stageDistribution")} count={totalCust} />
+              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                 {stageRows.map((s) => (
                   <BarRow key={s.key} label={<span><span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{s.label}</span>} value={s.n} max={maxStage} color={s.color} />
                 ))}
               </div>
             </div>
-            {/* أفضل الدبلومات */}
             <div className="card" style={{ padding: 18 }}>
-              <div className="card-h"><h3>{tr("topDiplomas")}</h3></div>
+              <SecHead icon="pie" tint="#F08A24" title={tr("topDiplomas")} />
               {byDiploma.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noEnrolls")}</div>
               ) : (
-                <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 14 }}>
+                <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
                   <Donut data={byDiploma} />
                   <div style={{ flex: 1, minWidth: 150 }}>
                     {byDiploma.map((d) => (
@@ -189,96 +236,109 @@ export default function ReportsView({
       {/* ===== تبويب أداء الفريق ===== */}
       {tab === "team" && (
         <div className="fade-in">
-          {/* المبيعات */}
+          {/* المبيعات — ليدربورد */}
           <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-            <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3>🎯 {tr("salesTeamPerf")}</h3>
-              <ExportButton filename="sales-team"
+            <SecHead icon="target" tint="#2F6BFF" title={tr("salesTeamPerf")} count={salesRows.length}
+              extra={<ExportButton filename="sales-team"
                 headers={[tr("teamMember"), tr("customerCount"), tr("enrolledCol"), tr("convRate"), ...(canFinance ? ["EGP", "USD"] : [])]}
-                rows={salesRows.map((s) => [s.name, s.customers, s.enrolled, s.conv + "%", ...(canFinance ? [s.collectedEgp, s.collectedUsd] : [])])} />
+                rows={salesRows.map((s) => [s.name, s.customers, s.enrolled, s.conv + "%", ...(canFinance ? [s.collectedEgp, s.collectedUsd] : [])])} />} />
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 20, margin: "14px 0 6px" }}>
+              <MiniStat label={tr("customerCount")} value={salesTot.customers} color="#2F6BFF" />
+              <MiniStat label={tr("enrolledCol")} value={salesTot.enrolled} color="#18A957" />
+              <MiniStat label={tr("convRate")} value={salesConv} color="#E6A700" suffix="%" />
             </div>
-            {salesRows.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 22, marginBottom: 16 }}>
-                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("customerCount")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#2F6BFF" }}><CountUp value={salesTot.customers} /></div></div>
-                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("enrolledCol")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#18A957" }}><CountUp value={salesTot.enrolled} /></div></div>
-                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("convRate")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E6A700" }}><CountUp value={salesConv} suffix="%" /></div></div>
-                </div>
-                {salesRows.map((s) => (
-                  <BarRow key={s.name}
-                    label={<span style={{ fontWeight: 700 }}>{s.name} <span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 12 }}>· {s.enrolled} {tr("enrolledCol")} · {s.conv}%</span></span>}
-                    value={s.customers} max={salesMax} color="#2F6BFF" />
+
+            {salesRanked.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>{tr("noData")}</div>
+            ) : (
+              <div style={{ marginTop: 6 }}>
+                {salesRanked.map((s, i) => (
+                  <Lead key={s.name} rank={i + 1} name={s.name}
+                    sub={`${s.customers} ${tr("customerCount")} · ${s.conv}% ${tr("convRate")}`}
+                    value={canFinance ? fmt(s.collectedEgp) + " " + tr("egpShort") + (s.collectedUsd > 0 ? " · $" + fmt(s.collectedUsd) : "") : String(s.enrolled)}
+                    valueColor={canFinance ? "#18A957" : "#2F6BFF"} />
                 ))}
               </div>
             )}
-            <div className="tbl-wrap" style={{ marginTop: 16 }}>
-              <table style={{ minWidth: 480 }}>
-                <thead><tr>
-                  <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("customerCount")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("enrolledCol")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("convRate")}</th>
-                  {canFinance && <th className="text-start px-4 py-3 font-bold">{tr("collectedWord")}</th>}
-                </tr></thead>
-                <tbody>
-                  {salesRows.length === 0 && <tr><td colSpan={canFinance ? 5 : 4} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noData")}</td></tr>}
-                  {salesRows.map((s) => (
-                    <tr key={s.name} className="border-t border-line">
-                      <td className="px-4 py-3 font-bold" style={{ color: "var(--text)" }}>{s.name}</td>
-                      <td className="px-4 py-3 num font-bold">{s.customers}</td>
-                      <td className="px-4 py-3 num font-bold text-green">{s.enrolled}</td>
-                      <td className="px-4 py-3 num font-bold" style={{ color: "#2F6BFF" }}>{s.conv}%</td>
-                      {canFinance && <td className="px-4 py-3 num" style={{ color: "var(--muted)" }}>{s.collectedEgp.toLocaleString("en")} {tr("egpShort")}{s.collectedUsd > 0 ? ` · $${s.collectedUsd.toLocaleString("en")}` : ""}</td>}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+
+            <details style={{ marginTop: 14 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--brand)", listStyle: "none" }}>▸ {tr("showFullTable")}</summary>
+              <div className="tbl-wrap" style={{ marginTop: 12 }}>
+                <table style={{ minWidth: 480 }}>
+                  <thead><tr>
+                    <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>
+                    <th className="text-start px-4 py-3 font-bold">{tr("customerCount")}</th>
+                    <th className="text-start px-4 py-3 font-bold">{tr("enrolledCol")}</th>
+                    <th className="text-start px-4 py-3 font-bold">{tr("convRate")}</th>
+                    {canFinance && <th className="text-start px-4 py-3 font-bold">{tr("collectedWord")}</th>}
+                  </tr></thead>
+                  <tbody>
+                    {salesRows.length === 0 && <tr><td colSpan={canFinance ? 5 : 4} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noData")}</td></tr>}
+                    {salesRows.map((s) => (
+                      <tr key={s.name} className="border-t border-line">
+                        <td className="px-4 py-3 font-bold" style={{ color: "var(--text)" }}>{s.name}</td>
+                        <td className="px-4 py-3 num font-bold">{s.customers}</td>
+                        <td className="px-4 py-3 num font-bold text-green">{s.enrolled}</td>
+                        <td className="px-4 py-3 num font-bold" style={{ color: "#2F6BFF" }}>{s.conv}%</td>
+                        {canFinance && <td className="px-4 py-3 num" style={{ color: "var(--muted)" }}>{s.collectedEgp.toLocaleString("en")} {tr("egpShort")}{s.collectedUsd > 0 ? ` · $${s.collectedUsd.toLocaleString("en")}` : ""}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           </div>
 
-          {/* الدعم */}
+          {/* الدعم — ليدربورد */}
           <div className="card" style={{ padding: 18 }}>
-            <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3>🎧 {tr("supportTeamPerf")}</h3>
-              <ExportButton filename="support-team"
+            <SecHead icon="headset" tint="#18A957" title={tr("supportTeamPerf")} count={supportRows.length}
+              extra={<ExportButton filename="support-team"
                 headers={[tr("teamMember"), tr("ticketsTotal"), tr("ticketsOpen"), tr("ticketsClosed")]}
-                rows={supportRows.map((s) => [s.name, s.total, s.open, s.closed])} />
+                rows={supportRows.map((s) => [s.name, s.total, s.open, s.closed])} />} />
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 20, margin: "14px 0 6px" }}>
+              <MiniStat label={tr("ticketsTotal")} value={supTot.total} color="var(--ink)" />
+              <MiniStat label={tr("ticketsOpen")} value={supTot.open} color="#E6A700" />
+              <MiniStat label={tr("ticketsClosed")} value={supTot.closed} color="#18A957" />
             </div>
-            {supportRows.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 22, marginBottom: 16 }}>
-                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("ticketsTotal")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "var(--ink)" }}><CountUp value={supTot.total} /></div></div>
-                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("ticketsOpen")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#E6A700" }}><CountUp value={supTot.open} /></div></div>
-                  <div><div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("ticketsClosed")}</div><div style={{ fontSize: 24, fontWeight: 800, color: "#18A957" }}><CountUp value={supTot.closed} /></div></div>
-                </div>
-                {supportRows.map((s) => (
-                  <BarRow key={s.name}
-                    label={<span style={{ fontWeight: 700 }}>{s.name} <span style={{ color: "var(--muted)", fontWeight: 600, fontSize: 12 }}>· {s.closed} {tr("ticketsClosed")} · {s.open} {tr("ticketsOpen")}</span></span>}
-                    value={s.total} max={supMax} color="#18A957" />
+
+            {supRanked.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>{tr("noData")}</div>
+            ) : (
+              <div style={{ marginTop: 6 }}>
+                {supRanked.map((s, i) => (
+                  <Lead key={s.name} rank={i + 1} name={s.name}
+                    sub={`${s.closed} ${tr("ticketsClosed")} · ${s.open} ${tr("ticketsOpen")}`}
+                    value={String(s.total)} valueColor="#18A957" />
                 ))}
               </div>
             )}
-            <div className="tbl-wrap" style={{ marginTop: 16 }}>
-              <table style={{ minWidth: 440 }}>
-                <thead><tr>
-                  <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("ticketsTotal")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("ticketsOpen")}</th>
-                  <th className="text-start px-4 py-3 font-bold">{tr("ticketsClosed")}</th>
-                </tr></thead>
-                <tbody>
-                  {supportRows.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noData")}</td></tr>}
-                  {supportRows.map((s) => (
-                    <tr key={s.name} className="border-t border-line">
-                      <td className="px-4 py-3 font-bold" style={{ color: "var(--text)" }}>{s.name}</td>
-                      <td className="px-4 py-3 num font-bold">{s.total}</td>
-                      <td className="px-4 py-3 num font-bold" style={{ color: "#E6A700" }}>{s.open}</td>
-                      <td className="px-4 py-3 num font-bold text-green">{s.closed}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+
+            <details style={{ marginTop: 14 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--brand)", listStyle: "none" }}>▸ {tr("showFullTable")}</summary>
+              <div className="tbl-wrap" style={{ marginTop: 12 }}>
+                <table style={{ minWidth: 440 }}>
+                  <thead><tr>
+                    <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>
+                    <th className="text-start px-4 py-3 font-bold">{tr("ticketsTotal")}</th>
+                    <th className="text-start px-4 py-3 font-bold">{tr("ticketsOpen")}</th>
+                    <th className="text-start px-4 py-3 font-bold">{tr("ticketsClosed")}</th>
+                  </tr></thead>
+                  <tbody>
+                    {supportRows.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noData")}</td></tr>}
+                    {supportRows.map((s) => (
+                      <tr key={s.name} className="border-t border-line">
+                        <td className="px-4 py-3 font-bold" style={{ color: "var(--text)" }}>{s.name}</td>
+                        <td className="px-4 py-3 num font-bold">{s.total}</td>
+                        <td className="px-4 py-3 num font-bold" style={{ color: "#E6A700" }}>{s.open}</td>
+                        <td className="px-4 py-3 num font-bold text-green">{s.closed}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           </div>
         </div>
       )}
@@ -286,7 +346,9 @@ export default function ReportsView({
       {/* ===== تبويب الأفيلييت ===== */}
       {tab === "affiliate" && (
         <div className="fade-in">
-          <div className="page-h" style={{ marginBottom: 12 }}><div><h3 style={{ margin: 0 }}>{tr("affiliateReportTitle")}</h3></div></div>
+          <div style={{ marginBottom: 14 }}>
+            <SecHead icon="link" tint="#7B61FF" title={tr("affiliateReportTitle")} />
+          </div>
           <AffiliateReport affRows={affRows} batches={batchOpts} diplomas={diplomaOpts} affiliates={affiliates} canFinance={canFinance} />
         </div>
       )}
@@ -299,6 +361,15 @@ function KpiCard({ label, color, children }: { label: string; color: string; chi
     <div className="card" style={{ padding: 18 }}>
       <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 700, marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 24, fontWeight: 800, color }}>{children}</div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, color, suffix }: { label: string; value: number; color: string; suffix?: string }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: 21, fontWeight: 800, color }}><CountUp value={value} suffix={suffix} /></div>
     </div>
   );
 }

@@ -14,6 +14,28 @@ type CustRow = { id: string; name: string; code: string; diploma: string; base: 
 
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
+/* أيقونة خط + عنوان قسم موحّد (مطابق لـ ReportsView) */
+function AffIcon({ name, size = 17 }: { name: string; size?: number }) {
+  const p: Record<string, React.ReactNode> = {
+    users: <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.9" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /></>,
+    coins: <><circle cx="9" cy="9" r="6" /><path d="M18.1 6.6a6 6 0 0 1 0 10.9" /><path d="M14.5 20.9a6 6 0 0 0 0-10.9" /></>,
+    list: <><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></>,
+  };
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
+}
+function AffHead({ icon, tint, title, count, extra }: { icon: string; tint: string; title: string; count?: number; extra?: React.ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+      <span style={{ width: 30, height: 30, borderRadius: 9, display: "grid", placeItems: "center", flexShrink: 0, background: tint + "1a", color: tint }}>
+        <AffIcon name={icon} />
+      </span>
+      <h3 style={{ margin: 0, fontSize: 15 }}>{title}</h3>
+      {typeof count === "number" && <span className="chip" style={{ marginInlineStart: 2 }}>{count}</span>}
+      {extra && <span style={{ marginInlineStart: "auto" }}>{extra}</span>}
+    </div>
+  );
+}
+
 export default function AffiliateReport({ affRows, batches, diplomas, affiliates, canFinance }: {
   affRows: AffRow[]; batches: Opt[]; diplomas: Opt[]; affiliates: Aff[]; canFinance: boolean;
 }) {
@@ -145,9 +167,7 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
       {/* حالة: مفيش باتش مختار → نظرة عامة */}
       {!batchId && (
         <div className="card" style={{ padding: 18 }}>
-          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3>{tr("overallOverview")}</h3>
-          </div>
+          <AffHead icon="users" tint="#2F6BFF" title={tr("overallOverview")} />
           <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 12px" }}>{tr("affReportPickBatch")}</p>
           {affRows.length > 0 && (
             <div style={{ marginBottom: 16 }}>
@@ -197,14 +217,12 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
       {batchId && !loading && (
         <>
           <div className="card" style={{ padding: 18 }}>
-            <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3>{tr("commissionSummary")}</h3>
-              {canFinance && sumRows.length > 0 && (
+            <AffHead icon="coins" tint="#18A957" title={tr("commissionSummary")} count={sumRows.length}
+              extra={canFinance && sumRows.length > 0 ? (
                 <ExportButton filename={`affiliate-commissions-${batches.find((b) => b.v === batchId)?.label || batchId}`}
                   headers={[tr("code"), tr("affiliate"), tr("commissionPct"), tr("salesBaseCol"), tr("commissionCol"), tr("collected"), tr("customerCount"), tr("refundWord")]}
                   rows={sumRows.map((r) => [r.code, r.name, r.rate + "%", money(r.base), money(r.commission), money(r.collected), r.customers, r.refunded])} />
-              )}
-            </div>
+              ) : undefined} />
             {!canFinance && <p style={{ fontSize: 12.5, color: "#E6A700", margin: "6px 0 0" }}>{tr("commissionNeedsFinance")}</p>}
             <div className="tbl-wrap" style={{ marginTop: 12 }}>
               <table style={{ minWidth: 640 }}>
@@ -240,7 +258,7 @@ export default function AffiliateReport({ affRows, batches, diplomas, affiliates
           {/* تفاصيل العملاء (يتأثر بفلتر حالة الدفع) */}
           {custRows.length > 0 && (
             <div className="card" style={{ padding: 18 }}>
-              <div className="card-h"><h3>{tr("customerDetail")}</h3><span className="chip">{shownCust.length}</span></div>
+              <AffHead icon="list" tint="#F08A24" title={tr("customerDetail")} count={shownCust.length} />
               <div className="tbl-wrap" style={{ marginTop: 12 }}>
                 <table style={{ minWidth: 620 }}>
                   <thead><tr>
