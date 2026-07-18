@@ -4,6 +4,23 @@ import ReportsView from "./ReportsView";
 
 export const dynamic = "force-dynamic";
 
+// نطاق الفترة بتوقيت مصر — يرجّع {from,to} ISO أو null لكل الوقت
+function periodRange(period: string): { from: string; to: string } | null {
+  if (!period || period === "all") return null;
+  const now = new Date();
+  const to = now.toISOString();
+  const cairoMs = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Cairo" })).getTime()
+    - new Date(now.toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+  const nowCairo = new Date(now.getTime() + cairoMs);
+  let from: Date;
+  if (period === "today") { const d = new Date(nowCairo); d.setHours(0, 0, 0, 0); from = new Date(d.getTime() - cairoMs); }
+  else if (period === "7") from = new Date(now.getTime() - 7 * 864e5);
+  else if (period === "30") from = new Date(now.getTime() - 30 * 864e5);
+  else if (period === "month") { const d = new Date(nowCairo.getFullYear(), nowCairo.getMonth(), 1); from = new Date(d.getTime() - cairoMs); }
+  else return null;
+  return { from: from.toISOString(), to };
+}
+
 const STAGES: Record<string, { labelKey: string; color: string }> = {
   contacted: { labelKey: "dashStageContacted", color: "#0FA3A3" },
   interested: { labelKey: "dashStageInterested", color: "#7B61FF" },
@@ -12,7 +29,7 @@ const STAGES: Record<string, { labelKey: string; color: string }> = {
 };
 const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#E0483B"];
 
-export default async function Reports() {
+export default async function Reports({ searchParams }: { searchParams?: { period?: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: prof } = await supabase.from("profiles")
@@ -23,6 +40,10 @@ export default async function Reports() {
   }
   const canFinance = !!prof.can_see_finance;
 
+  const period = searchParams?.period || "all";
+  const range = periodRange(period);
+  const rpcArgs = range ? { p_from: range.from, p_to: range.to } : undefined;
+
   const [affRes, profRes, dipRes, refundRes, batchRes, tkRes, scRes, edRes, acRes, occRes] = await Promise.all([
     supabase.from("app_settings").select("value").eq("key", "affiliates").maybeSingle(),
     supabase.from("profiles").select("id,full_name,team"),
@@ -30,7 +51,7 @@ export default async function Reports() {
     supabase.from("refunds").select("customer_id"),
     supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
     supabase.from("tickets").select("assignee_id,status"),
-    supabase.rpc("dash_stage_counts"),
+    supabase.rpc("dash_stage_counts", rpcArgs),
     supabase.rpc("dash_enrollment_diploma"),
     supabase.rpc("dash_affiliate_counts"),
     supabase.rpc("dash_owner_customer_counts"),
@@ -74,8 +95,8 @@ export default async function Reports() {
   const collectedByOwner: Record<string, { egp: number; usd: number }> = {};
   if (canFinance) {
     const [{ data: ft }, { data: oc }, { data: odn }] = await Promise.all([
-      supabase.rpc("fin_totals"),
-      supabase.rpc("fin_collected_by_owner"),
+      supabase.rpc("fin_totals", rpcArgs),
+      supabase.rpc("fin_collected_by_owner", rpcArgs),
       supabase.rpc("fin_overdue_count"),
     ]);
     for (const r of (ft as any[]) || []) {

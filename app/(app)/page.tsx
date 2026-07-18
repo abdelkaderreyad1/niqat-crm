@@ -4,6 +4,7 @@ import { t as tr } from "@/lib/i18n";
 import BatchDoneBtn from "./batches/BatchDoneBtn";
 import BatchesByDiploma from "./BatchesByDiploma";
 import { CountUp, Donut, BarRow, Kpi, LineIcon, MiniSpark, Radial, HeroBarLine } from "./Charts";
+import PeriodFilter from "./PeriodFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +18,34 @@ const DC = ["#F08A24", "#2F6BFF", "#0FA3A3", "#7B61FF", "#18A957", "#E6A700", "#
 const fmtDate = (d: string) => { try { return new Date(d).toLocaleDateString("ar-EG", { month: "short", day: "numeric" }); } catch { return d; } };
 const money = (n: number) => new Intl.NumberFormat("en").format(Math.round(n || 0));
 
-export default async function Dashboard() {
+// نطاق الفترة بتوقيت مصر — يرجّع {from,to} ISO أو null لكل الوقت
+function periodRange(period: string): { from: string; to: string } | null {
+  if (!period || period === "all") return null;
+  const now = new Date();
+  const to = now.toISOString();
+  const cairoMs = new Date(now.toLocaleString("en-US", { timeZone: "Africa/Cairo" })).getTime()
+    - new Date(now.toLocaleString("en-US", { timeZone: "UTC" })).getTime();
+  const nowCairo = new Date(now.getTime() + cairoMs);
+  let from: Date;
+  if (period === "today") { const d = new Date(nowCairo); d.setHours(0, 0, 0, 0); from = new Date(d.getTime() - cairoMs); }
+  else if (period === "7") from = new Date(now.getTime() - 7 * 864e5);
+  else if (period === "30") from = new Date(now.getTime() - 30 * 864e5);
+  else if (period === "month") { const d = new Date(nowCairo.getFullYear(), nowCairo.getMonth(), 1); from = new Date(d.getTime() - cairoMs); }
+  else return null;
+  return { from: from.toISOString(), to };
+}
+
+export default async function Dashboard({ searchParams }: { searchParams?: { period?: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const in7 = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+
+  // نطاق الفترة المختار (Africa/Cairo). null = كل الوقت
+  const period = searchParams?.period || "all";
+  const range = periodRange(period);
+  const rpcArgs = range ? { p_from: range.from, p_to: range.to } : undefined;
 
   const [meRes, dsRes, specsRes, dipRes, btRes, tkRes, fuRes, hoRes, logRes, profRes,
          scRes, seRes, edRes, ebRes] = await Promise.all([
@@ -36,8 +59,8 @@ export default async function Dashboard() {
     supabase.from("handoffs").select("customer_id").eq("status", "pending"),
     supabase.from("audit_log").select("customer_id,actor_id,action,detail,at").order("at", { ascending: false }).limit(8),
     supabase.from("profiles").select("id,full_name"),
-    supabase.rpc("dash_stage_counts"),
-    supabase.rpc("dash_specialty_enrolled"),
+    supabase.rpc("dash_stage_counts", rpcArgs),
+    supabase.rpc("dash_specialty_enrolled", rpcArgs),
     supabase.rpc("dash_enrollment_diploma"),
     supabase.rpc("dash_enrollment_batch"),
   ]);
@@ -101,7 +124,7 @@ export default async function Dashboard() {
   let overdueInst: any[] = [], soonInst: any[] = [];
   let refundGroups: { diploma: string; batch: string; egp: number; usd: number; count: number }[] = [];
   if (canFinance) {
-    const { data: ft } = await supabase.rpc("fin_totals");
+    const { data: ft } = await supabase.rpc("fin_totals", rpcArgs);
     for (const r of (ft as any[]) || []) {
       if (r.currency === "USD") { usdCollected = Number(r.collected) || 0; usdDue = Number(r.due) || 0; }
       else { egpCollected += Number(r.collected) || 0; egpDue += Number(r.due) || 0; }
@@ -340,6 +363,7 @@ export default async function Dashboard() {
   return (
     <div>
       <div className="page-h"><div><h1>{tr("dash")}</h1><p>{tr("dashDesc")}</p></div></div>
+      <PeriodFilter />
 
       {/* ===== «شغلي» — لموظف المبيعات فوق خالص ===== */}
       {isSales && (

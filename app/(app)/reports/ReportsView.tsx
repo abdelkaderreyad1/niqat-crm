@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
 import { CountUp, Donut, BarRow, AreaChart, MiniSpark } from "../Charts";
+import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
 
@@ -136,6 +137,7 @@ export default function ReportsView({
   return (
     <div>
       <div className="page-h"><div><h1>{tr("reports")}</h1><p>{tr("reportsDesc")}</p></div></div>
+      <PeriodFilter />
 
       {/* التبويبات */}
       <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap", borderBottom: "1px solid var(--line)", paddingBottom: 2 }}>
