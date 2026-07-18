@@ -30,30 +30,31 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "بيانات غير صحيحة" }, { status: 400 });
   const email = String(body.email || "").trim().toLowerCase();
-  const password = String(body.password || "");
   const fullName = String(body.full_name || "").trim();
   const team = String(body.team || "").trim();
   const perms = (body.perms || {}) as Record<string, boolean>;
-  if (!email || !password) return NextResponse.json({ error: "الإيميل وكلمة السر مطلوبين" }, { status: 400 });
-  if (password.length < 6) return NextResponse.json({ error: "كلمة السر لازم 6 حروف على الأقل" }, { status: 400 });
+  if (!email) return NextResponse.json({ error: "الإيميل مطلوب" }, { status: 400 });
 
-  // 4) إنشاء الحساب بمفتاح الإدارة
+  // 4) إرسال دعوة بالإيميل (المستخدم بيحط باسورده بنفسه من لينك الدعوة)
   const admin = createAdmin(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
-  const { data: created, error: cErr } = await admin.auth.admin.createUser({
-    email, password, email_confirm: true, user_metadata: { full_name: fullName },
+  const origin = new URL(req.url).origin;
+  const redirectTo = `${origin}/accept-invite`;
+  const { data: invited, error: iErr } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: fullName },
+    redirectTo,
   });
-  if (cErr || !created?.user) {
-    const msg = /already|exists|registered/i.test(cErr?.message || "") ? "فيه حساب بنفس الإيميل ده قبل كده." : (cErr?.message || "تعذّر إنشاء الحساب");
+  if (iErr || !invited?.user) {
+    const msg = /already|exists|registered/i.test(iErr?.message || "") ? "فيه حساب بنفس الإيميل ده قبل كده." : (iErr?.message || "تعذّر إرسال الدعوة");
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
   // 5) تحديث البروفايل (الـ trigger بيعمله تلقائي — هنا بنحدّث الاسم/الفريق/الصلاحيات)
   const update: Record<string, any> = { full_name: fullName, team };
   for (const k of PERM_KEYS) update[k] = !!perms[k];
-  const { error: uErr } = await admin.from("profiles").update(update).eq("id", created.user.id);
-  if (uErr) return NextResponse.json({ error: "اتعمل الحساب بس فشل ضبط الصلاحيات: " + uErr.message }, { status: 500 });
+  const { error: uErr } = await admin.from("profiles").update(update).eq("id", invited.user.id);
+  if (uErr) return NextResponse.json({ error: "اتبعتت الدعوة بس فشل ضبط الصلاحيات: " + uErr.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, id: created.user.id });
+  return NextResponse.json({ ok: true, id: invited.user.id, invited: true });
 }
 
 async function guard() {

@@ -42,7 +42,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
 
   // إضافة عضو
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ full_name: "", email: "", password: "", team: "sales" });
+  const [f, setF] = useState({ full_name: "", email: "", team: "sales" });
   const [perms, setPerms] = useState<Record<string, boolean>>(() => {
     const o: Record<string, boolean> = {}; PRESET.sales.forEach((k) => (o[k] = true)); return o;
   });
@@ -56,36 +56,21 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     setEditId(u.id); setEf({ full_name: u.full_name || "", phone: u.phone || "", email: u.email || "" });
   }
 
-  // إعادة تعيين كلمة السر (باسورد جديد — مش عرض القديم)
+  // إعادة تعيين كلمة السر → بإرسال إيميل استعادة للمستخدم (يحط الباسورد بنفسه)
   const [pwId, setPwId] = useState<string | null>(null);
-  const [pwVal, setPwVal] = useState("");
-  function genPw() {
-    const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let s = ""; const a = new Uint32Array(12);
-    (globalThis.crypto || (window as any).crypto).getRandomValues(a);
-    for (let i = 0; i < 12; i++) s += chars[a[i] % chars.length];
-    return s;
-  }
   function startPw(u: Profile) {
     setEditId(null);
-    if (pwId === u.id) { setPwId(null); return; }
-    setPwId(u.id); setPwVal(genPw());
+    setPwId(pwId === u.id ? null : u.id);
   }
-  async function resetPw(u: Profile) {
-    if (pwVal.trim().length < 6) return toast(tr("passwordMin6"));
+  async function sendReset(u: Profile) {
+    if (!u.email) return toast(tr("noEmailForUser"));
     setBusy(u.id + "pw");
-    const res = await fetch("/api/team", {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: u.id, password: pwVal.trim() }),
-    });
-    const j = await res.json().catch(() => ({}));
+    const origin = window.location.origin;
+    const { error } = await supabase.auth.resetPasswordForEmail(u.email, { redirectTo: `${origin}/reset-password` });
     setBusy(null);
-    if (!res.ok) return toast(j.error || tr("passwordChangeFailed"));
-    toast(tr("passwordChanged"));
-  }
-  function copyPw() {
-    if (navigator.clipboard) navigator.clipboard.writeText(pwVal);
-    toast(tr("copied"));
+    if (error) return toast(error.message);
+    setPwId(null);
+    toast(`${tr("resetLinkSent")} ${u.email} ✓`);
   }
   async function saveEdit(u: Profile) {
     setBusy(u.id + "edit");
@@ -133,7 +118,6 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
   async function addMember() {
     if (!f.full_name.trim()) return toast(tr("enterMemberName"));
     if (!f.email.trim()) return toast(tr("enterEmail"));
-    if (f.password.length < 6) return toast(tr("passwordMin6"));
     setAdding(true);
     try {
       const res = await fetch("/api/team", {
@@ -143,8 +127,8 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
       const data = await res.json();
       setAdding(false);
       if (!res.ok) return toast(data.error || tr("errorOccurredShort"));
-      toast(`${tr("memberAdded")} ${f.full_name} ✓`);
-      setF({ full_name: "", email: "", password: "", team: "sales" });
+      toast(`${tr("inviteSent")} ${f.email} ✓`);
+      setF({ full_name: "", email: "", team: "sales" });
       const o: Record<string, boolean> = {}; PRESET.sales.forEach((k) => (o[k] = true)); setPerms(o);
       setOpen(false); router.refresh();
     } catch { setAdding(false); toast(tr("serverConnFailed")); }
@@ -178,15 +162,12 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
       )}
       {pwId === u.id && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "8px 0", padding: 10, border: "1px dashed var(--blue)", borderRadius: 8 }}>
-          <label style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("newPassword")}</label>
+          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: 0, lineHeight: 1.6 }}>{tr("resetByEmailHint")}</p>
+          {u.email
+            ? <div style={{ fontSize: 12.5, color: "var(--ink)" }} className="num" dir="ltr">{u.email}</div>
+            : <div style={{ fontSize: 12.5, color: "var(--red)" }}>{tr("noEmailForUser")}</div>}
           <div style={{ display: "flex", gap: 8 }}>
-            <input className="inp num" dir="ltr" value={pwVal} onChange={(e) => setPwVal(e.target.value)} style={{ flex: 1 }} />
-            <button className="btn ghost" onClick={() => setPwVal(genPw())} style={{ height: 36, padding: "0 12px" }} title={tr("generatePw")}>🎲 {tr("generatePw")}</button>
-            <button className="btn ghost" onClick={copyPw} style={{ height: 36, padding: "0 12px" }}>{tr("copyPassword")}</button>
-          </div>
-          <p style={{ fontSize: 11.5, color: "var(--muted)", margin: 0 }}>{tr("copyPwHint")}</p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn" onClick={() => resetPw(u)} disabled={busy === u.id + "pw"} style={{ height: 36 }}>{busy === u.id + "pw" ? "..." : tr("applyPw")}</button>
+            <button className="btn" onClick={() => sendReset(u)} disabled={busy === u.id + "pw" || !u.email} style={{ height: 36 }}>{busy === u.id + "pw" ? "..." : tr("sendResetLink")}</button>
             <button className="btn ghost" onClick={() => setPwId(null)} style={{ height: 36 }}>{tr("cancel")}</button>
           </div>
         </div>
@@ -236,8 +217,10 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
           <div className="frow">
             <div className="fld"><label>{tr("email")}</label>
               <input className="inp num" dir="ltr" type="email" value={f.email} onChange={(e) => setF((s) => ({ ...s, email: e.target.value }))} placeholder="name@niqat.com" /></div>
-            <div className="fld"><label>{tr("initialPassword")}</label>
-              <input className="inp num" dir="ltr" value={f.password} onChange={(e) => setF((s) => ({ ...s, password: e.target.value }))} placeholder={tr("min6chars")} /></div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--brand-soft)", border: "1px solid #f6d6b0", borderRadius: 10, padding: "10px 12px", marginBottom: 4, fontSize: 12.5, color: "var(--brand-d)" }}>
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M2 6h20v12H2z" /><path d="m22 6-10 7L2 6" /></svg>
+            {tr("inviteNote")}
           </div>
           <div className="sec-t">{tr("permissions")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 24, rowGap: 10, marginBottom: 12 }}>
@@ -248,7 +231,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
               </div>
             ))}
           </div>
-          <button onClick={addMember} disabled={adding} className="btn">{adding ? tr("creating") : tr("createAccount")}</button>
+          <button onClick={addMember} disabled={adding} className="btn">{adding ? tr("sending") : tr("sendInvite")}</button>
         </div>
       )}
 

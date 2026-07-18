@@ -26,6 +26,7 @@ export default function LoginPage() {
     passLbl: lang === "ar" ? "كلمة المرور" : "Password",
     btn: lang === "ar" ? "تسجيل الدخول" : "Sign In",
     err: lang === "ar" ? "بيانات الدخول غير صحيحة" : "Invalid login credentials",
+    forgot: lang === "ar" ? "نسيت كلمة السر؟" : "Forgot password?",
     credit: lang === "ar" ? "تصميم وتنفيذ إدارة العمليات في نقاط" : "Designed & built by the Operations Department at NIQAT",
   };
 
@@ -67,6 +68,10 @@ export default function LoginPage() {
         <button onClick={signIn} disabled={loading} className="btn" style={{ width: "100%", justifyContent: "center" }}>
           {loading ? "..." : T.btn}
         </button>
+
+        <div style={{ textAlign: "center", marginTop: 14 }}>
+          <a href="/forgot-password" style={{ color: "var(--brand)", fontSize: 12.5, fontWeight: 700 }}>{T.forgot}</a>
+        </div>
 
         <div style={{ textAlign: "center", marginTop: 22, fontSize: 11.5, color: "var(--muted)", lineHeight: 1.6 }}>
           {T.credit}
