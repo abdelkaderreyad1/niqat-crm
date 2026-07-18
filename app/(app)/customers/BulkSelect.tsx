@@ -96,6 +96,7 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
   const [waNums, setWaNums] = useState<string[] | null>(null);
   const [fuDate, setFuDate] = useState("");
   const [fuNote, setFuNote] = useState("");
+  const [confirmBox, setConfirmBox] = useState<{ msg: string; label: string; danger: boolean; run: () => void } | null>(null);
 
   if (count === 0) return null;
   const ids = () => Array.from(sel);
@@ -110,21 +111,17 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
     setBusy(false);
   }
 
-  async function doArchive() {
-    if (!confirm(tr("bulkArchiveConfirm").replace("{n}", String(count)))) return;
-    run(() => bulkArchive(ids()), tr("bulkArchivedOk"));
+  function doArchive() {
+    setConfirmBox({ msg: tr("bulkArchiveConfirm").replace("{n}", String(count)), label: tr("bulkArchive"), danger: true, run: () => run(() => bulkArchive(ids()), tr("bulkArchivedOk")) });
   }
-  async function doTerms() {
-    if (!confirm(tr("bulkTermsConfirm").replace("{n}", String(count)))) return;
-    run(() => bulkSignTerms(ids()), tr("bulkTermsOk"));
+  function doTerms() {
+    setConfirmBox({ msg: tr("bulkTermsConfirm").replace("{n}", String(count)), label: tr("bulkSignTerms"), danger: false, run: () => run(() => bulkSignTerms(ids()), tr("bulkTermsOk")) });
   }
   async function doOwner(ownerId: string | null) { run(() => bulkSetOwner(ids(), ownerId), tr("bulkOwnerOk")); }
   async function doStage(stage: string) { run(() => bulkSetStage(ids(), stage), tr("bulkStageOk")); }
 
-  async function doDelete() {
-    if (!confirm(tr("bulkDeleteConfirm1").replace("{n}", String(count)))) return;
-    if (!confirm(tr("bulkDeleteConfirm2").replace("{n}", String(count)))) return;
-    run(() => bulkDelete(ids()), tr("bulkDeletedOk"));
+  function doDelete() {
+    setConfirmBox({ msg: tr("bulkDeleteConfirm1").replace("{n}", String(count)), label: tr("bulkDelete"), danger: true, run: () => run(() => bulkDelete(ids()), tr("bulkDeletedOk")) });
   }
 
   async function doFollow() {
@@ -262,6 +259,27 @@ export function BulkBar({ owners, stages, templates, totalFiltered, canManageBat
               <button className="btn" onClick={() => setWaNums(null)}>{tr("done")}</button>
             </div>
             <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>{tr("watiHint")}</p>
+          </div>
+        </div>
+      )}
+      {/* مودال تأكيد داخلي (بدل window.confirm) */}
+      {confirmBox && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,27,48,.45)", zIndex: 70, display: "grid", placeItems: "center", padding: 16 }} onClick={() => setConfirmBox(null)}>
+          <div className="card" style={{ padding: 22, width: "min(420px,100%)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ width: 34, height: 34, borderRadius: 9, display: "grid", placeItems: "center", flexShrink: 0, background: confirmBox.danger ? "var(--red-soft)" : "var(--brand-soft)", color: confirmBox.danger ? "var(--red)" : "var(--brand)" }}>
+                <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+              </span>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "var(--ink)" }}>{tr("confirmActionTitle")}</div>
+            </div>
+            <p style={{ fontSize: 13.5, color: "var(--text)", lineHeight: 1.6, margin: "0 0 18px" }}>{confirmBox.msg}</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn" onClick={() => { const r = confirmBox.run; setConfirmBox(null); r(); }}
+                style={confirmBox.danger ? { flex: 1, justifyContent: "center", background: "var(--red)", borderColor: "var(--red)", color: "#fff" } : { flex: 1, justifyContent: "center" }}>
+                {confirmBox.label}
+              </button>
+              <button className="btn ghost" onClick={() => setConfirmBox(null)}>{tr("cancel")}</button>
+            </div>
           </div>
         </div>
       )}

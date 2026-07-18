@@ -135,6 +135,8 @@ export default function NewCustomerForm({
   const netAuto = Math.max(0, Math.round(gross - (gross * discPct) / 100));
   // بند 6: لو المستخدم عدّل المبلغ النهائي يدوياً نستخدمه، وإلا المحسوب تلقائياً
   const net = netOverride !== null && netOverride !== "" ? Math.max(0, Number(netOverride) || 0) : netAuto;
+  // تنبيه: مبلغ متكتوب من غير دبلومة → الاشتراك/المالية مش هيتسجّلوا
+  const amountNoDiploma = !f.free && gross > 0 && !f.diploma_id;
 
   // حساب جدول الأقساط: يقسّم المبلغ ويحسب ميعاد كل قسط
   function buildSchedule(total: number, count: number, gapMonths: number) {
@@ -157,6 +159,8 @@ export default function NewCustomerForm({
     if (!f.name.trim()) { toast(tr("nameRequired")); setStep(1); return; }
     if (!f.phone1.trim()) { toast(tr("phoneRequired")); setStep(1); return; }
     if (affUnknown) { toast(tr("affNotInList")); setStep(1); return; }
+    // تنبيه غير محظور: مبلغ من غير دبلومة → المبلغ مش هيتسجّل
+    if (amountNoDiploma) toast(tr("amountNeedsDiploma"));
     setSaving(true);
     setDup(null);
 
@@ -487,6 +491,11 @@ export default function NewCustomerForm({
                     <option value="EGP">{tr("egpShort")}</option><option value="USD">$</option>
                   </select>
                 </div>
+                {amountNoDiploma && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--amber)", marginTop: 6 }}>
+                    <Ic name="alert" size={14} /> {tr("amountNeedsDiploma")}
+                  </div>
+                )}
               </div>
 
               {/* بند 4: إبراز المستحق بعد الخصم كرقم واضح */}
