@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { revalidateCustomers } from "../actions";
+import FileDrop from "@/lib/ui/FileDrop";
 
 type Refund = {
   id: string; enrollmentId: string; addonId: string; amount: number; currency: string;
@@ -249,10 +250,9 @@ export default function RefundPanel({
                 <div style={{ marginTop: 8 }}>
                   {r.status === "requested" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
+                      <FileDrop style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--brand)", fontWeight: 700 }} accept="image/*" onFile={setFile}>
                         🖼️ {file ? file.name : tr("refundTransferShot")}
-                        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                      </label>
+                      </FileDrop>
                       <button onClick={() => markRefunded(r)} disabled={busy === "ref:" + r.id} className="btn" style={{ fontSize: 12.5 }}>{busy === "ref:" + r.id ? "..." : tr("refundTransfer")}</button>
                     </div>
                   )}

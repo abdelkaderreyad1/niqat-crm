@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { receiptSignedUrl } from "@/lib/supabase/receipts";
+import FileDrop from "@/lib/ui/FileDrop";
 
 type Doc = { id: string; url: string; name: string; at: string };
 
@@ -56,11 +57,10 @@ export default function DocsPanel({
       ) : (
         <>
           <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0" }}>
-            <label className="addshot">
+            <FileDrop className="addshot" accept="image/*,application/pdf" onFile={setFile}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
               {file ? file.name : tr("pickFileImage")}
-              <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            </label>
+            </FileDrop>
             <button className="btn" type="button" disabled={!file || busy} onClick={upload}>
               {busy ? tr("uploading") : tr("upload")}
             </button>

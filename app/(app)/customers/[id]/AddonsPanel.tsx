@@ -3,6 +3,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import FileDrop from "@/lib/ui/FileDrop";
 
 type Addon = { id: string; type: string; name: string; amount: number; free: boolean; note: string; paid: boolean; shot_url?: string };
 
@@ -112,11 +113,10 @@ export default function AddonsPanel({
                 <div className="fld" style={{ margin: 0 }}><label>{tr("amountPaidEgp")}</label>
                   <input className="inp num" dir="ltr" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={tr("egExample1500")} /></div>
                 <div className="fld" style={{ margin: 0 }}><label>{tr("paymentShot")}</label>
-                  <label className="addshot" style={{ width: "100%" }}>
+                  <FileDrop className="addshot" style={{ width: "100%" }} accept="image/*" onFile={setFile}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
                     {file ? file.name : tr("uploadTransferImg")}
-                    <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                  </label></div>
+                  </FileDrop></div>
               </div>
             </div>
           )}

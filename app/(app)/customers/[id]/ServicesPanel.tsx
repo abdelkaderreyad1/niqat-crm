@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import FileDrop from "@/lib/ui/FileDrop";
 
 type Opt = { v: string; label: string; price?: number; currency?: string; price_egp?: number; price_usd?: number };
 type Enr = { id: string; diploma: string; batch: string; diplomaId: string; batchId: string };
@@ -224,11 +225,10 @@ export default function ServicesPanel({
                   </div>
                 </div>
                 <div className="fld" style={{ margin: 0 }}><label>{tr("paymentProof")}</label>
-                  <label className="addshot" style={{ width: "100%" }}>
+                  <FileDrop className="addshot" style={{ width: "100%" }} accept="image/*" onFile={setFile}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
                     {file ? file.name : tr("uploadTransferShot")}
-                    <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                  </label>
+                  </FileDrop>
                 </div>
               </div>
             </div>
@@ -292,10 +292,9 @@ export default function ServicesPanel({
                             </select>
                           </div>
                         </div>
-                        <label className="btn ghost" style={{ height: 38, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12.5 }}>
+                        <FileDrop className="btn ghost" style={{ height: 38, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5 }} accept="image/*" onFile={setMoveFile}>
                           📎 {moveFile ? moveFile.name : tr("uploadTransferShot")}
-                          <input type="file" accept="image/*" hidden onChange={(ev) => setMoveFile(ev.target.files?.[0] || null)} />
-                        </label>
+                        </FileDrop>
                       </>
                     )}
 

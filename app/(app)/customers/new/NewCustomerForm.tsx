@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 import { COUNTRIES, DEFAULT_DIAL, combineDialAndNumber, phoneKey } from "@/lib/phone";
+import FileDrop from "@/lib/ui/FileDrop";
 
 type Opt = { id: string; name: string };
 type BatchOpt = { id: string; name: string; price?: number; currency?: string; price_egp?: number; price_usd?: number; diploma_id?: string };
@@ -589,11 +590,10 @@ export default function NewCustomerForm({
             {!f.free && (
               <div className="fld" style={{ marginTop: 8 }}>
                 <label>{tr("agreedTransferShot")}</label>
-                <label className="addshot" style={{ width: "100%" }}>
+                <FileDrop className="addshot" style={{ width: "100%" }} accept="image/*" onFile={setPayFile}>
                   <Ic name="upload" size={14} />
                   {payFile ? payFile.name : tr("uploadTransferShot")}
-                  <input type="file" accept="image/*" onChange={(e) => setPayFile(e.target.files?.[0] || null)} />
-                </label>
+                </FileDrop>
                 <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{tr("shotStoredHint")}</div>
               </div>
             )}

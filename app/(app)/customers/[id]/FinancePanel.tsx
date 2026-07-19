@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
+import FileDrop from "@/lib/ui/FileDrop";
 
 type Inst = { id: string; amount: number; currency: string; due: string; status: string; paidAt: string | null; shot: string | null };
 type Enr = { id: string; diploma: string; status: string; free: boolean; freeReason: string; agreed: number; currency: string; installments: Inst[]; batchId?: string; batch?: string };
@@ -221,10 +222,9 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                      </div>
                      {payFor === i.id && !paidNow && (
                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, borderTop: "1px dashed var(--line)", paddingTop: 8 }}>
-                         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
+                         <FileDrop style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--brand)", fontWeight: 700 }} accept="image/*" onFile={setPayFile}>
                            🖼️ {payFile ? payFile.name : tr("uploadReceiptOpt")}
-                           <input type="file" accept="image/*" style={{ display: "none" }} onChange={(ev) => setPayFile(ev.target.files?.[0] || null)} />
-                         </label>
+                         </FileDrop>
                          <button onClick={() => markPaid(i.id, payFile, e)} disabled={busy === i.id} className="btn" style={{ height: 30, padding: "0 12px", fontSize: 12, background: "var(--green)" }}>{busy === i.id ? "..." : tr("confirmPayment")}</button>
                          <button onClick={() => { setPayFor(null); setPayFile(null); }} className="btn ghost" style={{ height: 30, padding: "0 10px", fontSize: 12 }}>{tr("cancel")}</button>
                        </div>
@@ -239,10 +239,9 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
                     <input className="inp num" style={{ width: 110 }} placeholder={tr("instAmount")} value={amt} onChange={(ev) => setAmt(ev.target.value)} />
                     <input type="date" className="inp num" style={{ width: 150 }} value={due} onChange={(ev) => setDue(ev.target.value)} />
                   </div>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--brand)", fontWeight: 700, cursor: "pointer" }}>
+                  <FileDrop style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--brand)", fontWeight: 700 }} accept="image/*" onFile={setFile}>
                     🖼️ {file ? file.name : tr("addShot")}
-                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(ev) => setFile(ev.target.files?.[0] || null)} />
-                  </label>
+                  </FileDrop>
                   <div style={{ display: "flex", gap: 8 }}>
                     <button onClick={() => addInstallment(e)} disabled={busy === "add"} className="btn" style={{ height: 38 }}>{busy === "add" ? tr("saving") : tr("save")}</button>
                     <button onClick={() => { setAddFor(null); setFile(null); }} className="btn ghost" style={{ height: 38 }}>{tr("cancel")}</button>
