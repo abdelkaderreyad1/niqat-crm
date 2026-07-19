@@ -73,12 +73,13 @@ function Lead({ rank, name, sub, value, valueColor }: { rank: number; name: stri
 }
 
 export default function ReportsView({
-  canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd,
+  canFinance, agreed, collected, overdueN, collectedUsd, agreedUsd, refundReport = null,
   stageRows, totalCust, affRows, salesRows, supportRows, monthly, byDiploma,
   batchOpts, diplomaOpts, affiliates, resetAt = "",
 }: {
   canFinance: boolean;
   agreed: number; collected: number; overdueN: number; collectedUsd: number; agreedUsd: number;
+  refundReport?: any;
   stageRows: StageRow[]; totalCust: number; affRows: AffRow[];
   salesRows: SalesRow[]; supportRows: SupportRow[]; monthly: Monthly[];
   byDiploma: { label: string; value: number; color: string }[];
@@ -113,13 +114,6 @@ export default function ReportsView({
     toast(tr("saved")); router.refresh();
   }
 
-  const TABS = [
-    ...(canFinance ? [{ k: "collection", label: tr("tabCollection") }] : []),
-    { k: "sales", label: tr("tabSales") },
-    { k: "team", label: tr("tabTeam") },
-    { k: "affiliate", label: tr("tabAffiliate") },
-  ];
-  const [tab, setTab] = useState(TABS[0]?.k || "sales");
   const maxStage = Math.max(1, ...stageRows.map((s) => s.n));
   const salesTot = {
     customers: salesRows.reduce((a, s) => a + s.customers, 0),
@@ -139,24 +133,8 @@ export default function ReportsView({
       <div className="page-h"><div><h1>{tr("reports")}</h1><p>{tr("reportsDesc")}</p></div></div>
       <PeriodFilter />
 
-      {/* التبويبات */}
-      <div style={{ display: "flex", gap: 6, marginBottom: 18, flexWrap: "wrap", borderBottom: "1px solid var(--line)", paddingBottom: 2 }}>
-        {TABS.map((t) => (
-          <button key={t.k} onClick={() => setTab(t.k)}
-            style={{
-              padding: "9px 16px", fontSize: 13.5, fontWeight: 700, cursor: "pointer",
-              background: "none", border: "none", position: "relative",
-              color: tab === t.k ? "var(--brand)" : "var(--muted)",
-              borderBottom: tab === t.k ? "2px solid var(--brand)" : "2px solid transparent",
-              marginBottom: -2, transition: "color .2s",
-            }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       {/* ===== تبويب التحصيل ===== */}
-      {tab === "collection" && canFinance && (
+      {canFinance && (
         <div className="fade-in">
           {/* هيرو الفلوس الغامق */}
           <div style={{ background: "linear-gradient(135deg,#101828,#1f2a44)", color: "#fff", borderRadius: "var(--r)", padding: 22, marginBottom: 16, position: "relative", overflow: "hidden" }}>
@@ -215,7 +193,7 @@ export default function ReportsView({
       )}
 
       {/* ===== تبويب المبيعات ===== */}
-      {tab === "sales" && (
+      {true && (
         <div className="fade-in">
           <div className="grid2" style={{ marginBottom: 16 }}>
             <div className="card" style={{ padding: 18 }}>
@@ -236,7 +214,7 @@ export default function ReportsView({
       )}
 
       {/* ===== تبويب أداء الفريق ===== */}
-      {tab === "team" && (
+      {true && (
         <div className="fade-in">
           {/* المبيعات — ليدربورد */}
           <div className="card" style={{ padding: 18, marginBottom: 16 }}>
@@ -345,8 +323,52 @@ export default function ReportsView({
         </div>
       )}
 
-      {/* ===== تبويب الأفيلييت ===== */}
-      {tab === "affiliate" && (
+      {/* ===== الاستردادات (ريفند) ===== */}
+      {canFinance && refundReport && (
+        <div className="fade-in">
+          <div className="sh6"><span className="tick" /><h2>{tr("refundsReportTitle")}</h2></div>
+          <div className="rsum">
+            <div className="rst"><div className="l">{tr("totalRefunded")}</div><div className="v" style={{ color: "var(--red)" }}>{fmt(refundReport.total)}</div></div>
+            <div className="rst"><div className="l">{tr("refundOpsCount")}</div><div className="v" style={{ color: "var(--ink)" }}>{refundReport.count}</div></div>
+            <div className="rst"><div className="l">{tr("refundAvg")}</div><div className="v" style={{ color: "var(--ink)" }}>{fmt(refundReport.avg)}</div></div>
+          </div>
+          {refundReport.breakdown.length > 0 && (
+            <div className="card6" style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 14 }}>{tr("refundByService")}</div>
+              {refundReport.breakdown.map((b: any) => (
+                <div key={b.label} className="rbar">
+                  <span className="l">{b.label}</span>
+                  <div className="track"><i style={{ width: Math.max(4, Math.round((b.amount / refundReport.maxBd) * 100)) + "%" }} /></div>
+                  <span className="v">{fmt(b.amount)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {refundReport.recent.length > 0 && (
+            <div className="card6">
+              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 6 }}>{tr("recentRefunds")}</div>
+              <table className="tbl6"><thead><tr><th>{tr("customerCol")}</th><th>{tr("refundService")}</th><th>{tr("amount")}</th><th>{tr("statusCol")}</th></tr></thead>
+                <tbody>
+                  {refundReport.recent.map((r: any, i: number) => {
+                    const stt = r.status === "closed" ? { c: "g", l: tr("refundClosed") } : r.status === "partial" ? { c: "a", l: tr("partialTag") } : { c: "b", l: tr("refundInProgress") };
+                    return (
+                      <tr key={i}>
+                        <td><b>{r.customer}</b></td>
+                        <td>{r.service}</td>
+                        <td className="num" style={{ color: "var(--red)", fontWeight: 700 }} dir="ltr">{fmt(r.amount)}</td>
+                        <td><span className={"st6 " + stt.c}>{stt.l}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== الأفيلييت ===== */}
+      {true && (
         <div className="fade-in">
           <div style={{ marginBottom: 14 }}>
             <SecHead icon="link" tint="#7B61FF" title={tr("affiliateReportTitle")} />

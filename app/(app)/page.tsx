@@ -412,114 +412,95 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
         </div>
       )}
 
-      {/* ===== KPIs عامة مكثّفة (كومبوننت موحّد ذكي) ===== */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 16 }}>
-        {generalKpis.map((k) => (
-          <Kpi key={k.label} label={k.label} value={k.value} color={k.color} icon={(k as any).icon}
-            suffix={(k as any).suffix || ""}
-            progress={k.label === tr("convRate") ? conv : undefined}
-            subtitle={(k as any).trend ? `+${(k as any).trend.newThis} ${tr("thisMonth")}` : undefined}
-            trend={(k as any).trend ? { dir: (k as any).trend.dir, pct: (k as any).trend.pct } : null} />
-        ))}
+      {/* ===== KPIs عامة — ستايل v6 ===== */}
+      <div className="grid6 g4-6">
+        {generalKpis.map((k) => {
+          const td = (k as any).trend;
+          return (
+            <div key={k.label} className="card6 kpi6">
+              <div className="kl">{k.label}</div>
+              <div className="kv"><CountUp value={typeof k.value === "number" ? k.value : 0} />{(k as any).suffix || ""}</div>
+              <div className="kf">
+                {td && <span className={"delta6 " + (td.dir === "up" ? "up" : td.dir === "down" ? "dn" : "flat")}>{td.dir === "up" ? "↑" : td.dir === "down" ? "↓" : "•"} {td.pct}%</span>}
+                {td?.newThis != null && <span className="kc">+{td.newThis} {tr("thisMonth")}</span>}
+                {k.label === tr("convRate") && <span className="kc">{enrolled} {tr("enrolledCol")}</span>}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* ===== رسم الأداء (أعمدة عملاء + خط تحصيل) — آخر 12 شهر ===== */}
-      <div className="card" style={{ padding: 18, marginTop: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <span style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "#EFF6FF", color: "var(--blue)", flexShrink: 0 }}><LineIcon name="trending" size={16} /></span>
-          <h3 style={{ margin: 0, fontSize: 15 }}>{tr("perf12mo")}</h3>
-          <span style={{ marginInlineStart: "auto", fontSize: 11.5, color: "var(--muted-d)", fontWeight: 700, display: "flex", gap: 10 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--brand)", display: "inline-block" }} />{tr("newCustomersShort")}</span>
-            {canFinance && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--blue)", display: "inline-block" }} />{tr("collectionWord")}</span>}
-          </span>
-        </div>
+      <div className="sh6"><span className="tick" /><h2>{tr("perf12mo")}</h2>
+        <span className="side">{tr("newCustomersShort")}{canFinance ? " · " + tr("collectionWord") : ""}</span>
+      </div>
+      <div className="card6" style={{ padding: "16px 12px 8px" }}>
         <ApexCombo bars={heroBars} line={heroLine} labels={heroLabels} barName={tr("newCustomersShort")} lineName={tr("collectionWord")} showLine={canFinance} />
       </div>
 
       {/* ===== مطلوب إجراء (ستايل v4) + جدول الباتشات ===== */}
-      <div className="grid2" style={{ marginTop: 16 }}>
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ height: 4, background: "linear-gradient(90deg,var(--brand),var(--amber))" }} />
-          <div style={{ padding: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <span style={{ width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--brand-soft)", color: "var(--brand)", flexShrink: 0 }}><LineIcon name="clipboard" size={16} /></span>
-              <h3 style={{ margin: 0, fontSize: 15 }}>{tr("alertsT")}</h3>
-              {actionCount > 0 && <span style={{ marginInlineStart: "auto", fontSize: 12, fontWeight: 800, background: "var(--red)", color: "#fff", borderRadius: 20, padding: "2px 11px" }}>{actionCount}</span>}
-            </div>
-            <div className="actions6" style={{ maxHeight: 360, overflowY: "auto" }}>
-              {actionCount === 0 ? (
-                <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 20 }}>{tr("noAlerts")} 🎉</div>
-              ) : (
-                <>
-                  {canFinance && overdueRows}
-                  {canFinance && soonRows}
-                  {followRows}
-                  {handoffRows}
-                </>
-              )}
-            </div>
+      {/* ===== مطلوب إجراء ===== */}
+      <div className="sh6"><span className="tick" /><h2>{tr("alertsT")}</h2>{actionCount > 0 && <span className="meta">{actionCount} {tr("itemsWord")}</span>}</div>
+      <div className="card6 actions6">
+        {actionCount === 0 ? (
+          <div style={{ fontSize: 13.5, color: "var(--muted)", textAlign: "center", padding: 12 }}>{tr("noAlerts")} 🎉</div>
+        ) : (
+          <div style={{ maxHeight: 380, overflowY: "auto" }}>
+            {canFinance && overdueRows}
+            {canFinance && soonRows}
+            {followRows}
+            {handoffRows}
           </div>
-        </div>
+        )}
+      </div>
 
-        <div className="card" style={{ padding: 18 }}>
-          <div className="card-h" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3>{tr("schedule")}</h3><span className="chip">{batches.length}</span>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
-            {batches
-              .filter((b) => b.status !== "closed")
-              .sort((a, b) => String(a.start_date || "9999").localeCompare(String(b.start_date || "9999")))
-              .slice(0, 6)
-              .map((b) => {
-                const enr = batchCountMap.get(b.id) || 0;
-                const cap = Number(b.capacity) || 0;
-                const pct = cap > 0 ? Math.min(100, Math.round((enr / cap) * 100)) : 0;
-                const end = endMap.get(b.id);
-                const dip = dName.get(b.diploma_id) || "";
-                // توقيت: يبدأ خلال / جارية / منتهية
-                const dayMs = 864e5;
-                const startD = b.start_date ? new Date(b.start_date + "T00:00:00") : null;
-                const endD = end ? new Date(end + "T23:59:59") : null;
-                const nowT = Date.now();
-                let timing = "", tcolor = "var(--muted-d)";
-                if (endD && nowT > endD.getTime()) { timing = tr("batchEnded"); tcolor = "var(--muted)"; }
-                else if (startD && nowT < startD.getTime()) {
-                  const days = Math.ceil((startD.getTime() - nowT) / dayMs);
-                  timing = tr("batchStartsIn").replace("{n}", String(days)); tcolor = "var(--brand-d)";
-                } else if (startD) { timing = tr("batchOngoing"); tcolor = "var(--green)"; }
-                // الحالة
-                const stt = b.status === "full"
-                  ? { l: tr("fullLabel"), s: "full", bar: "var(--amber)" }
-                  : { l: tr("availableLabel"), s: "open", bar: "var(--green)" };
-                const accent = (endD && nowT > endD.getTime()) ? "var(--muted)" : stt.bar;
-                const range = (startD ? fmtDate(b.start_date) : "—") + (end ? " — " + fmtDate(end) : "");
-                return (
-                  <div key={b.id} className="bxrow" style={{ ["--accent" as any]: accent }}>
-                    <div className="bxtop">
-                      <span className="bxname">{dip || b.code}</span>
-                      <span className="bxcode num">{b.code}</span>
-                      <span className={"bxstat " + stt.s}>{stt.l}</span>
-                      {canManageBatches && b.status !== "closed" && <span className="bxdone"><BatchDoneBtn id={b.id} /></span>}
-                    </div>
-                    <div className="bxmeta">
-                      <LineIcon name="calendarCheck" size={13} />
-                      <span className="num">{range}</span>
-                      {timing && <><span className="bxdot">·</span><span style={{ color: tcolor, fontWeight: 700 }}>{timing}</span></>}
-                    </div>
-                    <div className="bxbar">
-                      <div className="bxtrack"><i style={{ width: pct + "%", background: stt.bar }} /></div>
-                      <span className="bxcap num">{cap > 0 ? `${enr}/${cap} · ${pct}%` : `${enr} ${tr("seatWord")}`}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            <Link href="/batches" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4, padding: "9px 0", borderRadius: 10, border: "1px solid var(--line)", color: "var(--brand)", fontSize: 13, fontWeight: 700, textDecoration: "none" }}>
-              {tr("viewAll")} ({batches.length})
-              <span style={{ fontSize: 15 }}>←</span>
-            </Link>
-          </div>
-        </div>
+      {/* ===== مواعيد الباتشات ===== */}
+      <div className="sh6"><span className="tick" /><h2>{tr("schedule")}</h2>
+        <Link href="/batches" className="side" style={{ textDecoration: "none" }}>{tr("viewAll")} ←</Link>
+      </div>
+      <div className="card6">
+        {batches.length === 0 && <div style={{ fontSize: 13, color: "var(--muted)" }}>{tr("noBatches")}</div>}
+        {batches
+          .filter((b) => b.status !== "closed")
+          .sort((a, b) => String(a.start_date || "9999").localeCompare(String(b.start_date || "9999")))
+          .slice(0, 6)
+          .map((b) => {
+            const enr = batchCountMap.get(b.id) || 0;
+            const cap = Number(b.capacity) || 0;
+            const pct = cap > 0 ? Math.min(100, Math.round((enr / cap) * 100)) : 0;
+            const end = endMap.get(b.id);
+            const dip = dName.get(b.diploma_id) || "";
+            const dayMs = 864e5;
+            const startD = b.start_date ? new Date(b.start_date + "T00:00:00") : null;
+            const endD = end ? new Date(end + "T23:59:59") : null;
+            const nowT = Date.now();
+            let timing = "", tcolor = "var(--muted-d)";
+            if (endD && nowT > endD.getTime()) { timing = tr("batchEnded"); tcolor = "var(--muted)"; }
+            else if (startD && nowT < startD.getTime()) {
+              const days = Math.ceil((startD.getTime() - nowT) / dayMs);
+              timing = tr("batchStartsIn").replace("{n}", String(days)); tcolor = "var(--brand-d)";
+            } else if (startD) { timing = tr("batchOngoing"); tcolor = "var(--green)"; }
+            const stt = (endD && nowT > endD.getTime())
+              ? { l: tr("batchEnded"), s: "done", bar: "#C9CDD6" }
+              : b.status === "full"
+                ? { l: tr("fullLabel"), s: "full", bar: "var(--amber)" }
+                : { l: tr("availableLabel"), s: "open", bar: "var(--green)" };
+            const range = (startD ? fmtDate(b.start_date) : "—") + (end ? " — " + fmtDate(end) : "");
+            return (
+              <div key={b.id} className="bs6">
+                <div className="bc">{b.code}</div>
+                <div className="bm">
+                  <div className="bt">{dip || b.code}</div>
+                  <div className="bd">{range}{timing && <span style={{ color: tcolor, fontWeight: 700 }}> · {timing}</span>}</div>
+                  <div className="bt-track"><i style={{ width: pct + "%", background: stt.bar }} /></div>
+                  <div className="bcap">{cap > 0 ? `${enr} / ${cap} ${tr("seatWord")} · ${pct}%` : `${enr} ${tr("seatWord")}`}</div>
+                </div>
+                {canManageBatches && b.status !== "closed"
+                  ? <BatchDoneBtn id={b.id} />
+                  : <span className={"pill6 " + stt.s}>{stt.l}</span>}
+              </div>
+            );
+          })}
       </div>
 
       {/* ===== ملخص المسار + دونات الدبلومات ===== */}

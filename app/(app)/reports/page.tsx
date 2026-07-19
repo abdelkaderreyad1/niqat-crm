@@ -168,9 +168,48 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
   const diplomaOpts = diplomas.map((d: any) => ({ v: d.id, label: d.name_ar }));
   const affiliatesList = affList.map((a: any) => ({ code: (a.code || "").toUpperCase(), name: a.name || "—", rate: Number(a.rate) || 0, discount: Number(a.discount) || 0 }));
 
+  // ===== تقرير الاستردادات (لأصحاب صلاحية المالية) =====
+  let refundReport: any = null;
+  if (canFinance) {
+    const { data: rfRows } = await supabase.from("refunds")
+      .select("id,amount,status,closes_service,enrollment_id,addon_id,customer_id,created_at")
+      .order("created_at", { ascending: false });
+    const rows = (rfRows as any[]) || [];
+    const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const count = rows.length;
+    const avg = count ? Math.round(total / count) : 0;
+    const enrIds = Array.from(new Set(rows.map((r) => r.enrollment_id).filter(Boolean)));
+    const addonIds = Array.from(new Set(rows.map((r) => r.addon_id).filter(Boolean)));
+    const custIds = Array.from(new Set(rows.map((r) => r.customer_id).filter(Boolean)));
+    const enrMap = new Map<string, any>();
+    if (enrIds.length) { const { data: e } = await supabase.from("enrollments").select("id,diploma_id,batch_id").in("id", enrIds); (e || []).forEach((x: any) => enrMap.set(x.id, x)); }
+    const addonMap = new Map<string, string>();
+    if (addonIds.length) { const { data: a } = await supabase.from("customer_addons").select("id,name").in("id", addonIds); (a || []).forEach((x: any) => addonMap.set(x.id, x.name || "")); }
+    const custName = new Map<string, string>();
+    if (custIds.length) { const { data: c } = await supabase.from("customers").select("id,name").in("id", custIds); (c || []).forEach((x: any) => custName.set(x.id, x.name || "")); }
+    const bCode = new Map(((batchRes.data as any[]) || []).map((b: any) => [b.id, b.code]));
+    const svcLabel = (r: any) => {
+      if (r.enrollment_id) { const e = enrMap.get(r.enrollment_id); const dn = e ? dName.get(e.diploma_id) : ""; const bc = e && e.batch_id ? bCode.get(e.batch_id) : ""; return (dn || "—") + (bc ? " · " + bc : ""); }
+      if (r.addon_id) return addonMap.get(r.addon_id) || "—";
+      return "—";
+    };
+    const bySvc: Record<string, number> = {};
+    rows.forEach((r) => { const l = svcLabel(r); bySvc[l] = (bySvc[l] || 0) + (Number(r.amount) || 0); });
+    const breakdown = Object.entries(bySvc).map(([label, amount]) => ({ label, amount: Math.round(amount as number) })).sort((a, b) => b.amount - a.amount).slice(0, 8);
+    const maxBd = Math.max(...breakdown.map((b) => b.amount), 1);
+    const recent = rows.slice(0, 10).map((r) => ({
+      customer: custName.get(r.customer_id) || "—",
+      service: svcLabel(r),
+      amount: Math.round(Number(r.amount) || 0),
+      status: r.status === "closed" ? "closed" : (!r.closes_service ? "partial" : "progress"),
+    }));
+    refundReport = { total: Math.round(total), count, avg, breakdown, maxBd, recent };
+  }
+
   return (
     <ReportsView
       canFinance={canFinance}
+      refundReport={refundReport}
       agreed={Math.round(agreed)} collected={Math.round(collected)} overdueN={overdueN}
       agreedUsd={Math.round(agreedUsd)} collectedUsd={Math.round(collectedUsd)}
       stageRows={stageRows} totalCust={totalCust} affRows={affRows}
