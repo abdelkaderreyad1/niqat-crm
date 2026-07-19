@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
-import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, ApexDonut } from "../Charts";
+import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, ApexDonut, ApexRadial } from "../Charts";
 import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
@@ -129,16 +129,17 @@ export default function ReportsView({
   const supRanked = [...supportRows].sort((a, b) => b.total - a.total);
 
   const TABS = [
-    ...(canFinance ? [{ k: "collection", label: tr("tabCollection") }] : []),
-    { k: "sales", label: tr("tabSales") },
+    { k: "performance", label: tr("tabPerformance") },
     { k: "team", label: tr("tabTeam") },
     ...(canFinance ? [{ k: "refunds", label: tr("refundsReportTitle") }] : []),
     { k: "affiliate", label: tr("tabAffiliate") },
   ];
-  const [tab, setTab] = useState(TABS[0]?.k || "sales");
+  const [tab, setTab] = useState("performance");
+  const [refShow, setRefShow] = useState(20);
+  const rate = agreed ? Math.round((collected / agreed) * 100) : 0;
 
   return (
-    <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+    <div>
       <div className="page-h"><div><h1>{tr("reports")}</h1><p>{tr("reportsDesc")}</p></div></div>
       <PeriodFilter />
 
@@ -149,80 +150,105 @@ export default function ReportsView({
         ))}
       </div>
 
-      {/* ===== تبويب التحصيل ===== */}
-      {tab === "collection" && canFinance && (
+      {/* ===== تبويب الأداء (تحصيل + مبيعات + اشتراكات) ===== */}
+      {tab === "performance" && (
         <div className="fade-in">
-          {/* هيرو الفلوس الغامق */}
-          <div style={{ background: "linear-gradient(135deg,#101828,#1f2a44)", color: "#fff", borderRadius: "var(--r)", padding: 22, marginBottom: 16, position: "relative", overflow: "hidden" }}>
-            <div style={{ fontSize: 12.5, color: "#98A2B3", fontWeight: 700 }}>{tr("collected30dTotal")}</div>
-            <div style={{ fontSize: 38, fontWeight: 800, fontFamily: "var(--fe)", lineHeight: 1.1, marginTop: 8 }}>{fmt(collected)} <span style={{ fontSize: 17, color: "#98A2B3" }}>{tr("egpShort")}</span></div>
-            <div style={{ marginTop: 8, fontSize: 12.5, color: "#D0D5DD", display: "flex", gap: 16, flexWrap: "wrap" }}>
-              <span>{tr("remaining")}: <b className="num" dir="ltr">{fmt(agreed - collected)} {tr("egpShort")}</b></span>
-              <span>· {tr("collectionRate")}: <b className="num" style={{ color: "#6CE9A6" }} dir="ltr">{agreed ? Math.round((collected / agreed) * 100) : 0}%</b></span>
-              {collectedUsd > 0 && <span>· <b className="num" dir="ltr">${fmt(collectedUsd)}</b></span>}
-            </div>
-            <div style={{ position: "absolute", insetInlineEnd: 12, bottom: 8, width: 180, opacity: 0.65 }}>
-              <MiniSpark points={monthly.map((m) => m.value)} color="#6CE9A6" height={54} />
-            </div>
-          </div>
+          {canFinance && (
+            <>
+              {/* هيرو الفلوس الغامق */}
+              <div style={{ background: "linear-gradient(135deg,#101828,#1f2a44)", color: "#fff", borderRadius: "var(--r)", padding: 22, marginBottom: 16, position: "relative", overflow: "hidden" }}>
+                <div style={{ fontSize: 12.5, color: "#98A2B3", fontWeight: 700 }}>{tr("collected30dTotal")}</div>
+                <div style={{ fontSize: 38, fontWeight: 800, fontFamily: "var(--fe)", lineHeight: 1.1, marginTop: 8 }}>{fmt(collected)} <span style={{ fontSize: 17, color: "#98A2B3" }}>{tr("egpShort")}</span></div>
+                <div style={{ marginTop: 8, fontSize: 12.5, color: "#D0D5DD", display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  <span>{tr("remaining")}: <b className="num" dir="ltr">{fmt(agreed - collected)} {tr("egpShort")}</b></span>
+                  <span>· {tr("collectionRate")}: <b className="num" style={{ color: "#6CE9A6" }} dir="ltr">{rate}%</b></span>
+                  {collectedUsd > 0 && <span>· <b className="num" dir="ltr">${fmt(collectedUsd)}</b></span>}
+                </div>
+                <div style={{ position: "absolute", insetInlineEnd: 12, bottom: 8, width: 180, opacity: 0.65 }}>
+                  <MiniSpark points={monthly.map((m) => m.value)} color="#6CE9A6" height={54} />
+                </div>
+              </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 14, marginBottom: 16 }}>
-            <KpiCard label={tr("totalAgreed")} color="#2F6BFF"><CountUp value={agreed} prefix="EGP " /></KpiCard>
-            <KpiCard label={tr("totalCollected")} color="#18A957"><CountUp value={collected} prefix="EGP " /></KpiCard>
-            <KpiCard label={tr("remaining")} color="#E6A700"><CountUp value={agreed - collected} prefix="EGP " /></KpiCard>
-            <KpiCard label={tr("overdueInstallments")} color="#E0483B"><CountUp value={overdueN} /></KpiCard>
-          </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 16 }}>
+                <KpiCard label={tr("totalAgreed")} color="#2F6BFF"><CountUp value={agreed} prefix="EGP " /></KpiCard>
+                <KpiCard label={tr("totalCollected")} color="#18A957"><CountUp value={collected} prefix="EGP " /></KpiCard>
+                <KpiCard label={tr("remaining")} color="#E6A700"><CountUp value={agreed - collected} prefix="EGP " /></KpiCard>
+                <KpiCard label={tr("overdueInstallments")} color="#E0483B"><CountUp value={overdueN} /></KpiCard>
+              </div>
 
-          {(collectedUsd > 0 || agreedUsd > 0) && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 14, marginBottom: 16 }}>
-              <KpiCard label={tr("totalAgreed") + " ($)"} color="#2F6BFF"><CountUp value={agreedUsd} prefix="$ " /></KpiCard>
-              <KpiCard label={tr("totalCollected") + " ($)"} color="#18A957"><CountUp value={collectedUsd} prefix="$ " /></KpiCard>
-            </div>
+              {(collectedUsd > 0 || agreedUsd > 0) && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 16 }}>
+                  <KpiCard label={tr("totalAgreed") + " ($)"} color="#2F6BFF"><CountUp value={agreedUsd} prefix="$ " /></KpiCard>
+                  <KpiCard label={tr("totalCollected") + " ($)"} color="#18A957"><CountUp value={collectedUsd} prefix="$ " /></KpiCard>
+                </div>
+              )}
+
+              {/* منحنى التحصيل + معدل التحصيل (radial) */}
+              <div className="grid6 g2-6" style={{ marginBottom: 16, alignItems: "start" }}>
+                <div className="card" style={{ padding: 18 }}>
+                  <SecHead icon="trending" tint="#18A957" title={tr("collectionTrend")}
+                    extra={<button onClick={resetMeasurement} disabled={resetting} className="btn ghost" style={{ height: 30, padding: "0 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      <Icon name="refresh" size={13} /> {resetting ? "..." : tr("resetMeasurement")}
+                    </button>} />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "12px 0 4px" }}>
+                    <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "#18A957" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
+                    <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
+                  </div>
+                  <div style={{ marginTop: 6 }}><ApexArea data={monthlyLabeled.map((m) => m.value)} labels={monthlyLabeled.map((m) => m.label)} name={tr("collectionWord")} color="#12B76A" /></div>
+                </div>
+                <div className="card" style={{ padding: 18 }}>
+                  <SecHead icon="gauge" tint="#0FA3A3" title={tr("collectionRate")} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 6, flexWrap: "wrap" }}>
+                    <div style={{ width: 190, flexShrink: 0 }}><ApexRadial pct={rate} label={tr("collectionRate")} /></div>
+                    <div>
+                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("totalCollected")}</div>
+                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--fd)", color: "#18A957", marginTop: 6 }} dir="ltr">{fmt(collected)}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--muted-d)", marginTop: 4 }} dir="ltr">/ {fmt(agreed)} {tr("egpShort")}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
-          <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-            <SecHead icon="trending" tint="#18A957" title={tr("collectionTrend")}
-              extra={<button onClick={resetMeasurement} disabled={resetting} className="btn ghost" style={{ height: 30, padding: "0 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5 }}>
-                <Icon name="refresh" size={13} /> {resetting ? "..." : tr("resetMeasurement")}
-              </button>} />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "12px 0 4px" }}>
-              <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "#18A957" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
-              <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
-              {resetAt && <span style={{ fontSize: 11.5, color: "var(--muted)" }}>· {tr("measuringSince")} <span className="num" dir="ltr">{String(resetAt).slice(0, 10)}</span></span>}
-            </div>
-            <div style={{ marginTop: 6 }}><ApexArea data={monthlyLabeled.map((m) => m.value)} labels={monthlyLabeled.map((m) => m.label)} name={tr("collectionWord")} color="#12B76A" /></div>
-          </div>
-
-          <div className="card" style={{ padding: 18 }}>
-            <SecHead icon="gauge" tint="#0FA3A3" title={tr("collectionRate")} />
-            <div style={{ marginTop: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 6 }}>
-                <span style={{ color: "var(--muted)" }}>{tr("totalCollected")}</span>
-                <b className="num" style={{ color: "#18A957" }}>{agreed ? Math.round((collected / agreed) * 100) : 0}%</b>
-              </div>
-              <div style={{ height: 12, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden" }}>
-                <div style={{ width: (agreed ? Math.round((collected / agreed) * 100) : 0) + "%", height: "100%", background: "linear-gradient(90deg,#18A957,#0FA3A3)", borderRadius: 20, transition: "width 1s cubic-bezier(.22,1,.36,1)" }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== تبويب المبيعات ===== */}
-      {tab === "sales" && (
-        <div className="fade-in">
-          <div className="grid2" style={{ marginBottom: 16 }}>
+          {/* توزيع المراحل (بالطول) + كل الدبلومات */}
+          <div className="grid6 g2-6" style={{ alignItems: "start" }}>
             <div className="card" style={{ padding: 18 }}>
               <SecHead icon="bars" tint="#7B61FF" title={tr("stageDistribution")} count={totalCust} />
-              <ApexStageBar labels={stageRows.map((s) => s.label)} data={stageRows.map((s) => s.n)} colors={stageRows.map((s) => s.color)} />
+              <div className="vfunnel">
+                {stageRows.map((s) => {
+                  const max = Math.max(...stageRows.map((x) => x.n), 1);
+                  const h = Math.max(6, Math.round((s.n / max) * 100));
+                  return (
+                    <div key={s.label} className="vfn">
+                      <span className="vfn-v num">{s.n}</span>
+                      <div className="vfn-col"><i style={{ height: h + "%", background: s.color }} /></div>
+                      <span className="vfn-l">{s.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
             <div className="card" style={{ padding: 18 }}>
-              <SecHead icon="pie" tint="#F08A24" title={tr("topDiplomas")} />
+              <SecHead icon="pie" tint="#F08A24" title={tr("topDiplomas")} count={byDiploma.length} />
               {byDiploma.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noEnrolls")}</div>
               ) : (
-                <ApexDonut labels={byDiploma.map((d) => d.label)} series={byDiploma.map((d) => d.value)}
-                  totalLabel={tr("enrolledCol")} totalValue={String(byDiploma.reduce((a, d) => a + d.value, 0))} />
+                <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 11 }}>
+                  {(() => { const mx = Math.max(...byDiploma.map((d) => d.value), 1); return byDiploma.map((d) => (
+                    <div key={d.label}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <i style={{ width: 9, height: 9, borderRadius: 3, background: d.color, flexShrink: 0 }} />{d.label}
+                        </span>
+                        <b className="num" style={{ fontSize: 12.5, color: "var(--ink)", flexShrink: 0 }}>{d.value}</b>
+                      </div>
+                      <div style={{ height: 8, background: "var(--muted-soft)", borderRadius: 20, overflow: "hidden" }}>
+                        <div style={{ width: Math.max(3, Math.round((d.value / mx) * 100)) + "%", height: "100%", borderRadius: 20, background: d.color, transition: "width .4s" }} />
+                      </div>
+                    </div>
+                  )); })()}
+                </div>
               )}
             </div>
           </div>
@@ -248,42 +274,22 @@ export default function ReportsView({
             {salesRanked.length === 0 ? (
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>{tr("noData")}</div>
             ) : (
-              <div style={{ marginTop: 6 }}>
-                {salesRanked.map((s, i) => (
-                  <Lead key={s.name} rank={i + 1} name={s.name}
-                    sub={`${s.customers} ${tr("customerCount")} · ${s.conv}% ${tr("convRate")}`}
-                    value={canFinance ? fmt(s.collectedEgp) + " " + tr("egpShort") + (s.collectedUsd > 0 ? " · $" + fmt(s.collectedUsd) : "") : String(s.enrolled)}
-                    valueColor={canFinance ? "#18A957" : "#2F6BFF"} />
-                ))}
-              </div>
+              <>
+                <div style={{ marginTop: 8 }}>
+                  <ApexStageBar labels={salesRanked.map((s) => s.name)}
+                    data={salesRanked.map((s) => canFinance ? s.collectedEgp : s.enrolled)}
+                    colors={salesRanked.map((_, i) => ["#2F6BFF", "#18A957", "#F08A24", "#7B61FF", "#0FA3A3", "#E6A700", "#E0483B"][i % 7])} />
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  {salesRanked.map((s, i) => (
+                    <Lead key={s.name} rank={i + 1} name={s.name}
+                      sub={`${s.customers} ${tr("customerCount")} · ${s.conv}% ${tr("convRate")}`}
+                      value={canFinance ? fmt(s.collectedEgp) + " " + tr("egpShort") + (s.collectedUsd > 0 ? " · $" + fmt(s.collectedUsd) : "") : String(s.enrolled)}
+                      valueColor={canFinance ? "#18A957" : "#2F6BFF"} />
+                  ))}
+                </div>
+              </>
             )}
-
-            <details style={{ marginTop: 14 }}>
-              <summary style={{ cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--brand)", listStyle: "none" }}>▸ {tr("showFullTable")}</summary>
-              <div className="tbl-wrap" style={{ marginTop: 12 }}>
-                <table style={{ minWidth: 480 }}>
-                  <thead><tr>
-                    <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>
-                    <th className="text-start px-4 py-3 font-bold">{tr("customerCount")}</th>
-                    <th className="text-start px-4 py-3 font-bold">{tr("enrolledCol")}</th>
-                    <th className="text-start px-4 py-3 font-bold">{tr("convRate")}</th>
-                    {canFinance && <th className="text-start px-4 py-3 font-bold">{tr("collectedWord")}</th>}
-                  </tr></thead>
-                  <tbody>
-                    {salesRows.length === 0 && <tr><td colSpan={canFinance ? 5 : 4} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noData")}</td></tr>}
-                    {salesRows.map((s) => (
-                      <tr key={s.name} className="border-t border-line">
-                        <td className="px-4 py-3 font-bold" style={{ color: "var(--text)" }}>{s.name}</td>
-                        <td className="px-4 py-3 num font-bold">{s.customers}</td>
-                        <td className="px-4 py-3 num font-bold text-green">{s.enrolled}</td>
-                        <td className="px-4 py-3 num font-bold" style={{ color: "#2F6BFF" }}>{s.conv}%</td>
-                        {canFinance && <td className="px-4 py-3 num" style={{ color: "var(--muted)" }}>{s.collectedEgp.toLocaleString("en")} {tr("egpShort")}{s.collectedUsd > 0 ? ` · $${s.collectedUsd.toLocaleString("en")}` : ""}</td>}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
           </div>
 
           {/* الدعم — ليدربورد */}
@@ -302,39 +308,21 @@ export default function ReportsView({
             {supRanked.length === 0 ? (
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 10 }}>{tr("noData")}</div>
             ) : (
-              <div style={{ marginTop: 6 }}>
-                {supRanked.map((s, i) => (
-                  <Lead key={s.name} rank={i + 1} name={s.name}
-                    sub={`${s.closed} ${tr("ticketsClosed")} · ${s.open} ${tr("ticketsOpen")}`}
-                    value={String(s.total)} valueColor="#18A957" />
-                ))}
-              </div>
+              <>
+                <div style={{ marginTop: 8 }}>
+                  <ApexStageBar labels={supRanked.map((s) => s.name)}
+                    data={supRanked.map((s) => s.total)}
+                    colors={supRanked.map((_, i) => ["#18A957", "#2F6BFF", "#F08A24", "#7B61FF", "#0FA3A3", "#E6A700"][i % 6])} />
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  {supRanked.map((s, i) => (
+                    <Lead key={s.name} rank={i + 1} name={s.name}
+                      sub={`${s.closed} ${tr("ticketsClosed")} · ${s.open} ${tr("ticketsOpen")}`}
+                      value={String(s.total)} valueColor="#18A957" />
+                  ))}
+                </div>
+              </>
             )}
-
-            <details style={{ marginTop: 14 }}>
-              <summary style={{ cursor: "pointer", fontSize: 12.5, fontWeight: 700, color: "var(--brand)", listStyle: "none" }}>▸ {tr("showFullTable")}</summary>
-              <div className="tbl-wrap" style={{ marginTop: 12 }}>
-                <table style={{ minWidth: 440 }}>
-                  <thead><tr>
-                    <th className="text-start px-4 py-3 font-bold">{tr("teamMember")}</th>
-                    <th className="text-start px-4 py-3 font-bold">{tr("ticketsTotal")}</th>
-                    <th className="text-start px-4 py-3 font-bold">{tr("ticketsOpen")}</th>
-                    <th className="text-start px-4 py-3 font-bold">{tr("ticketsClosed")}</th>
-                  </tr></thead>
-                  <tbody>
-                    {supportRows.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center" style={{ color: "var(--muted)" }}>{tr("noData")}</td></tr>}
-                    {supportRows.map((s) => (
-                      <tr key={s.name} className="border-t border-line">
-                        <td className="px-4 py-3 font-bold" style={{ color: "var(--text)" }}>{s.name}</td>
-                        <td className="px-4 py-3 num font-bold">{s.total}</td>
-                        <td className="px-4 py-3 num font-bold" style={{ color: "#E6A700" }}>{s.open}</td>
-                        <td className="px-4 py-3 num font-bold text-green">{s.closed}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
           </div>
         </div>
       )}
@@ -366,7 +354,7 @@ export default function ReportsView({
               <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 6 }}>{tr("recentRefunds")}</div>
               <table className="tbl6"><thead><tr><th>{tr("customerCol")}</th><th>{tr("refundService")}</th><th>{tr("amount")}</th><th>{tr("statusCol")}</th></tr></thead>
                 <tbody>
-                  {refundReport.recent.map((r: any, i: number) => {
+                  {refundReport.recent.slice(0, refShow).map((r: any, i: number) => {
                     const stt = r.status === "closed" ? { c: "g", l: tr("refundClosed") } : r.status === "partial" ? { c: "a", l: tr("partialTag") } : { c: "b", l: tr("refundInProgress") };
                     return (
                       <tr key={i}>
@@ -379,6 +367,11 @@ export default function ReportsView({
                   })}
                 </tbody>
               </table>
+              {refundReport.recent.length > refShow && (
+                <button onClick={() => setRefShow((n) => n + 20)} className="btn ghost" style={{ width: "100%", marginTop: 12, height: 38 }}>
+                  {tr("loadMore")} (+{Math.min(20, refundReport.recent.length - refShow)})
+                </button>
+              )}
             </div>
           )}
         </div>

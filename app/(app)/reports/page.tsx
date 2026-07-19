@@ -197,7 +197,7 @@ export default async function Reports({ searchParams }: { searchParams?: { perio
     rows.forEach((r) => { const l = svcLabel(r); bySvc[l] = (bySvc[l] || 0) + (Number(r.amount) || 0); });
     const breakdown = Object.entries(bySvc).map(([label, amount]) => ({ label, amount: Math.round(amount as number) })).sort((a, b) => b.amount - a.amount).slice(0, 8);
     const maxBd = Math.max(...breakdown.map((b) => b.amount), 1);
-    const recent = rows.slice(0, 10).map((r) => ({
+    const recent = rows.slice(0, 200).map((r) => ({
       customer: custName.get(r.customer_id) || "—",
       service: svcLabel(r),
       amount: Math.round(Number(r.amount) || 0),
