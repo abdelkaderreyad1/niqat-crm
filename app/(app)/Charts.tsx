@@ -314,3 +314,120 @@ export function HeroBarLine({ bars, line, labels, barColor = "var(--brand)", lin
     </div>
   );
 }
+
+// ===================== ApexCharts (تحميل client-side فقط) =====================
+import dynamic from "next/dynamic";
+const ReactApex = dynamic(() => import("react-apexcharts"), { ssr: false });
+
+// يقرأ ألوان الثيم الحالية ويعيد القراءة عند تبديل الدارك مود
+function useThemeColors() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const obs = new MutationObserver(() => setTick((t) => t + 1));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+  const C = (n: string, fallback = "") => {
+    if (typeof window === "undefined") return fallback;
+    return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || fallback;
+  };
+  return {
+    tick,
+    mode: (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark") ? "dark" : "light",
+    ink: C("--ink", "#101828"), muted: C("--muted", "#667085"), mutedD: C("--muted-d", "#475467"),
+    line: C("--line", "#EAECF2"), surface: C("--surface", "#fff"), mutedSoft: C("--muted-soft", "#F2F4F7"),
+    brand: C("--brand", "#F08A24"), blue: C("--blue", "#2E90FA"), green: C("--green", "#12B76A"),
+    teal: C("--teal", "#0FA3A3"), purple: C("--purple", "#7A5AF8"), amber: C("--amber", "#F5A623"), red: C("--red", "#F04438"),
+  };
+}
+const AR_FONT = "Tajawal, sans-serif";
+
+// رسم combo: أعمدة + خط ناعم
+export function ApexCombo({ bars, line, labels, barName, lineName, showLine = true }: {
+  bars: number[]; line?: number[]; labels: string[]; barName: string; lineName: string; showLine?: boolean;
+}) {
+  const c = useThemeColors();
+  const series: any[] = [{ name: barName, type: "column", data: bars }];
+  if (showLine && line) series.push({ name: lineName, type: "line", data: line });
+  const options: any = {
+    chart: { height: 250, type: "line", fontFamily: AR_FONT, toolbar: { show: false }, animations: { easing: "easeinout", speed: 600 }, background: "transparent" },
+    theme: { mode: c.mode },
+    stroke: { width: showLine ? [0, 3] : [0], curve: "smooth" },
+    colors: showLine ? [c.brand, c.blue] : [c.brand],
+    plotOptions: { bar: { columnWidth: "50%", borderRadius: 5 } },
+    dataLabels: { enabled: false },
+    grid: { borderColor: c.line, strokeDashArray: 4, padding: { left: 0, right: 0 } },
+    markers: { size: 0, hover: { size: 5 } },
+    xaxis: { categories: labels, labels: { style: { colors: c.muted, fontFamily: AR_FONT, fontSize: "11px" } }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: showLine
+      ? [{ labels: { style: { colors: c.muted, fontSize: "10px" } } }, { opposite: true, labels: { style: { colors: c.muted, fontSize: "10px" } } }]
+      : [{ labels: { style: { colors: c.muted, fontSize: "10px" } } }],
+    legend: { position: "top", horizontalAlign: "right", fontFamily: AR_FONT, fontWeight: 700, labels: { colors: c.mutedD }, markers: { radius: 12 } },
+    tooltip: { theme: c.mode, style: { fontFamily: AR_FONT } },
+  };
+  return <div key={c.tick}><ReactApex options={options} series={series} type="line" height={250} /></div>;
+}
+
+// دائرة التحويل radialBar بتدرّج
+export function ApexRadial({ pct, label }: { pct: number; label: string }) {
+  const c = useThemeColors();
+  const options: any = {
+    chart: { height: 210, type: "radialBar", fontFamily: AR_FONT, background: "transparent" },
+    plotOptions: { radialBar: { hollow: { size: "62%" }, track: { background: c.mutedSoft },
+      dataLabels: { name: { show: true, offsetY: 22, color: c.muted, fontSize: "12px", fontWeight: 600 },
+        value: { offsetY: -12, fontSize: "30px", fontFamily: "Inter", fontWeight: 800, color: c.ink, formatter: (v: number) => v + "%" } } } },
+    labels: [label],
+    fill: { type: "gradient", gradient: { shade: "dark", type: "diagonal", gradientToColors: [c.teal], stops: [0, 100] } },
+    colors: [c.green], stroke: { lineCap: "round" },
+  };
+  return <div key={c.tick}><ReactApex options={options} series={[pct]} type="radialBar" height={210} /></div>;
+}
+
+// دونات
+export function ApexDonut({ labels, series, totalLabel, totalValue }: {
+  labels: string[]; series: number[]; totalLabel: string; totalValue: string;
+}) {
+  const c = useThemeColors();
+  const options: any = {
+    chart: { height: 210, type: "donut", fontFamily: AR_FONT, background: "transparent" },
+    labels,
+    colors: [c.brand, c.blue, c.teal, c.purple, c.green, c.amber, c.red],
+    plotOptions: { pie: { donut: { size: "70%", labels: { show: true, total: { show: true, label: totalLabel, fontFamily: AR_FONT, color: c.muted, formatter: () => totalValue }, value: { fontFamily: "Inter", fontWeight: 800, color: c.ink } } } } },
+    dataLabels: { enabled: false }, stroke: { width: 2, colors: [c.surface] },
+    legend: { position: "bottom", fontFamily: AR_FONT, fontSize: "11px", labels: { colors: c.mutedD }, markers: { radius: 12 } },
+  };
+  if (!series.length) return <div style={{ padding: 24, textAlign: "center", color: "var(--muted)", fontSize: 13 }}>—</div>;
+  return <div key={c.tick}><ReactApex options={options} series={series} type="donut" height={210} /></div>;
+}
+
+// منحنى area بتدرّج
+export function ApexArea({ data, labels, name, color }: { data: number[]; labels: string[]; name: string; color?: string }) {
+  const c = useThemeColors();
+  const col = color || c.green;
+  const options: any = {
+    chart: { height: 230, type: "area", fontFamily: AR_FONT, toolbar: { show: false }, animations: { speed: 600 }, background: "transparent" },
+    stroke: { width: 3, curve: "smooth" }, colors: [col],
+    fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.35, opacityTo: 0, stops: [0, 95] } },
+    dataLabels: { enabled: false }, grid: { borderColor: c.line, strokeDashArray: 4 },
+    markers: { size: 0, hover: { size: 5 } },
+    xaxis: { categories: labels, labels: { style: { colors: c.muted, fontFamily: AR_FONT, fontSize: "11px" } }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { style: { colors: c.muted, fontSize: "10px" } } },
+    tooltip: { style: { fontFamily: AR_FONT } },
+  };
+  return <div key={c.tick}><ReactApex options={options} series={[{ name, data }]} type="area" height={230} /></div>;
+}
+
+// بار المراحل الأفقي الملوّن
+export function ApexStageBar({ labels, data, colors }: { labels: string[]; data: number[]; colors: string[] }) {
+  const c = useThemeColors();
+  const options: any = {
+    chart: { height: 210, type: "bar", fontFamily: AR_FONT, toolbar: { show: false }, background: "transparent" },
+    plotOptions: { bar: { horizontal: true, borderRadius: 5, barHeight: "55%", distributed: true } },
+    colors,
+    dataLabels: { enabled: true, style: { fontFamily: "Inter", fontSize: "11px", colors: ["#fff"] } },
+    xaxis: { categories: labels, labels: { style: { colors: c.muted, fontSize: "11px", fontFamily: AR_FONT } }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { style: { colors: c.mutedD, fontSize: "12px", fontFamily: AR_FONT } } },
+    grid: { show: false }, legend: { show: false }, tooltip: { enabled: false },
+  };
+  return <div key={c.tick}><ReactApex options={options} series={[{ name: "", data }]} type="bar" height={210} /></div>;
+}

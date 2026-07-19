@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
-import { CountUp, Donut, BarRow, AreaChart, MiniSpark } from "../Charts";
+import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, ApexDonut } from "../Charts";
 import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
@@ -196,7 +196,7 @@ export default function ReportsView({
               <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
               {resetAt && <span style={{ fontSize: 11.5, color: "var(--muted)" }}>· {tr("measuringSince")} <span className="num" dir="ltr">{String(resetAt).slice(0, 10)}</span></span>}
             </div>
-            <div style={{ marginTop: 6 }}><AreaChart points={monthlyLabeled} color="#18A957" height={112} /></div>
+            <div style={{ marginTop: 6 }}><ApexArea data={monthlyLabeled.map((m) => m.value)} labels={monthlyLabeled.map((m) => m.label)} name={tr("collectionWord")} color="#12B76A" /></div>
           </div>
 
           <div className="card" style={{ padding: 18 }}>
@@ -220,29 +220,15 @@ export default function ReportsView({
           <div className="grid2" style={{ marginBottom: 16 }}>
             <div className="card" style={{ padding: 18 }}>
               <SecHead icon="bars" tint="#7B61FF" title={tr("stageDistribution")} count={totalCust} />
-              <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                {stageRows.map((s) => (
-                  <BarRow key={s.key} label={<span><span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{s.label}</span>} value={s.n} max={maxStage} color={s.color} />
-                ))}
-              </div>
+              <ApexStageBar labels={stageRows.map((s) => s.label)} data={stageRows.map((s) => s.n)} colors={stageRows.map((s) => s.color)} />
             </div>
             <div className="card" style={{ padding: 18 }}>
               <SecHead icon="pie" tint="#F08A24" title={tr("topDiplomas")} />
               {byDiploma.length === 0 ? (
                 <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noEnrolls")}</div>
               ) : (
-                <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
-                  <Donut data={byDiploma} />
-                  <div style={{ flex: 1, minWidth: 150 }}>
-                    {byDiploma.map((d) => (
-                      <div key={d.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, padding: "3px 0" }}>
-                        <i style={{ background: d.color, width: 10, height: 10, borderRadius: 3, display: "inline-block" }} />
-                        <span style={{ flex: 1 }}>{d.label}</span>
-                        <span className="num" style={{ fontWeight: 700, color: "var(--muted)" }}>{d.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <ApexDonut labels={byDiploma.map((d) => d.label)} series={byDiploma.map((d) => d.value)}
+                  totalLabel={tr("enrolledCol")} totalValue={String(byDiploma.reduce((a, d) => a + d.value, 0))} />
               )}
             </div>
           </div>

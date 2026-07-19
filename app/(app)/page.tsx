@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
 import BatchDoneBtn from "./batches/BatchDoneBtn";
 import BatchesByDiploma from "./BatchesByDiploma";
-import { CountUp, Donut, BarRow, Kpi, LineIcon, MiniSpark, Radial, HeroBarLine } from "./Charts";
+import { CountUp, Donut, BarRow, Kpi, LineIcon, MiniSpark, Radial, HeroBarLine, ApexCombo, ApexRadial, ApexDonut } from "./Charts";
 import PeriodFilter from "./PeriodFilter";
 
 export const dynamic = "force-dynamic";
@@ -477,7 +477,7 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
             {canFinance && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><i style={{ width: 9, height: 9, borderRadius: 2, background: "var(--blue)", display: "inline-block" }} />{tr("collectionWord")}</span>}
           </span>
         </div>
-        <HeroBarLine bars={heroBars} line={heroLine} labels={heroLabels} barColor="var(--brand)" lineColor="var(--blue)" />
+        <ApexCombo bars={heroBars} line={heroLine} labels={heroLabels} barName={tr("newCustomersShort")} lineName={tr("collectionWord")} showLine={canFinance} />
       </div>
 
       {/* ===== مطلوب إجراء (ستايل v4) + جدول الباتشات ===== */}
@@ -516,16 +516,26 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
               .sort((a, b) => String(a.start_date || "9999").localeCompare(String(b.start_date || "9999")))
               .slice(0, 6)
               .map((b) => {
-                const st = b.status === "full" ? { l: tr("fullLabel"), c: "#E0483B" } : { l: tr("availableLabel"), c: "#18A957" };
+                const enr = batchCountMap.get(b.id) || 0;
+                const cap = Number(b.capacity) || 0;
+                const pct = cap > 0 ? Math.min(100, Math.round((enr / cap) * 100)) : 0;
+                const stt = b.status === "full"
+                  ? { l: tr("fullLabel"), cls: "full", bar: "var(--amber)" }
+                  : { l: tr("availableLabel"), cls: "open", bar: "var(--green)" };
                 const end = endMap.get(b.id);
-                const range = (b.start_date ? String(b.start_date).slice(0, 10) : "—") + (end ? " → " + String(end).slice(0, 10) : "");
+                const dip = dName.get(b.diploma_id) || "";
+                const range = (b.start_date ? fmtDate(b.start_date) : "—") + (end ? " — " + fmtDate(end) : "");
                 return (
-                  <div key={b.id} className="sch">
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: st.c, flexShrink: 0, marginInlineEnd: 8 }} />
-                    <div style={{ fontWeight: 800, color: "var(--ink)" }}>{b.code}</div>
-                    <div className="num" style={{ fontSize: 12.5, color: "var(--muted)", flex: 1, marginInlineStart: 12 }}>{range}</div>
-                    {canManageBatches && b.status !== "closed" && <BatchDoneBtn id={b.id} />}
-                    <span className="stg" style={{ background: st.c + "1a", color: st.c, marginInlineStart: 10 }}>{st.l}</span>
+                  <div key={b.id} className="bsch">
+                    <div className="bcode">{b.code}</div>
+                    <div className="bmid">
+                      <div className="bt">{dip || b.code} <span className={"bstat " + stt.cls}>{stt.l}</span>
+                        {canManageBatches && b.status !== "closed" && <span style={{ marginInlineStart: "auto" }}><BatchDoneBtn id={b.id} /></span>}
+                      </div>
+                      <div className="bd">{range}</div>
+                      <div className="btrack"><i style={{ width: pct + "%", background: stt.bar }} /></div>
+                      <div className="bcap num">{enr}{cap > 0 ? " / " + cap : ""} {tr("seatWord")}</div>
+                    </div>
                   </div>
                 );
               })}
@@ -541,9 +551,16 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
       <div className="grid2" style={{ marginTop: 16 }}>
         <div className="card" style={{ padding: 18 }}>
           <div className="card-h"><h3>{tr("pipelineSummary")}</h3><span className="chip">{total}</span></div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+          <div className="stack">
+            {STAGES.map((s) => {
+              const v = byStage[s.key] || 0;
+              const pct = total ? (v / total) * 100 : 0;
+              return pct > 0 ? <i key={s.key} style={{ width: pct + "%", background: s.color }} /> : null;
+            })}
+          </div>
+          <div className="plegend">
             {STAGES.map((s) => (
-              <BarRow key={s.key} label={<span><span style={{ background: s.color, display: "inline-block", width: 8, height: 8, borderRadius: "50%", marginInlineEnd: 6 }} />{tr(s.labelKey)}</span>} value={byStage[s.key] || 0} max={total || 1} color={s.color} />
+              <span key={s.key} className="r"><i style={{ background: s.color }} />{tr(s.labelKey)} <b>{byStage[s.key] || 0}</b></span>
             ))}
           </div>
         </div>
@@ -553,18 +570,8 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
           {dipDonut.length === 0 ? (
             <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12 }}>{tr("noEnrolls")}</div>
           ) : (
-            <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap", marginTop: 12 }}>
-              <Donut data={dipDonut} />
-              <div style={{ flex: 1, minWidth: 140 }}>
-                {dipDonut.map((x) => (
-                  <div key={x.label} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, padding: "3px 0" }}>
-                    <i style={{ background: x.color, width: 10, height: 10, borderRadius: 3, display: "inline-block" }} />
-                    <span style={{ flex: 1 }}>{x.label}</span>
-                    <span className="num" style={{ fontWeight: 700, color: "var(--muted)" }}>{x.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <ApexDonut labels={dipDonut.map((x) => x.label)} series={dipDonut.map((x) => x.value)}
+              totalLabel={tr("enrolledCol")} totalValue={String(dipDonut.reduce((a, x) => a + x.value, 0))} />
           )}
         </div>
       </div>
@@ -576,7 +583,9 @@ export default async function Dashboard({ searchParams }: { searchParams?: { per
           <h3 style={{ margin: 0, fontSize: 15 }}>{tr("convRate")}</h3>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-          <Radial pct={conv} color="var(--green)" centerLabel={conv + "%"} />
+          <div style={{ minWidth: 210, flex: "0 0 210px" }}>
+            <ApexRadial pct={conv} label={tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))} />
+          </div>
           <div>
             <div style={{ fontSize: 30, fontWeight: 800, fontFamily: "var(--fe)", color: "var(--ink)", lineHeight: 1 }}>{enrolled}</div>
             <div style={{ fontSize: 12, color: "var(--muted-d)", fontWeight: 600, marginTop: 3 }}>{tr("enrolledOfTotal").replace("{e}", String(enrolled)).replace("{t}", String(total))}</div>
