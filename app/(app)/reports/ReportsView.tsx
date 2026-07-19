@@ -128,13 +128,29 @@ export default function ReportsView({
   const salesRanked = [...salesRows].sort((a, b) => (canFinance ? b.collectedEgp - a.collectedEgp : b.enrolled - a.enrolled) || b.customers - a.customers);
   const supRanked = [...supportRows].sort((a, b) => b.total - a.total);
 
+  const TABS = [
+    ...(canFinance ? [{ k: "collection", label: tr("tabCollection") }] : []),
+    { k: "sales", label: tr("tabSales") },
+    { k: "team", label: tr("tabTeam") },
+    ...(canFinance ? [{ k: "refunds", label: tr("refundsReportTitle") }] : []),
+    { k: "affiliate", label: tr("tabAffiliate") },
+  ];
+  const [tab, setTab] = useState(TABS[0]?.k || "sales");
+
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto" }}>
       <div className="page-h"><div><h1>{tr("reports")}</h1><p>{tr("reportsDesc")}</p></div></div>
       <PeriodFilter />
 
+      {/* شريط التابات */}
+      <div className="rtabs">
+        {TABS.map((t) => (
+          <button key={t.k} onClick={() => setTab(t.k)} className={"rtab" + (tab === t.k ? " on" : "")}>{t.label}</button>
+        ))}
+      </div>
+
       {/* ===== تبويب التحصيل ===== */}
-      {canFinance && (
+      {tab === "collection" && canFinance && (
         <div className="fade-in">
           {/* هيرو الفلوس الغامق */}
           <div style={{ background: "linear-gradient(135deg,#101828,#1f2a44)", color: "#fff", borderRadius: "var(--r)", padding: 22, marginBottom: 16, position: "relative", overflow: "hidden" }}>
@@ -193,7 +209,7 @@ export default function ReportsView({
       )}
 
       {/* ===== تبويب المبيعات ===== */}
-      {true && (
+      {tab === "sales" && (
         <div className="fade-in">
           <div className="grid2" style={{ marginBottom: 16 }}>
             <div className="card" style={{ padding: 18 }}>
@@ -214,7 +230,7 @@ export default function ReportsView({
       )}
 
       {/* ===== تبويب أداء الفريق ===== */}
-      {true && (
+      {tab === "team" && (
         <div className="fade-in">
           {/* المبيعات — ليدربورد */}
           <div className="card" style={{ padding: 18, marginBottom: 16 }}>
@@ -324,9 +340,8 @@ export default function ReportsView({
       )}
 
       {/* ===== الاستردادات (ريفند) ===== */}
-      {canFinance && refundReport && (
+      {tab === "refunds" && canFinance && refundReport && (
         <div className="fade-in">
-          <div className="sh6"><span className="tick" /><h2>{tr("refundsReportTitle")}</h2></div>
           <div className="rsum">
             <div className="rst"><div className="l">{tr("totalRefunded")}</div><div className="v" style={{ color: "var(--red)" }}>{fmt(refundReport.total)}</div></div>
             <div className="rst"><div className="l">{tr("refundOpsCount")}</div><div className="v" style={{ color: "var(--ink)" }}>{refundReport.count}</div></div>
@@ -334,12 +349,14 @@ export default function ReportsView({
           </div>
           {refundReport.breakdown.length > 0 && (
             <div className="card6" style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 14 }}>{tr("refundByService")}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700, marginBottom: 16 }}>{tr("refundByService")}</div>
               {refundReport.breakdown.map((b: any) => (
-                <div key={b.label} className="rbar">
-                  <span className="l">{b.label}</span>
-                  <div className="track"><i style={{ width: Math.max(4, Math.round((b.amount / refundReport.maxBd) * 100)) + "%" }} /></div>
-                  <span className="v">{fmt(b.amount)}</span>
+                <div key={b.label} className="rbar2">
+                  <div className="rbar2-top">
+                    <span className="rbar2-l">{b.label}</span>
+                    <span className="rbar2-v num" dir="ltr">{fmt(b.amount)}</span>
+                  </div>
+                  <div className="rbar2-track"><i style={{ width: Math.max(3, Math.round((b.amount / refundReport.maxBd) * 100)) + "%" }} /></div>
                 </div>
               ))}
             </div>
@@ -368,7 +385,7 @@ export default function ReportsView({
       )}
 
       {/* ===== الأفيلييت ===== */}
-      {true && (
+      {tab === "affiliate" && (
         <div className="fade-in">
           <div style={{ marginBottom: 14 }}>
             <SecHead icon="link" tint="#7B61FF" title={tr("affiliateReportTitle")} />
