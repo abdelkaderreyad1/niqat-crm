@@ -20,8 +20,8 @@ export default function SetPasswordCard({ mode }: { mode: Mode }) {
   useEffect(() => {
     if (!supabaseRef.current) supabaseRef.current = createClient();
     const supabase = supabaseRef.current;
-    const m = document.cookie.match(/(?:^|;\s*)lang=(ar|en)/);
-    if (m) setLang(m[1] as "ar" | "en");
+    // صفحة الدعوة/الاستعادة إنجليزي دايماً (الموظف الجديد لسه مالوش تفضيل لغة)
+    setLang("en");
 
     (async () => {
       try {
