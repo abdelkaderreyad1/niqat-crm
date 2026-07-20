@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   
   // 🔴 التعديل هنا: ضفنا مسار الـ callback للقائمة المسموح بيها
-  const PUBLIC = ["/login", "/accept-invite", "/reset-password", "/forgot-password", "/auth/callback"];
+  const PUBLIC = ["/login", "/accept-invite", "/reset-password", "/forgot-password", "/auth/callback", "/auth/auth-code-error"];
   const isPublic = PUBLIC.includes(path);
   
   if (!user && !isPublic) return NextResponse.redirect(new URL("/login", request.url));
