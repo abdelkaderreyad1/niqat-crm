@@ -47,7 +47,24 @@ export async function POST(req: Request) {
     redirectTo,
   });
   if (iErr || !invited?.user) {
-    const msg = /already|exists|registered/i.test(iErr?.message || "") ? "فيه حساب بنفس الإيميل ده قبل كده." : (iErr?.message || "تعذّر إرسال الدعوة");
+    // نجمّع كل تفاصيل الخطأ عشان نعرف السبب الحقيقي (مش {} فاضية)
+    const e: any = iErr || {};
+    const parts = [e.message, e.code, e.status, e.name]
+      .filter((x) => x !== undefined && x !== null && x !== "" && x !== "{}")
+      .map((x) => String(x));
+    const raw = parts.join(" | ") || "خطأ غير معروف من Supabase";
+
+    const blob = `${e.message || ""} ${e.code || ""} ${e.name || ""}`.toLowerCase();
+    let msg: string;
+    if (/already|exists|registered|422|email_exists/.test(blob)) {
+      msg = "فيه حساب بنفس الإيميل ده قبل كده. امسحه من Supabase ▸ Users وجرّب تاني.";
+    } else if (/sending|smtp|mail|email|relay|550|535|connection|timeout|econn/.test(blob)) {
+      msg = "فشل إرسال إيميل الدعوة (مشكلة في إعدادات SMTP). التفاصيل: " + raw;
+    } else {
+      msg = "تعذّر إرسال الدعوة. التفاصيل: " + raw;
+    }
+    // نطبع كمان في لوج السيرفر (يظهر في Vercel ▸ Logs)
+    console.error("inviteUserByEmail failed:", JSON.stringify(e));
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 
