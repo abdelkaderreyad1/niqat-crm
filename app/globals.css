@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ===== NIQAT design system (ported from prototype) ===== */
-:root{--ink:#15223B;--bg:#F6F6F3;--surface:#fff;--line:#ECEDF1;--text:#2B3752;--muted:#6E7891;--muted-d:#4A566E;--brand:#F08A24;--brand-d:#D6741A;--teal:#3A9B96;--green:#2E9E6B;--green-soft:#E7F4EE;--wa:#25D366;--amber:#E0A32E;--amber-soft:#FBF1DC;--red:#DB5B4E;--blue:#4B6B9B;--blue-soft:#EAEEF6;--purple:#7A6BB5;--brand-soft:#FDEFDF;--red-soft:#FBECEA;--muted-soft:#EFF0F4;--shadow:0 1px 2px rgba(21,34,59,.04),0 4px 14px rgba(21,34,59,.045);--r:16px;--r-sm:10px;--fa:'Tajawal','Segoe UI',system-ui,sans-serif;--fe:'Space Grotesk','Inter',system-ui,sans-serif;--fd:'Space Grotesk','Inter',system-ui,sans-serif;}
+:root{--ink:#15223B;--bg:#F6F6F3;--surface:#fff;--line:#ECEDF1;--text:#2B3752;--muted:#6E7891;--muted-d:#4A566E;--brand:#F08A24;--brand-d:#D6741A;--teal:#3A9B96;--green:#2E9E6B;--green-soft:#E7F4EE;--wa:#25D366;--amber:#E0A32E;--amber-soft:#FBF1DC;--red:#DB5B4E;--blue:#4B6B9B;--blue-soft:#EAEEF6;--purple:#7A6BB5;--brand-soft:#FDEFDF;--red-soft:#FBECEA;--muted-soft:#EFF0F4;--shadow:0 1px 2px rgba(21,34,59,.04),0 4px 14px rgba(21,34,59,.045);--r:16px;--r-sm:10px;--fa:'Tajawal','Segoe UI',system-ui,sans-serif;--fe:'Inter','Segoe UI',system-ui,sans-serif;--fd:'Inter','Segoe UI',system-ui,sans-serif;}
 
 /* ===== Dark Mode ===== */
 [data-theme="dark"]{--ink:#E8EDF5;--bg:#0A0F1A;--surface:#131C2B;--line:#1E2A3E;--text:#E2E8F0;--muted:#8896B0;--muted-d:#A6B2C9;--green-soft:rgba(24,169,87,.15);--brand-soft:rgba(240,138,36,.12);--red-soft:rgba(224,72,59,.12);--muted-soft:rgba(38,50,72,.5);--shadow:0 1px 3px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.45);}
@@ -543,7 +543,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .rtabs{display:flex;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:5px;margin-bottom:22px;box-shadow:var(--shadow);overflow-x:auto}
 .rtab{flex:1;min-width:max-content;height:40px;padding:0 18px;border:none;background:none;border-radius:9px;font-family:inherit;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:.15s}
 .rtab:hover{color:var(--ink)}
-.rtab.on{background:var(--ink);color:#fff}
+.rtab.on{background:var(--brand);color:#fff}
 /* حصر عرض بارات الاستردادات */
 .rbar-wrap{max-width:620px}
 /* بارات الاستردادات النضيفة */

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useT, useLang } from "@/lib/i18n/client";
 import { toast } from "@/lib/toast";
-import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, ApexDonut, ApexRadial } from "../Charts";
+import { CountUp, Donut, BarRow, AreaChart, MiniSpark, ApexArea, ApexStageBar, ApexDonut } from "../Charts";
 import PeriodFilter from "../PeriodFilter";
 import ExportButton from "../ExportButton";
 import AffiliateReport from "./AffiliateReport";
@@ -183,30 +183,17 @@ export default function ReportsView({
                 </div>
               )}
 
-              {/* منحنى التحصيل + معدل التحصيل (radial) */}
-              <div className="grid6 g2-6" style={{ marginBottom: 16, alignItems: "start" }}>
-                <div className="card" style={{ padding: 18 }}>
-                  <SecHead icon="trending" tint="#18A957" title={tr("collectionTrend")}
-                    extra={<button onClick={resetMeasurement} disabled={resetting} className="btn ghost" style={{ height: 30, padding: "0 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5 }}>
-                      <Icon name="refresh" size={13} /> {resetting ? "..." : tr("resetMeasurement")}
-                    </button>} />
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "12px 0 4px" }}>
-                    <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "#18A957" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
-                    <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
-                  </div>
-                  <div style={{ marginTop: 6 }}><ApexArea data={monthlyLabeled.map((m) => m.value)} labels={monthlyLabeled.map((m) => m.label)} name={tr("collectionWord")} color="#12B76A" /></div>
+              {/* منحنى التحصيل */}
+              <div className="card" style={{ padding: 18, marginBottom: 16 }}>
+                <SecHead icon="trending" tint="#18A957" title={tr("collectionTrend")}
+                  extra={<button onClick={resetMeasurement} disabled={resetting} className="btn ghost" style={{ height: 30, padding: "0 12px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <Icon name="refresh" size={13} /> {resetting ? "..." : tr("resetMeasurement")}
+                  </button>} />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "12px 0 4px" }}>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("periodTotal")}: <b className="num" style={{ color: "#18A957" }} dir="ltr">{fmt(periodTotal)} {tr("egpShort")}</b></span>
+                  <span style={{ fontSize: 12.5, color: "var(--muted)" }}>{tr("avgPerMonth")}: <b className="num" style={{ color: "var(--ink)" }} dir="ltr">{fmt(avgPerMonth)} {tr("egpShort")}</b></span>
                 </div>
-                <div className="card" style={{ padding: 18 }}>
-                  <SecHead icon="gauge" tint="#0FA3A3" title={tr("collectionRate")} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 6, flexWrap: "wrap" }}>
-                    <div style={{ width: 190, flexShrink: 0 }}><ApexRadial pct={rate} label={tr("collectionRate")} /></div>
-                    <div>
-                      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 700 }}>{tr("totalCollected")}</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "var(--fd)", color: "#18A957", marginTop: 6 }} dir="ltr">{fmt(collected)}</div>
-                      <div style={{ fontSize: 11.5, color: "var(--muted-d)", marginTop: 4 }} dir="ltr">/ {fmt(agreed)} {tr("egpShort")}</div>
-                    </div>
-                  </div>
-                </div>
+                <div style={{ marginTop: 6 }}><ApexArea data={monthlyLabeled.map((m) => m.value)} labels={monthlyLabeled.map((m) => m.label)} name={tr("collectionWord")} color="#12B76A" /></div>
               </div>
             </>
           )}
