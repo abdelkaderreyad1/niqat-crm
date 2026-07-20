@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+
 export async function middleware(request: NextRequest) {
   // security.txt يُخدَم مباشرة قبل أي auth (الـ matcher بقى بيمرّره)
   const p = request.nextUrl.pathname;
@@ -29,13 +30,16 @@ export async function middleware(request: NextRequest) {
   );
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  // صفحات عامة لا تتطلّب تسجيل دخول (تدفّق الدعوة/استعادة الباسورد)
-  const PUBLIC = ["/login", "/accept-invite", "/reset-password", "/forgot-password"];
+  
+  // 🔴 التعديل هنا: ضفنا مسار الـ callback للقائمة المسموح بيها
+  const PUBLIC = ["/login", "/accept-invite", "/reset-password", "/forgot-password", "/auth/callback"];
   const isPublic = PUBLIC.includes(path);
+  
   if (!user && !isPublic) return NextResponse.redirect(new URL("/login", request.url));
   if (user && path === "/login") return NextResponse.redirect(new URL("/", request.url));
   return response;
 }
+
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]
 };
