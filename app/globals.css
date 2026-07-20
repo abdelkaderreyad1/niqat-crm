@@ -586,10 +586,10 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 @keyframes specgrow{from{width:0 !important}}
 
 /* ===================== الشات الداخلي ===================== */
-.chat-fab{position:fixed;inset-inline-start:20px;bottom:20px;width:56px;height:56px;border-radius:18px;background:var(--brand);color:#fff;display:grid;place-items:center;box-shadow:0 8px 24px rgba(240,138,36,.4);cursor:pointer;z-index:60;border:none}
+.chat-fab{position:fixed;inset-inline-end:20px;bottom:20px;width:56px;height:56px;border-radius:18px;background:var(--brand);color:#fff;display:grid;place-items:center;box-shadow:0 8px 24px rgba(240,138,36,.4);cursor:pointer;z-index:60;border:none}
 .chat-fab svg{width:25px;height:25px}
 .chat-bdg{position:absolute;top:-4px;inset-inline-end:-4px;min-width:22px;height:22px;background:var(--red);color:#fff;border-radius:20px;display:grid;place-items:center;font-weight:700;font-size:11px;border:2px solid var(--bg);padding:0 5px}
-.chat-pop{position:fixed;inset-inline-start:20px;bottom:20px;width:360px;max-width:calc(100vw - 28px);height:540px;max-height:calc(100vh - 40px);background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 40px rgba(21,34,59,.28);z-index:60;display:flex;flex-direction:column;overflow:hidden}
+.chat-pop{position:fixed;inset-inline-end:20px;bottom:20px;width:360px;max-width:calc(100vw - 28px);height:540px;max-height:calc(100vh - 40px);background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 40px rgba(21,34,59,.28);z-index:60;display:flex;flex-direction:column;overflow:hidden}
 .chat-ph{padding:13px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
 .chat-hico{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand-d);display:grid;place-items:center;flex-shrink:0}
 .chat-hico svg{width:17px;height:17px}
@@ -634,7 +634,7 @@ textarea.inp{height:80px;padding:10px 12px;resize:vertical}
 .chat-pickinp:focus{outline:none;border-color:var(--brand)}
 .chat-pickrow{display:block;width:100%;text-align:start;padding:8px 10px;border:none;background:none;border-radius:8px;font-family:inherit;font-size:12.5px;color:var(--text);cursor:pointer}
 .chat-pickrow:hover{background:var(--brand-soft);color:var(--brand-d)}
-.chat-toast{position:fixed;inset-inline-start:20px;bottom:86px;max-width:320px;background:var(--ink);color:#fff;border:none;border-radius:12px;padding:11px 14px;box-shadow:0 12px 30px rgba(21,34,59,.35);z-index:61;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;animation:mpop .18s ease}
+.chat-toast{position:fixed;inset-inline-end:20px;bottom:86px;max-width:320px;background:var(--ink);color:#fff;border:none;border-radius:12px;padding:11px 14px;box-shadow:0 12px 30px rgba(21,34,59,.35);z-index:61;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;animation:mpop .18s ease}
 .chat-toast .ct-ico{color:var(--brand);flex-shrink:0}
 .chat-toast .ct-txt{font-size:12.5px;font-weight:700;text-align:start}
 /* سجل الشات — لوحة المدير */
