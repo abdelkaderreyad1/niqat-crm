@@ -5,6 +5,12 @@ export const dynamic = "force-dynamic";
 
 export default async function Onboarding() {
   const supabase = createClient();
+  // حماية: صفحة التفعيل/التسليم للدعم والإدارة بس (اللي عندهم can_grant_access) — مش المبيعات
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: prof } = await supabase.from("profiles").select("can_grant_access").eq("id", user?.id || "").maybeSingle();
+  if (!prof?.can_grant_access) {
+    return (<div className="page-h"><div><h1>{tr("onboarding")}</h1><p>{tr("noOnboardingAccess")}</p></div></div>);
+  }
   // موجة 1: handoffs + profiles (مستقلين)
   const [{ data: hRows }, { data: profs }] = await Promise.all([
     supabase.from("handoffs").select("id,customer_id,assignee_id,note,status,onhold_reason,created_at").in("status", ["pending", "onhold"]).order("created_at", { ascending: false }),

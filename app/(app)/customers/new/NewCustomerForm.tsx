@@ -331,9 +331,8 @@ export default function NewCustomerForm({
       const { error: e2 } = await supabase.from("handoff_items").insert(rows);
       if (e2) { setActBusy(false); toast(tr("addItemsFailed") + e2.message); return; }
     }
-    // المرحلة → enrolled + علّم handed_off
-    await supabase.from("customers").update({ stage: "enrolled", handed_off: true }).eq("id", ctx.cid);
-    await supabase.from("audit_log").insert({ customer_id: ctx.cid, actor_id: meId || null, action: "auto_handoff", detail: labels.join(" · ") });
+    // ملاحظة: مابنعملش نقل هنا. ده طلب نقل (pending) بس — الدعم هو اللي يأكّد النقل من صفحة التفعيل/التسليم.
+    await supabase.from("audit_log").insert({ customer_id: ctx.cid, actor_id: meId || null, action: "handoff_requested", detail: labels.join(" · ") });
     setActBusy(false);
     setActOpen(false);
     toast(tr("sentToActivation"));

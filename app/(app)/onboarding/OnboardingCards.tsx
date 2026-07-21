@@ -30,7 +30,7 @@ const CardView = memo(function CardView({
 }: {
   c: Card; confirming: boolean; holding: boolean; holdReason: string; setHoldReason: (v: string) => void;
   onToggle: (hid: string, iid: string) => void;
-  onAskComplete: (hid: string) => void; onCancelComplete: () => void; onComplete: (hid: string) => void;
+  onAskComplete: (hid: string) => void; onCancelComplete: () => void; onComplete: (hid: string, custId: string) => void;
   onAskHold: (hid: string) => void; onCancelHold: () => void; onHold: (hid: string) => void; onResume: (hid: string) => void;
   onArchive: (custId: string, handoffId: string) => void;
 }) {
@@ -132,7 +132,7 @@ const CardView = memo(function CardView({
             {confirming && (
               <div style={{ display: "flex", gap: 6, alignItems: "center", marginInlineStart: "auto" }}>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>{tr("confirmComplete")}</span>
-                <button className="btn sm" onClick={() => onComplete(c.handoffId)}>{tr("completeActivation")}</button>
+                <button className="btn sm" onClick={() => onComplete(c.handoffId, c.custId)}>{tr("completeActivation")}</button>
                 <button className="btn ghost sm" onClick={onCancelComplete}>{tr("cancel")}</button>
               </div>
             )}
@@ -162,10 +162,15 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
     await supabase.from("handoff_items").update({ done: next, done_at: next ? new Date().toISOString() : null }).eq("id", iid);
   }, [supabase]);
 
-  const complete = useCallback(async (hid: string) => {
+  const complete = useCallback(async (hid: string, custId: string) => {
     setConfirmId(null);
     setCards((cs) => cs.filter((c) => c.handoffId !== hid));
     await supabase.from("handoffs").update({ status: "done" }).eq("id", hid);
+    // النقل الفعلي بيتمّ هنا — لما الدعم يأكّد
+    if (custId) {
+      await supabase.from("customers").update({ stage: "enrolled", handed_off: true }).eq("id", custId);
+      await supabase.from("audit_log").insert({ customer_id: custId, action: "handoff_confirmed", detail: "confirmed_by_support" });
+    }
   }, [supabase]);
 
   const doHold = useCallback(async (hid: string) => {

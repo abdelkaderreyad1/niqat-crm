@@ -79,9 +79,8 @@ export default function FinancePanel({ enrollments, customerId, meId, batchOpts 
       const { error: e2 } = await supabase.from("handoff_items").insert(rows);
       if (e2) { setActBusy(false); alert(tr("addItemsFailed") + e2.message); return; }
     }
-    // المرحلة → enrolled + علّم handed_off
-    await supabase.from("customers").update({ stage: "enrolled", handed_off: true }).eq("id", customerId);
-    await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "auto_handoff", detail: labels.join(" · ") });
+    // ملاحظة: مابنعملش نقل هنا. ده طلب نقل (pending) بس — الدعم هو اللي يأكّد النقل من صفحة التفعيل/التسليم.
+    await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "handoff_requested", detail: labels.join(" · ") });
     setActBusy(false);
     setActEnr(null);
     toast(tr("sentToActivation")); router.refresh();

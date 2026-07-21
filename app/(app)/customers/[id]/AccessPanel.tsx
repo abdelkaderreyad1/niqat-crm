@@ -55,6 +55,11 @@ export default function AccessPanel({
     if (!error && handoff) {
       const allDone = items.every((x) => (x.id === it.id ? nowDone : x.done));
       await supabase.from("handoffs").update({ status: allDone ? "done" : "pending" }).eq("id", handoff.id);
+      // النقل الفعلي بيتمّ هنا — لما كل البنود تتأكّد (الدعم)
+      if (allDone) {
+        await supabase.from("customers").update({ stage: "enrolled", handed_off: true }).eq("id", customerId);
+        await supabase.from("audit_log").insert({ customer_id: customerId, actor_id: meId || null, action: "handoff_confirmed", detail: "confirmed_by_support" });
+      }
     }
     setBusy(null);
     if (error) { alert(tr("updateFailed") + error.message); return; }
