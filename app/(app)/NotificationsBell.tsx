@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 
 type Item = { id: string; kind: "follow" | "handoff" | "overdue"; text: string; href: string; sub: string };
@@ -10,19 +10,52 @@ const META: Record<string, { color: string; label: string }> = {
   overdue: { color: "#E0483B", label: "قسط متأخر" },
 };
 
+const SEEN_KEY = "niqat_notif_seen";
+
+function loadSeen(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch { return new Set(); }
+}
+
 export default function NotificationsBell({ items }: { items: Item[] }) {
   const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState<Set<string>>(new Set());
+
+  // نقرأ اللي اتشاف قبل كده بعد التحميل (localStorage مش متاح وقت SSR)
+  useEffect(() => { setSeen(loadSeen()); }, []);
+
+  // عدد غير المشاهد = العدّاد الأحمر
+  const unseen = useMemo(() => items.filter((it) => !seen.has(it.id)).length, [items, seen]);
   const n = items.length;
+
+  function markAllSeen() {
+    // نعلّم كل الإشعارات الحالية كمشاهَدة، ونحتفظ بالموجود حالياً بس (تنظيف تلقائي)
+    const ids = items.map((it) => it.id);
+    const next = new Set(ids);
+    setSeen(next);
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify([...next])); } catch {}
+  }
+
+  function toggle() {
+    setOpen((v) => {
+      const nv = !v;
+      if (nv) markAllSeen(); // أول ما تفتح، العدّاد يختفي
+      return nv;
+    });
+  }
+
   return (
     <div style={{ position: "relative" }}>
-      <button className="icon-btn" title="الإشعارات" type="button" onClick={() => setOpen((v) => !v)} style={{ position: "relative" }}>
+      <button className="icon-btn" title="الإشعارات" type="button" onClick={toggle} style={{ position: "relative" }}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" />
           <path d="M10 20a2 2 0 0 0 4 0" />
         </svg>
-        {n > 0 && (
+        {unseen > 0 && (
           <span style={{ position: "absolute", top: 2, insetInlineEnd: 2, minWidth: 16, height: 16, borderRadius: 8, background: "var(--red)", color: "#fff", fontSize: 10, fontWeight: 800, display: "grid", placeItems: "center", padding: "0 3px" }}>
-            {n > 9 ? "9+" : n}
+            {unseen > 9 ? "9+" : unseen}
           </span>
         )}
       </button>

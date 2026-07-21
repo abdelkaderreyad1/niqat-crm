@@ -188,7 +188,15 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
   const grp = (title: string, team: string) => {
     const list = rows.filter((u) => u.team === team);
     if (!list.length) return null;
-    return (<div key={team}><div className="sec-t">{title}</div>{list.map(card)}</div>);
+    return (
+      <div key={team} className="card" style={{ padding: "18px 18px 4px", marginBottom: 16 }}>
+        <div className="sec-t" style={{ marginTop: 0 }}>
+          {title}
+          <span className="uteam" style={{ background: "var(--brand-soft)", color: "var(--brand-d)" }}>{list.length}</span>
+        </div>
+        {list.map(card)}
+      </div>
+    );
   };
 
   return (

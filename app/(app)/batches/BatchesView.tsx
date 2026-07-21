@@ -13,9 +13,8 @@ export type B = {
 };
 
 function statusMeta(tr: (k: string) => string, status: string) {
-  if (status === "closed") return { l: tr("batchEnded"), c: "#94A2BB" };
-  if (status === "full") return { l: tr("batchFull"), c: "#E0483B" };
-  return { l: tr("batchOpen"), c: "#18A957" };
+  if (status === "open" || !status) return { l: tr("batchOpen"), c: "#18A957" };
+  return { l: tr("batchEnded"), c: "#94A2BB" };
 }
 
 export default function BatchesView({ batches, canManage, diplomaOpts }: {
@@ -30,7 +29,7 @@ export default function BatchesView({ batches, canManage, diplomaOpts }: {
     const qq = q.trim().toLowerCase();
     return batches.filter((b) =>
       (!dip || b.diploma_id === dip) &&
-      (!status || b.status === status) &&
+      (!status || (status === "open" ? (b.status === "open" || !b.status) : (b.status !== "open" && !!b.status))) &&
       (!qq || (b.code || "").toLowerCase().includes(qq))
     );
   }, [batches, dip, status, q]);
@@ -50,7 +49,6 @@ export default function BatchesView({ batches, canManage, diplomaOpts }: {
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={sel}>
           <option value="">{tr("allStatuses")}</option>
           <option value="open">{tr("batchOpen")}</option>
-          <option value="full">{tr("batchFull")}</option>
           <option value="closed">{tr("batchEnded")}</option>
         </select>
       </div>

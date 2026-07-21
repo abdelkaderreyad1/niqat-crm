@@ -96,7 +96,6 @@ export default function BatchActions({ batch, enrolledCount, diplomas = [] }: {
             <div className="fld"><label>{tr("status")}</label>
               <select className="inp" value={f.status} onChange={(e) => set("status", e.target.value)}>
                 <option value="open">{tr("batchOpen")}</option>
-                <option value="full">{tr("batchFull")}</option>
                 <option value="closed">{tr("batchEnded")}</option>
               </select>
             </div>
