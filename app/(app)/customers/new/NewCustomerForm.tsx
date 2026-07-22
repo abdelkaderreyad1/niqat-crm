@@ -160,6 +160,9 @@ export default function NewCustomerForm({
     if (!f.name.trim()) { toast(tr("nameRequired")); setStep(1); return; }
     if (!f.phone1.trim()) { toast(tr("phoneRequired")); setStep(1); return; }
     if (affUnknown) { toast(tr("affNotInList")); setStep(1); return; }
+    // لازم دبلومة + باتش لأي عميل (حتى المهتم) — مفيش تسجيل من غيرهم
+    if (!f.diploma_id) { toast(tr("diplomaRequired")); setStep(2); return; }
+    if (!f.batch_id) { toast(tr("batchRequired")); setStep(2); return; }
     // تنبيه غير محظور: مبلغ من غير دبلومة → المبلغ مش هيتسجّل
     if (amountNoDiploma) toast(tr("amountNeedsDiploma"));
     setSaving(true);
