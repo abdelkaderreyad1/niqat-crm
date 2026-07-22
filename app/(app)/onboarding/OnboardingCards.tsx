@@ -12,6 +12,7 @@ type Card = {
   handoffId: string; custId: string; name: string; phone: string;
   status: string; note: string; onholdReason: string; createdAt: string;
   assignee: string; diplomas: string[]; batches: string[]; items: Item[];
+  kind: string; meta: any;
 };
 
 function initials(name: string) {
@@ -26,15 +27,64 @@ function ageHours(iso: string) { if (!iso) return 0; return (Date.now() - Date.p
 const CardView = memo(function CardView({
   c, confirming, holding, holdReason, setHoldReason,
   onToggle, onAskComplete, onCancelComplete, onComplete,
-  onAskHold, onCancelHold, onHold, onResume, onArchive,
+  onAskHold, onCancelHold, onHold, onResume, onArchive, onConfirmTransfer,
 }: {
   c: Card; confirming: boolean; holding: boolean; holdReason: string; setHoldReason: (v: string) => void;
   onToggle: (hid: string, iid: string) => void;
   onAskComplete: (hid: string) => void; onCancelComplete: () => void; onComplete: (hid: string, custId: string) => void;
   onAskHold: (hid: string) => void; onCancelHold: () => void; onHold: (hid: string) => void; onResume: (hid: string) => void;
   onArchive: (custId: string, handoffId: string) => void;
+  onConfirmTransfer: (hid: string, custId: string, meta: any) => void;
 }) {
   const tr = useT();
+
+  // كارت مخصّص لطلب النقل بين الباتشات (kind=batch_transfer)
+  if (c.kind === "batch_transfer") {
+    const m = c.meta || {};
+    const onHoldNow = c.status === "onhold";
+    return (
+      <div className="onb-card" style={{ background: "var(--surface)", borderTop: "3px solid #2F6BFF" }}>
+        <div className="oh">
+          <span className="av" style={{ background: avColor(c.custId), width: 40, height: 40 }}>{initials(c.name)}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ color: "var(--ink)" }}>{c.name}</b>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", fontFamily: "var(--fe)", direction: "ltr" }}>{c.phone || "—"}</div>
+          </div>
+          <span className="chip" style={{ background: "rgba(47,107,255,.12)", color: "#2F6BFF" }}>{tr("batchTransferChip")}</span>
+        </div>
+        <div className="ob">
+          <div style={{ fontSize: 13, color: "var(--ink)", marginBottom: 10, fontWeight: 700 }}>
+            {m.diploma ? m.diploma + " — " : ""}
+            <span dir="ltr" style={{ color: "var(--muted)" }}>{m.from_label || "?"}</span>
+            {" → "}
+            <span dir="ltr" style={{ color: "#2F6BFF" }}>{m.to_label || "?"}</span>
+          </div>
+          {c.note && <div className="onb-note" style={{ marginBottom: 12 }}>📝 {c.note}</div>}
+          <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 12 }}>{tr("batchTransferHint")}</div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <a className="btn wa sm" style={{ textDecoration: "none" }} href={waLink(c.phone)} target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" width={15} height={15} fill="currentColor"><path d="M12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z" /></svg>
+            </a>
+            <Link className="btn ghost sm" href={`/customers/${c.custId}`}>{tr("theFile")}</Link>
+            {confirming ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginInlineStart: "auto" }}>
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>{tr("confirmTransferQ")}</span>
+                <button className="btn sm" onClick={() => onConfirmTransfer(c.handoffId, c.custId, m)}>{tr("confirmTransferBtn")}</button>
+                <button className="btn ghost sm" onClick={onCancelComplete}>{tr("cancel")}</button>
+              </div>
+            ) : (
+              !onHoldNow && (
+                <button className="btn sm" style={{ marginInlineStart: "auto" }} onClick={() => onAskComplete(c.handoffId)}>
+                  <svg viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={2.4}><path d="M5 12l5 5L20 7" /></svg>
+                  {tr("confirmTransferBtn")}
+                </button>
+              )
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
   const total = c.items.length;
   const dn = c.items.filter((i) => i.done).length;
   const allDone = total > 0 && dn === total;
@@ -173,6 +223,20 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
     }
   }, [supabase]);
 
+  // تأكيد النقل بين الباتشات — دلوقتي بس بيتغيّر الباتش فعلياً
+  const confirmTransfer = useCallback(async (hid: string, custId: string, meta: any) => {
+    setConfirmId(null);
+    setCards((cs) => cs.filter((c) => c.handoffId !== hid));
+    const eid = meta?.enrollment_id; const target = meta?.target_batch_id;
+    if (eid && target) {
+      await supabase.from("enrollments").update({ batch_id: target }).eq("id", eid);
+    }
+    await supabase.from("handoffs").update({ status: "done" }).eq("id", hid);
+    if (custId) {
+      await supabase.from("audit_log").insert({ customer_id: custId, action: "batch_transfer_confirmed", detail: `${meta?.from_label || "?"} → ${meta?.to_label || "?"}` });
+    }
+  }, [supabase]);
+
   const doHold = useCallback(async (hid: string) => {
     const reason = holdReason.trim();
     setCards((cs) => cs.map((c) => (c.handoffId === hid ? { ...c, status: "onhold", onholdReason: reason } : c)));
@@ -197,7 +261,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
 
   const shown = useMemo(() => {
     const qq = q.trim().toLowerCase();
-    const isReady = (c: Card) => c.status !== "onhold" && c.items.length > 0 && c.items.every((i) => i.done);
+    const isReady = (c: Card) => c.status !== "onhold" && (c.kind === "batch_transfer" || (c.items.length > 0 && c.items.every((i) => i.done)));
     let list = cards.filter((c) => c.status !== "done");
     if (qq) list = list.filter((c) => (c.name || "").toLowerCase().includes(qq));
     if (filter === "ready") list = list.filter(isReady);
@@ -237,7 +301,7 @@ export default function OnboardingCards({ cards: initial }: { cards: Card[] }) {
               onToggle={toggle}
               onAskComplete={setConfirmId} onCancelComplete={() => setConfirmId(null)} onComplete={complete}
               onAskHold={(hid) => { setHoldId(hid); setHoldReason(""); }} onCancelHold={() => setHoldId(null)}
-              onHold={doHold} onResume={resume} onArchive={archiveCustomer} />
+              onHold={doHold} onResume={resume} onArchive={archiveCustomer} onConfirmTransfer={confirmTransfer} />
           ))}
         </div>
       ) : (

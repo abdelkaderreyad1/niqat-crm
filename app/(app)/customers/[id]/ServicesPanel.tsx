@@ -131,25 +131,22 @@ export default function ServicesPanel({
       if (finErr) { setBusy(false); toast(tr("transferFailed")); return; }
     }
 
-    // 3) النقل الفعلي للباتش الجديد (موديل أ — فوري بعد الدفع)
+    // 3) طلب النقل — مابنغيّرش الباتش هنا. الدعم هو اللي يأكّد من صفحة التفعيل/التسليم.
     const fromLabel = e.batch || batchLabel(e.batchId);
     const toLabel = batchLabel(moveTo);
-    const { error: mvErr } = await supabase.from("enrollments").update({ batch_id: moveTo }).eq("id", e.id);
-    if (mvErr) { setBusy(false); toast(tr("transferFailed")); return; }
-
-    // 4) تذكرة للدعم لتفعيل الخدمات الخارجية (LMS / جروب واتساب)
-    await supabase.from("tickets").insert({
-      customer_id: customerId,
-      title: `${tr("transferTicketTitle")} — ${e.diploma}`,
-      body: `${tr("transferTicketBody")}\n${e.diploma}: ${fromLabel} → ${toLabel}\n${moveGift ? tr("transferGiftNote") : tr("transferFeeLabel") + ": " + fee + " " + (moveCur === "USD" ? "$" : tr("egpShort"))}`,
-      status: "open", priority: "normal",
+    const feeText = moveGift ? tr("transferGiftNote") : `${tr("transferFeeLabel")}: ${fee} ${moveCur === "USD" ? "$" : tr("egpShort")}`;
+    const { error: hErr } = await supabase.from("handoffs").insert({
+      customer_id: customerId, created_by: meId || null, status: "pending", kind: "batch_transfer",
+      note: `${e.diploma}: ${fromLabel} → ${toLabel} · ${feeText}`,
+      meta: { enrollment_id: e.id, target_batch_id: moveTo, from_label: fromLabel, to_label: toLabel, diploma: e.diploma, gift: moveGift, fee, currency: moveCur },
     });
+    if (hErr) { setBusy(false); toast(tr("transferFailed")); return; }
 
-    // 5) تسجيل في التايم لاين
-    await logAudit("batch_transfer", `${e.diploma}: ${tr("auditBatchTransfer")} ${fromLabel} → ${toLabel}${moveGift ? " (" + tr("giftWord") + ")" : " — " + tr("transferFeeLabel") + " " + fee + " " + (moveCur === "USD" ? "$" : tr("egpShort"))}`);
+    // 4) تسجيل في التايم لاين (طلب — مش تنفيذ)
+    await logAudit("batch_transfer_requested", `${e.diploma}: ${tr("auditBatchTransfer")} ${fromLabel} → ${toLabel}${moveGift ? " (" + tr("giftWord") + ")" : " — " + tr("transferFeeLabel") + " " + fee + " " + (moveCur === "USD" ? "$" : tr("egpShort"))}`);
 
     setBusy(false); resetMove();
-    toast(tr("transferredToSupport")); router.refresh();
+    toast(tr("transferRequestSent")); router.refresh();
   }
 
   async function togglePaid(a: Addon) {

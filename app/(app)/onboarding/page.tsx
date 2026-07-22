@@ -13,7 +13,7 @@ export default async function Onboarding() {
   }
   // موجة 1: handoffs + profiles (مستقلين)
   const [{ data: hRows }, { data: profs }] = await Promise.all([
-    supabase.from("handoffs").select("id,customer_id,assignee_id,note,status,onhold_reason,created_at").in("status", ["pending", "onhold"]).order("created_at", { ascending: false }),
+    supabase.from("handoffs").select("id,customer_id,assignee_id,note,status,onhold_reason,created_at,kind,meta").in("status", ["pending", "onhold"]).order("created_at", { ascending: false }),
     supabase.from("profiles").select("id,full_name"),
   ]);
   const pMap = new Map((profs || []).map((p: any) => [p.id, p.full_name]));
@@ -65,6 +65,8 @@ export default async function Onboarding() {
     diplomas: dipMap.get(h.customer_id) || [],
     batches: Array.from(new Set(batchMap.get(h.customer_id) || [])),
     items: itemsMap.get(h.id) || [],
+    kind: (h.kind as string) || "activation",
+    meta: (h.meta as any) || {},
   }));
 
   const pendCount = cards.filter((c) => c.status === "pending").length;
