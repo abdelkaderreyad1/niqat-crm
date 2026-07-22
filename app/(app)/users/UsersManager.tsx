@@ -56,6 +56,11 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     const o: Record<string, boolean> = {}; PRESET.sales.forEach((k) => (o[k] = true)); return o;
   });
   const [adding, setAdding] = useState(false);
+  // الذكاء الاصطناعي في فورم الإضافة (يبدأ مقفول + كل الأوبشنز مقفولة)
+  const [newAi, setNewAi] = useState(false);
+  const [newAiOpts, setNewAiOpts] = useState<Record<string, boolean>>({});
+  const [newAiOpen, setNewAiOpen] = useState(false); // قايمة أوبشنز الفورم مطوية افتراضياً
+  const [aiListOpen, setAiListOpen] = useState<Record<string, boolean>>({}); // أي كارت مفتوحة أوبشنزه
 
   // تعديل / حذف عضو
   const [editId, setEditId] = useState<string | null>(null);
@@ -153,7 +158,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
     try {
       const res = await fetch("/api/team", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, perms }),
+        body: JSON.stringify({ ...f, perms, can_use_ai: newAi, ai_options: newAi ? newAiOpts : {} }),
       });
       const data = await res.json();
       setAdding(false);
@@ -161,6 +166,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
       toast(`${tr("inviteSent")} ${f.email} ✓`);
       setF({ full_name: "", email: "", team: "sales" });
       const o: Record<string, boolean> = {}; PRESET.sales.forEach((k) => (o[k] = true)); setPerms(o);
+      setNewAi(false); setNewAiOpts({});
       setOpen(false); router.refresh();
     } catch { setAdding(false); toast(tr("serverConnFailed")); }
   }
@@ -221,18 +227,29 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
           <div className={"sw" + (u.can_use_ai ? " on" : "")} onClick={() => busy !== u.id + "canai" && toggleAi(u)}><i /></div>
         </div>
         {u.can_use_ai && (
-          <div style={{ marginTop: 4, paddingInlineStart: 12, borderInlineStart: "2px solid var(--line)" }}>
-            <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "6px 0" }}>{tr("aiOptionsHint")}</div>
-            {AI_OPTIONS.map(([ok, lbl]) => {
-              const on = !!(u.ai_options && u.ai_options[ok]);
-              const bid = u.id + "aiopt" + ok;
-              return (
-                <div key={ok} className="permrow" style={{ opacity: busy === bid ? 0.5 : 1 }}>
-                  <span>{tr(lbl)}</span>
-                  <div className={"sw" + (on ? " on" : "")} onClick={() => busy !== bid && toggleAiOption(u, ok)}><i /></div>
-                </div>
-              );
-            })}
+          <div style={{ marginTop: 6, paddingInlineStart: 12, borderInlineStart: "2px solid var(--line)" }}>
+            <button
+              onClick={() => setAiListOpen((s) => ({ ...s, [u.id]: !s[u.id] }))}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: "var(--muted)", fontSize: 12.5, fontWeight: 700 }}>
+              <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.6}
+                style={{ transform: aiListOpen[u.id] ? "rotate(90deg)" : "none", transition: "transform .15s" }}><path d="m9 6 6 6-6 6" /></svg>
+              {tr("aiOptionsBtn")}
+            </button>
+            {aiListOpen[u.id] && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "6px 0" }}>{tr("aiOptionsHint")}</div>
+                {AI_OPTIONS.map(([ok, lbl]) => {
+                  const on = !!(u.ai_options && u.ai_options[ok]);
+                  const bid = u.id + "aiopt" + ok;
+                  return (
+                    <div key={ok} className="permrow" style={{ opacity: busy === bid ? 0.5 : 1 }}>
+                      <span>{tr(lbl)}</span>
+                      <div className={"sw" + (on ? " on" : "")} onClick={() => busy !== bid && toggleAiOption(u, ok)}><i /></div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -300,8 +317,37 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
               </div>
             ))}
           </div>
-          <button onClick={addMember} disabled={adding} className="btn">{adding ? tr("sending") : tr("sendInvite")}</button>
-        </div>
+          {/* الذكاء الاصطناعي */}
+          <div style={{ marginTop: 4, marginBottom: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ai, #7B61FF)" }}>✨ {tr("aiMaster")}</span>
+              <div className={"sw" + (newAi ? " on" : "")} onClick={() => { setNewAi((v) => !v); if (newAi) setNewAiOpen(false); }}><i /></div>
+            </div>
+            {newAi && (
+              <div style={{ marginTop: 6, paddingInlineStart: 12, borderInlineStart: "2px solid var(--line)" }}>
+                <button type="button"
+                  onClick={() => setNewAiOpen((v) => !v)}
+                  style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", padding: "4px 0", color: "var(--muted)", fontSize: 12.5, fontWeight: 700 }}>
+                  <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2.6}
+                    style={{ transform: newAiOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }}><path d="m9 6 6 6-6 6" /></svg>
+                  {tr("aiOptionsBtn")}
+                </button>
+                {newAiOpen && (
+                  <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "6px 0" }}>{tr("aiOptionsHint")}</div>
+                    {AI_OPTIONS.map(([ok, lbl]) => (
+                      <div key={ok} className="permrow">
+                        <span>{tr(lbl)}</span>
+                        <div className={"sw" + (newAiOpts[ok] ? " on" : "")} onClick={() => setNewAiOpts((p) => ({ ...p, [ok]: !p[ok] }))}><i /></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button onClick={addMember} disabled={adding} className="btn">{adding ? tr("sending") : tr("sendInvite")}</button>        </div>
       )}
 
       {grp(tr("teamAdmin"), "admin")}

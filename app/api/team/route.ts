@@ -96,6 +96,10 @@ export async function POST(req: Request) {
   // 5) تحديث البروفايل (الـ trigger بيعمله تلقائي — هنا بنحدّث الاسم/الفريق/الصلاحيات)
   const update: Record<string, any> = { full_name: fullName, team };
   for (const k of PERM_KEYS) update[k] = !!perms[k];
+  // الذكاء الاصطناعي
+  update.can_use_ai = !!body.can_use_ai;
+  const aiOpts = (body.ai_options && typeof body.ai_options === "object") ? body.ai_options : {};
+  update.ai_options = update.can_use_ai ? aiOpts : {};
   const { error: uErr } = await admin.from("profiles").update(update).eq("id", invited.user.id);
   if (uErr) return NextResponse.json({ error: "اتبعتت الدعوة بس فشل ضبط الصلاحيات: " + uErr.message }, { status: 500 });
 
