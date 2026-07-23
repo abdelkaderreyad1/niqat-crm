@@ -142,7 +142,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
     supabase.from("profiles").select("id,full_name"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
-    supabase.from("batches").select("id,code").order("start_date", { ascending: false }),
+    supabase.from("batches").select("id,code,diploma_id").order("start_date", { ascending: false }),
   ]);
 
   let customers: any[] = [];
@@ -260,7 +260,7 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const companies = Array.from(new Set(customers.map((c) => c.company).filter(Boolean))).map((c) => ({ v: c as string, label: c as string }));
   const dipOpts = ((dipRes.data as any[]) || []).map((d) => ({ v: d.id, label: d.name_ar }));
   const spOpts = ((spRes.data as any[]) || []).map((s) => ({ v: s.id, label: s.name_ar }));
-  const btOpts = ((btRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code }));
+  const btOpts = ((btRes.data as any[]) || []).map((b) => ({ v: b.id, label: b.code, dip: b.diploma_id || "" }));
 
   // قوالب الإرسال الجماعي
   const { data: tplRows } = await supabase.from("wa_templates").select("id,name,body").order("created_at");

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/lib/toast";
 import { getSegmentPhones } from "./segmentPhones";
 
-type Opt = { v: string; label: string };
+type Opt = { v: string; label: string; dip?: string };
 type Tpl = { id: string; name: string; body: string };
 type Filters = { q?: string; stage?: string; owner?: string; company?: string; dip?: string; spec?: string; batch?: string; pay?: string };
 
@@ -105,13 +105,17 @@ export default function CustomersTools({
     toast(tr("copied"));
   }
 
+  // فلترة الباتشات حسب الدبلومة/الدبلومات المختارة في الفلتر
+  const selDips = (sp.get("dip") || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const visibleBatches = selDips.length ? batches.filter((b) => b.dip && selDips.includes(b.dip)) : batches;
+
   return (
     <>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14, alignItems: "center" }}>
         <MultiSel label={tr("filterStage")} paramKey="stage" opts={stages} />
         <MultiSel label={tr("filterDip")} paramKey="dip" opts={diplomas} />
         {specialties.length > 0 && <MultiSel label={tr("filterSpec")} paramKey="spec" opts={specialties} />}
-        <MultiSel label={tr("filterBatch")} paramKey="batch" opts={batches} />
+        <MultiSel label={tr("filterBatch")} paramKey="batch" opts={visibleBatches} />
         {owners.length > 0 && <MultiSel label={tr("filterOwner")} paramKey="owner" opts={owners} />}
         {companies.length > 0 && <MultiSel label={tr("filterCompany")} paramKey="company" opts={companies} />}
         {canFinance && <MultiSel label={tr("filterPay")} paramKey="pay" opts={[
