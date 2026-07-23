@@ -41,6 +41,7 @@ export async function POST(req: Request) {
   if (!sender) return NextResponse.json({ error: "رقم المُرسِل مش متظبط للقناة دي — ظبّطه من الإعدادات" }, { status: 400 });
 
   const rcpt = normNum(to);
+  const senderCh = String(sender).replace(/[^\d+]/g, "");
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   let apiUrl = "";
@@ -53,13 +54,13 @@ export async function POST(req: Request) {
       broadcast_name: broadcast_name || template_name,
       parameters: Array.isArray(parameters) ? parameters : [],
       // تحديد الرقم المُرسِل (حساب واحد بأكتر من رقم) — بنبعت الاسمين احتياطاً
-      channelNumber: normNum(sender),
-      channelPhoneNumber: normNum(sender),
+      channelNumber: senderCh,
+      channelPhoneNumber: senderCh,
     };
   } else {
     if (!text) return NextResponse.json({ error: "نص الرسالة مفقود" }, { status: 400 });
     apiUrl = `${endpoint}/api/v1/sendSessionMessage/${rcpt}?messageText=${encodeURIComponent(text)}`;
-    payload = { channelNumber: normNum(sender), channelPhoneNumber: normNum(sender) };
+    payload = { channelNumber: senderCh, channelPhoneNumber: senderCh };
   }
 
   let watiRes: any = null;
