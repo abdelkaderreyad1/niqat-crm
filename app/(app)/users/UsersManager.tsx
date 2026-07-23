@@ -278,7 +278,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
           <span style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>{title}</span>
           <span className="uteam" style={{ background: "var(--brand-soft)", color: "var(--brand-d)" }}>{list.length}</span>
         </button>
-        {isOpen && <div style={{ padding: "0 18px 4px" }}>{list.map(card)}</div>}
+        {isOpen && <div className="usergrid" style={{ padding: "0 18px 4px" }}>{list.map(card)}</div>}
       </div>
     );
   };
