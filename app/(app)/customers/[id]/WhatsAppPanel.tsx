@@ -30,6 +30,7 @@ export default function WhatsAppPanel({
   const [tplName, setTplName] = useState("");
   const [tplErr, setTplErr] = useState("");
   const [loadingTpls, setLoadingTpls] = useState(true);
+  const [result, setResult] = useState<string>("");
 
   useEffect(() => {
     let alive = true;
@@ -50,17 +51,18 @@ export default function WhatsAppPanel({
   }, []);
 
   async function api(payload: any) {
-    setBusy(true);
+    setBusy(true); setResult("");
     try {
       const res = await fetch("/api/wa/send", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...payload, to: ctx.phone1, channel, customer_id: customerId }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { toast(tr("waSendFailed") + (data.error || "")); return; }
-      toast(tr("waSent"));
+      let detail = ""; try { detail = JSON.stringify(data.wati ?? data.error ?? data); } catch { detail = ""; }
+      if (!res.ok) { toast(tr("waSendFailed") + (data.error || "")); setResult("❌ " + detail); return; }
+      toast(tr("waSent")); setResult("✅ " + detail);
     } catch (e: any) {
-      toast(tr("waSendFailed") + (e?.message || ""));
+      toast(tr("waSendFailed") + (e?.message || "")); setResult("❌ " + (e?.message || ""));
     } finally { setBusy(false); }
   }
 
@@ -131,6 +133,12 @@ export default function WhatsAppPanel({
           <div style={{ fontSize: 11.5, color: "var(--amber)", marginTop: 6 }}>{tr("tplHasVars")}</div>
         )}
       </div>
+
+      {result && (
+        <div style={{ fontSize: 11, color: "var(--muted)", background: "var(--muted-soft)", borderRadius: 8, padding: 10, marginTop: 10, whiteSpace: "pre-wrap", wordBreak: "break-all", direction: "ltr", fontFamily: "var(--fe)" }}>
+          {result}
+        </div>
+      )}
     </div>
   );
 }
