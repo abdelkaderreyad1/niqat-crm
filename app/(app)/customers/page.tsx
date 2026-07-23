@@ -37,8 +37,9 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: meProf } = await supabase.from("profiles")
-    .select("can_export,can_see_finance,can_message,can_manage_batches").eq("id", user?.id || "").maybeSingle();
+    .select("can_export,can_see_finance,can_message,can_manage_batches,can_edit_customers").eq("id", user?.id || "").maybeSingle();
   const canExport = !!meProf?.can_export;
+  const canEditCustomers = !!meProf?.can_edit_customers;
   const canFinance = !!meProf?.can_see_finance;
   const canMessage = !!meProf?.can_message;
   const canManageBatches = !!meProf?.can_manage_batches;
@@ -284,10 +285,12 @@ export default async function Customers({ searchParams }: { searchParams: SP }) 
         <div><h1>{tr("customers")}</h1><p>{shownCount} {tr("customersPl")}{q ? <> · {tr("searchColon")} «{q}»</> : null}</p></div>
         <div style={{ display: "flex", gap: 8 }}>
           {canExport && <ExportButton rows={exportRows} headers={exportHeaders} />}
-          <Link className="btn" href="/customers/new">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
-            {tr("addCust")}
-          </Link>
+          {canEditCustomers && (
+            <Link className="btn" href="/customers/new">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path d="M12 5v14M5 12h14" /></svg>
+              {tr("addCust")}
+            </Link>
+          )}
         </div>
       </div>
 

@@ -27,7 +27,7 @@ const sel = "inp appearance-none cursor-pointer";
 const lbl = "text-[11px] font-bold uppercase tracking-wider mb-2 block";
 const lblStyle = { color: "var(--muted)" } as const;
 
-const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[] }>(({ customer, specialties }, ref) => {
+const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: Spec[]; canEdit?: boolean }>(({ customer, specialties, canEdit = true }, ref) => {
   const router = useRouter();
   const supabase = createClient();
   const tr = useT();
@@ -56,6 +56,7 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
 
   const save = useCallback(async () => {
     setErr(""); setMsg("");
+    if (!canEdit) { setErr(tr("noEditCustomersPerm")); return; }
     if (!f.name.trim()) { setErr(tr("nameRequired")); return; }
     if (/[\u0600-\u06FF]/.test(f.name)) { setErr(tr("nameEnglishOnly")); return; }
     const { error } = await supabase.from("customers").update({
@@ -209,10 +210,14 @@ const CustomerEdit = forwardRef<CustomerEditHandle, { customer: C; specialties: 
       )}
 
       <div className="sticky bottom-0 w-full backdrop-blur-md p-4 mt-auto" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
-        <button onClick={save}
-          className="w-full h-[46px] bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[14px] tracking-wide rounded-lg active:scale-[.98] transition-all duration-150 shadow-lg shadow-orange-500/20">
-          {tr("saveEdits")}
-        </button>
+        {canEdit ? (
+          <button onClick={save}
+            className="w-full h-[46px] bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-[14px] tracking-wide rounded-lg active:scale-[.98] transition-all duration-150 shadow-lg shadow-orange-500/20">
+            {tr("saveEdits")}
+          </button>
+        ) : (
+          <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--muted)", padding: "12px 0" }}>{tr("noEditCustomersPerm")}</div>
+        )}
       </div>
     </div>
   );

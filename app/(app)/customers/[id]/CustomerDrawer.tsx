@@ -61,7 +61,7 @@ export default function CustomerDrawer(props: {
   fuOpen: any; fuHistory: any[];
   finEnrollments: any[];
   refunds: any[]; refundServices: any[]; allServicesClosed: boolean; refundTableMissing: boolean;
-  canFinance: boolean; canMessage: boolean; canManageBatches: boolean;
+  canFinance: boolean; canMessage: boolean; canManageBatches: boolean; canEdit: boolean;
   docs: any[]; docsMissing: boolean;
   waCtx: any; templates: any[];
   tasks: any[]; notes: any[];
@@ -146,7 +146,7 @@ export default function CustomerDrawer(props: {
       tab={tab} onTab={setTab} quickBar={quickBar} showOps={showOps}
       basic={<div className="px-5 py-5">
         <Sec emoji="👤" bg="var(--brand-soft)" title={tr("basicData")} />
-        <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} />
+        <CustomerEdit ref={editRef} customer={props.c as any} specialties={props.specs || []} canEdit={props.canEdit} />
       </div>}
       sales={<>
         {props.canFinance && (

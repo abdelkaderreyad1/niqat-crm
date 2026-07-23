@@ -7,6 +7,11 @@ export const dynamic = "force-dynamic";
 export default async function NewCustomerPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  // حماية: إضافة عميل تحتاج صلاحية "تعديل العملاء"
+  const { data: meProf } = await supabase.from("profiles").select("can_edit_customers").eq("id", user?.id || "").maybeSingle();
+  if (!meProf?.can_edit_customers) {
+    return (<div className="page-h"><div><h1>{tr("addCust")}</h1><p>{tr("noEditCustomersPerm")}</p></div></div>);
+  }
   const [{ data: specs }, { data: dips }, { data: bts }, { data: affRow }] = await Promise.all([
     supabase.from("specialties").select("id,name_ar").order("name_ar"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
