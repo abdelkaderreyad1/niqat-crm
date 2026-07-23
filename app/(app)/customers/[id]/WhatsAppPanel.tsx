@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "@/lib/toast";
 import { useT } from "@/lib/i18n/client";
 
 type Tpl = { id: string; name: string; body: string };
+type WatiTpl = { name: string; body: string; vars: number; status: string };
 type Ctx = { name: string; phone1: string; diploma: string; batch: string; remaining: string };
 
 function fill(text: string, c: Ctx) {
@@ -25,7 +26,28 @@ export default function WhatsAppPanel({
   const [preview, setPreview] = useState<string>("");
   const [channel, setChannel] = useState<"sales" | "support">("sales");
   const [busy, setBusy] = useState(false);
+  const [watiTpls, setWatiTpls] = useState<WatiTpl[]>([]);
   const [tplName, setTplName] = useState("");
+  const [tplErr, setTplErr] = useState("");
+  const [loadingTpls, setLoadingTpls] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/wa/templates");
+        const data = await res.json().catch(() => ({}));
+        if (!alive) return;
+        if (!res.ok) { setTplErr(data.error || "تعذّر جلب القوالب"); setWatiTpls([]); }
+        else { setWatiTpls(data.templates || []); setTplErr(""); }
+      } catch (e: any) {
+        if (alive) setTplErr(e?.message || "تعذّر جلب القوالب");
+      } finally {
+        if (alive) setLoadingTpls(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   async function api(payload: any) {
     setBusy(true);
@@ -89,13 +111,25 @@ export default function WhatsAppPanel({
         </div>
       )}
 
-      {/* قالب WATI معتمد (بيشتغل أي وقت) */}
+      {/* قالب WATI معتمد (بيشتغل أي وقت) — اختَر من قوالب حسابك */}
       <div style={{ borderTop: "1px dashed var(--line)", paddingTop: 12 }}>
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginBottom: 6 }}>{tr("waTemplateNote")}</div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input className="inp" dir="ltr" placeholder={tr("watiTemplateName")} value={tplName} onChange={(e) => setTplName(e.target.value)} style={{ flex: 1, height: 36 }} />
-          <button className="btn" disabled={busy} onClick={sendTemplate} style={{ height: 36, flexShrink: 0 }}>{tr("sendTemplateBtn")}</button>
-        </div>
+        {tplErr ? (
+          <div style={{ fontSize: 12, color: "var(--red)" }}>{tplErr}</div>
+        ) : (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <select className="inp" dir="ltr" value={tplName} onChange={(e) => setTplName(e.target.value)} disabled={loadingTpls || busy} style={{ flex: 1, minWidth: 180, height: 36 }}>
+              <option value="">{loadingTpls ? tr("loadingTpls") : (watiTpls.length ? tr("chooseTpl") : tr("noWatiTpls"))}</option>
+              {watiTpls.map((t) => (
+                <option key={t.name} value={t.name}>{t.name}{t.vars > 0 ? ` (${t.vars})` : ""}</option>
+              ))}
+            </select>
+            <button className="btn" disabled={busy || !tplName} onClick={sendTemplate} style={{ height: 36, flexShrink: 0 }}>{tr("sendTemplateBtn")}</button>
+          </div>
+        )}
+        {tplName && (watiTpls.find((t) => t.name === tplName)?.vars || 0) > 0 && (
+          <div style={{ fontSize: 11.5, color: "var(--amber)", marginTop: 6 }}>{tr("tplHasVars")}</div>
+        )}
       </div>
     </div>
   );
