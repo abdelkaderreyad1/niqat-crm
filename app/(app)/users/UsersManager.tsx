@@ -176,7 +176,7 @@ export default function UsersManager({ profiles }: { profiles: Profile[] }) {
       <div className="ucard-h">
         <div className="av" style={{ background: avc(u.id) }}>{ini(u.full_name || "?")}</div>
         <div>
-          <b style={{ fontSize: 15, color: "var(--ink)" }}>{u.full_name || "—"}</b>{" "}
+          <b style={{ fontSize: 16.5, fontWeight: 800, color: "var(--ink)", textTransform: "uppercase", letterSpacing: ".2px" }}>{u.full_name || "—"}</b>{" "}
           <span className="uteam">{tr((TEAMS.find((t) => t[0] === u.team) || [, u.team])[1] as string)}</span>
           {u.phone && <div style={{ fontSize: 12, color: "var(--muted)" }} className="num" dir="ltr">{u.phone}</div>}
         </div>
