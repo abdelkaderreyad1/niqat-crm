@@ -44,7 +44,7 @@ export default function WhatsAppPanel({
   function resolveField(p: string): string {
     const f = varMap[p] || "name";
     if (f === "custom") return customVals[p] || "";
-    if (f === "name") return ctx.name || "";
+    if (f === "name") return (ctx.name || "").trim().split(/\s+/).slice(0, 2).join(" ");
     if (f === "phone") return ctx.phone1 || "";
     if (f === "diploma") return ctx.diploma || "";
     if (f === "batch") return ctx.batch || "";
