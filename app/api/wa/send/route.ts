@@ -53,14 +53,15 @@ export async function POST(req: Request) {
       template_name,
       broadcast_name: broadcast_name || template_name,
       parameters: Array.isArray(parameters) ? parameters : [],
-      // تحديد الرقم المُرسِل (حساب واحد بأكتر من رقم) — بنبعت الاسمين احتياطاً
+      // الحقل الرسمي المطلوب في WATI هو channel_number (snake_case)
+      channel_number: senderCh,
       channelNumber: senderCh,
       channelPhoneNumber: senderCh,
     };
   } else {
     if (!text) return NextResponse.json({ error: "نص الرسالة مفقود" }, { status: 400 });
     apiUrl = `${endpoint}/api/v1/sendSessionMessage/${rcpt}?messageText=${encodeURIComponent(text)}&channelPhoneNumber=${senderCh}`;
-    payload = { channelNumber: senderCh, channelPhoneNumber: senderCh };
+    payload = { channel_number: senderCh, channelNumber: senderCh, channelPhoneNumber: senderCh };
   }
 
   let watiRes: any = null;
