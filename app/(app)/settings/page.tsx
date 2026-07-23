@@ -56,17 +56,18 @@ export default async function Settings() {
 
       <div className="settings-anim"><WatiCard initial={wati} /></div>
 
+      <div className="card settings-anim" style={{ padding: 18, marginBottom: 18, animationDelay: ".05s" }}>
+        <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("manageAff")}</h3></div>
+        <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 14px" }}>
+          {tr("affiliatesManagerHint")}
+        </p>
+        <AffiliatesManager initial={affiliates} />
+      </div>
+
       <div className="sec-t" style={{ marginTop: 8, marginBottom: 4 }}>{tr("manageLists")}</div>
       <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px" }}>{tr("manageListsHint")}</p>
 
       <div className="settings-cols">
-        <div className="card settings-anim" style={{ padding: 18 }}>
-          <div className="card-h" style={{ padding: 0, border: "none" }}><h3>{tr("manageAff")}</h3></div>
-          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "2px 0 12px" }}>
-            {tr("affiliatesManagerHint")}
-          </p>
-          <AffiliatesManager initial={affiliates} />
-        </div>
         <OptionsList title={tr("manageDiplomas")} hint={tr("manageDiplomasHint")} table="diplomas" labelCol="name_ar" initial={dip.items} />
         <OptionsList title={tr("manageSpecialties")} hint={tr("manageSpecialtiesHint")} table="specialties" labelCol="name_ar" initial={spec.items} />
         <OptionsList title={tr("manageAccessOptions")} hint={tr("manageAccessOptionsHint")} table="access_options" labelCol="label" initial={access.items} />
