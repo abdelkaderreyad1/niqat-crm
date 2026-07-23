@@ -41,14 +41,14 @@ export async function POST(req: Request) {
   if (!sender) return NextResponse.json({ error: "رقم المُرسِل مش متظبط للقناة دي — ظبّطه من الإعدادات" }, { status: 400 });
 
   const rcpt = normNum(to);
-  const senderCh = String(sender).replace(/[^\d+]/g, "");
+  const senderCh = String(sender).replace(/[^\d]/g, ""); // أرقام بس بكود الدولة من غير + (channelPhoneNumber)
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   let apiUrl = "";
   let payload: any = {};
   if (mode === "template") {
     if (!template_name) return NextResponse.json({ error: "اسم القالب مفقود" }, { status: 400 });
-    apiUrl = `${endpoint}/api/v1/sendTemplateMessage?whatsappNumber=${rcpt}`;
+    apiUrl = `${endpoint}/api/v1/sendTemplateMessage?whatsappNumber=${rcpt}&channelPhoneNumber=${senderCh}`;
     payload = {
       template_name,
       broadcast_name: broadcast_name || template_name,
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     };
   } else {
     if (!text) return NextResponse.json({ error: "نص الرسالة مفقود" }, { status: 400 });
-    apiUrl = `${endpoint}/api/v1/sendSessionMessage/${rcpt}?messageText=${encodeURIComponent(text)}`;
+    apiUrl = `${endpoint}/api/v1/sendSessionMessage/${rcpt}?messageText=${encodeURIComponent(text)}&channelPhoneNumber=${senderCh}`;
     payload = { channelNumber: senderCh, channelPhoneNumber: senderCh };
   }
 
