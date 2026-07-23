@@ -30,14 +30,23 @@ export async function GET() {
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok) return NextResponse.json({ error: j?.info || j?.message || `WATI HTTP ${r.status}` }, { status: 502 });
     const arr: any[] = j?.messageTemplates || j?.templates || j?.data || [];
-    // نطلّع الاسم + عدد المتغيّرات (لو موجود) + معاينة مختصرة للنص
-    const templates = arr.map((t) => {
+    // نطلّع الاسم + عدد المتغيّرات + الحالة
+    const all = arr.map((t) => {
       const name = t.elementName || t.name || t.template_name || "";
       const body = t.bodyOriginal || t.body || (Array.isArray(t.elements) ? (t.elements.find((e: any) => e.type === "BODY")?.text || "") : "") || "";
       const vars = (String(body).match(/\{\{\s*\d+\s*\}\}/g) || []).length;
-      const status = t.status || t.templateStatus || "";
+      const status = String(t.status || t.templateStatus || t.approvalStatus || "").toUpperCase();
       return { name, body, vars, status };
     }).filter((t) => t.name);
+
+    // المعتمدة بس (لو مفيش معلومة حالة خالص، نعرض الكل عشان ماتفضاش القائمة)
+    const approved = all.filter((t) => t.status === "APPROVED");
+    const anyStatus = all.some((t) => t.status);
+    const chosen = approved.length ? approved : (anyStatus ? approved : all);
+
+    // إزالة المكرر بالاسم
+    const seen = new Set<string>();
+    const templates = chosen.filter((t) => (seen.has(t.name) ? false : (seen.add(t.name), true)));
     return NextResponse.json({ ok: true, templates });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "فشل الاتصال بـ WATI" }, { status: 502 });

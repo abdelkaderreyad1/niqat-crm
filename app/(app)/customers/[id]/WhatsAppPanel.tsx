@@ -58,11 +58,10 @@ export default function WhatsAppPanel({
         body: JSON.stringify({ ...payload, to: ctx.phone1, channel, customer_id: customerId }),
       });
       const data = await res.json().catch(() => ({}));
-      let detail = ""; try { detail = JSON.stringify(data.wati ?? data.error ?? data); } catch { detail = ""; }
-      if (!res.ok) { toast(tr("waSendFailed") + (data.error || "")); setResult("❌ " + detail); return; }
-      toast(tr("waSent")); setResult("✅ " + detail);
+      if (!res.ok) { toast(tr("waSendFailed") + (data.error || "")); setResult("err:" + (data.error || tr("waSendFailed"))); return; }
+      toast(tr("waSent")); setResult("ok");
     } catch (e: any) {
-      toast(tr("waSendFailed") + (e?.message || "")); setResult("❌ " + (e?.message || ""));
+      toast(tr("waSendFailed") + (e?.message || "")); setResult("err:" + (e?.message || ""));
     } finally { setBusy(false); }
   }
 
@@ -135,8 +134,10 @@ export default function WhatsAppPanel({
       </div>
 
       {result && (
-        <div style={{ fontSize: 11, color: "var(--muted)", background: "var(--muted-soft)", borderRadius: 8, padding: 10, marginTop: 10, whiteSpace: "pre-wrap", wordBreak: "break-all", direction: "ltr", fontFamily: "var(--fe)" }}>
-          {result}
+        <div style={{ fontSize: 12.5, fontWeight: 700, borderRadius: 8, padding: "8px 12px", marginTop: 10,
+          background: result === "ok" ? "rgba(24,169,87,.1)" : "rgba(229,72,77,.1)",
+          color: result === "ok" ? "var(--green)" : "var(--red)" }}>
+          {result === "ok" ? tr("waSent") : result.replace(/^err:/, "")}
         </div>
       )}
     </div>
