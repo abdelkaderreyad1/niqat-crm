@@ -51,11 +51,13 @@ function Head({ icon, tint, title }: { icon: string; tint: string; title: string
 }
 
 export default function NewCustomerForm({
-  specialties, diplomas, batches, meId, affiliates = [],
-}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; meId: string; affiliates?: Aff[] }) {
+  specialties, diplomas, batches, services = [], meId, affiliates = [],
+}: { specialties: Opt[]; diplomas: Opt[]; batches: BatchOpt[]; services?: BatchOpt[]; meId: string; affiliates?: Aff[] }) {
   const tr = useT();
   const router = useRouter();
   const supabase = createClient();
+  const [subMode, setSubMode] = useState<"diploma" | "service">("diploma");
+  const [serviceId, setServiceId] = useState("");
   const [f, setF] = useState({
     name: "", phone1: "", phone2: "", email: "", company: "", affiliate_code: "",
     specialty_id: "", stage: "interested", residency: "", grad_year: "", source: "",
@@ -121,6 +123,19 @@ export default function NewCustomerForm({
     const p = f.currency === "USD" ? Number(b.price_usd) : Number(b.price_egp);
     if (p > 0) setF((s) => ({ ...s, amount: String(p) }));
   }, [f.batch_id, f.currency]);
+  // ملء المبلغ تلقائياً من سعر الخدمة المختارة
+  useEffect(() => {
+    if (subMode !== "service" || !serviceId) return;
+    const sv = services.find((x) => x.id === serviceId);
+    if (!sv) return;
+    const p = f.currency === "USD" ? Number(sv.price_usd) : Number(sv.price_egp);
+    if (p > 0) setF((s) => ({ ...s, amount: String(p) }));
+  }, [serviceId, subMode, f.currency]);
+  // مساعدات وضع الاشتراك (دبلومة/خدمة)
+  const hasSub = subMode === "diploma" ? !!f.diploma_id : !!serviceId;
+  const enrollDip = subMode === "diploma" ? (f.diploma_id || null) : null;
+  const enrollBatch = subMode === "diploma" ? (f.batch_id || null) : (serviceId || null);
+  const svcName = services.find((x) => x.id === serviceId)?.name || tr("serviceWord");
   // بند 2: قسم الاشتراك يظهر لما المرحلة (عرض سعر/تفاوض/مسجّل) أو بزر يدوي
   const stageOpensSub = f.stage === "enrolled";
   const showSub = stageOpensSub || showSubManual;
@@ -161,8 +176,10 @@ export default function NewCustomerForm({
     if (!f.phone1.trim()) { toast(tr("phoneRequired")); setStep(1); return; }
     if (affUnknown) { toast(tr("affNotInList")); setStep(1); return; }
     // لازم دبلومة + باتش لأي عميل (حتى المهتم) — مفيش تسجيل من غيرهم
-    if (!f.diploma_id) { toast(tr("diplomaRequired")); setStep(2); return; }
-    if (!f.batch_id) { toast(tr("batchRequired")); setStep(2); return; }
+    if (subMode === "diploma") {
+      if (!f.diploma_id) { toast(tr("diplomaRequired")); setStep(2); return; }
+      if (!f.batch_id) { toast(tr("batchRequired")); setStep(2); return; }
+    } else if (!serviceId) { toast(tr("chooseService")); setStep(2); return; }
     // تنبيه غير محظور: مبلغ من غير دبلومة → المبلغ مش هيتسجّل
     if (amountNoDiploma) toast(tr("amountNeedsDiploma"));
     setSaving(true);
@@ -214,9 +231,9 @@ export default function NewCustomerForm({
         await supabase.from("customer_docs").insert({ customer_id: cid, url, name: `${tr("transferShot")} — ${tr("agreedWord")} (${payFile.name})` });
       }
     }
-    if (f.diploma_id) {
+    if (hasSub) {
       const { data: enr } = await supabase.from("enrollments").insert({
-        customer_id: cid, diploma_id: f.diploma_id, batch_id: f.batch_id || null,
+        customer_id: cid, diploma_id: enrollDip, batch_id: enrollBatch,
         status: "active", free: f.free, needs_activation: false,
       }).select("id").maybeSingle();
       // المالية: المبلغ المستحق بعد الخصم
@@ -287,17 +304,17 @@ export default function NewCustomerForm({
     // هل الاشتراك اتدفع بالكامل دلوقتي؟ (كاش مدفوع الآن، أو قسط واحد يغطّي الكل، أو هدية)
     const instRows = payMode === "installment" ? buildSchedule(net, Number(instCount), Number(instGap)) : [];
     const firstCoversAll = payFirstNow && instRows.length > 0 && instRows[0].amount >= net;
-    const paidInFull = !!f.diploma_id && (
+    const paidInFull = hasSub && (
       f.free ||
       (net > 0 && ((payMode === "cash" && cashPaidNow) || (payMode === "installment" && firstCoversAll)))
     );
 
     if (paidInFull) {
       // العميل اتسجّل بالفعل فوق. نفتح مودال التفعيل. لو اتقفل من غير تأكيد → يفضل بدون handoff.
-      const dipName = diplomas.find((d) => d.id === f.diploma_id)?.name || tr("theDiploma");
-      const batchName = batches.find((b) => b.id === f.batch_id)?.name || "";
-      setActCtx({ cid, diploma: dipName, batchId: f.batch_id, batch: batchName });
-      setActBatchId(f.batch_id || "");
+      const dipName = subMode === "diploma" ? (diplomas.find((d) => d.id === f.diploma_id)?.name || tr("theDiploma")) : svcName;
+      const batchName = subMode === "diploma" ? (batches.find((b) => b.id === f.batch_id)?.name || "") : "";
+      setActCtx({ cid, diploma: dipName, batchId: enrollBatch || "", batch: batchName });
+      setActBatchId(enrollBatch || "");
       setActLibrary(true);
       setActOpen(true);
       return;
@@ -465,6 +482,16 @@ export default function NewCustomerForm({
             ) : (
             <>
             <Head icon="graduation" tint="#F08A24" title={tr("subscriptionOpt")} />
+            {/* اختيار نوع الاشتراك: دبلومة أو خدمة (اعتماد/مشروع) */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+              {([["diploma", tr("subModeDiploma")], ["service", tr("subModeService")]] as const).map(([m, lbl]) => (
+                <button key={m} type="button" onClick={() => { setSubMode(m as any); if (m === "diploma") setServiceId(""); else { set("diploma_id", ""); set("batch_id", ""); } }}
+                  className={subMode === m ? "btn" : "btn ghost"} style={{ flex: 1, justifyContent: "center", height: 38, fontSize: 13 }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            {subMode === "diploma" ? (
             <div className="frow">
               <div className="fld"><label>{tr("theDiploma")}</label>
                 <select className="inp" value={f.diploma_id} onChange={(e) => {
@@ -482,6 +509,18 @@ export default function NewCustomerForm({
                   {batches.filter((b) => !b.diploma_id || b.diploma_id === f.diploma_id).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select></div>
             </div>
+            ) : (
+            <div className="fld"><label>{tr("chooseService")}</label>
+              <select className="inp" value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+                <option value="">{tr("chooseService")}</option>
+                <optgroup label={tr("tabAccreditations")}>
+                  {services.filter((x) => (x as any).kind === "accreditation").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </optgroup>
+                <optgroup label={tr("tabProjects")}>
+                  {services.filter((x) => (x as any).kind === "project").map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                </optgroup>
+              </select></div>
+            )}
 
             <label className="chkrow"><input type="checkbox" checked={f.free} onChange={(e) => set("free", e.target.checked)} /> {tr("giftFree")}</label>
             {!f.free && (
