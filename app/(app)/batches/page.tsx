@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { t as tr } from "@/lib/i18n";
-import AddBatch from "./AddBatch";
 import BatchesView from "./BatchesView";
-import EmptyState from "../EmptyState";
 export const dynamic = "force-dynamic";
 
 export default async function Batches() {
@@ -17,7 +15,7 @@ export default async function Batches() {
     { data: allDips },
   ] = await Promise.all([
     supabase.from("profiles").select("can_manage_batches").eq("id", user?.id || "").maybeSingle(),
-    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency,price_egp,price_usd").order("created_at", { ascending: false }),
+    supabase.from("batches").select("id,code,status,start_date,end_date,capacity,notes,price,currency,price_egp,price_usd,kind").order("created_at", { ascending: false }),
     supabase.from("batches").select("id,diploma_id"),
     supabase.from("diplomas").select("id,name_ar").order("name_ar"),
   ]);
@@ -59,6 +57,7 @@ export default async function Batches() {
     currency: ((b as any).currency as string) || "EGP",
     price_egp: ((b as any).price_egp as number) ?? null,
     price_usd: ((b as any).price_usd as number) ?? null,
+    kind: ((b as any).kind as string) || "diploma",
     notes: (b.notes as string) || null,
   }));
   // ربط diploma_id لكل باتش (للفلترة)
@@ -76,11 +75,9 @@ export default async function Batches() {
           <h1>{tr("batches")}</h1>
           <p>{(batches || []).length} {tr("batchWord")}</p>
         </div>
-        {canManage && <AddBatch diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar }))} />}
       </div>
-      {(!batches || batches.length === 0)
-        ? <EmptyState text={tr("funNoBatches")} />
-        : <BatchesView batches={viewData} canManage={canManage} diplomaOpts={diplomaOpts} />}
+      <BatchesView batches={viewData} canManage={canManage} diplomaOpts={diplomaOpts}
+        diplomas={(allDips || []).map((d: any) => ({ id: d.id, name: d.name_ar }))} />
     </div>
   );
 }

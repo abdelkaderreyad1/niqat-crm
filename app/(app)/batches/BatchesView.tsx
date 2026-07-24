@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { useT } from "@/lib/i18n/client";
 import BatchActions from "./BatchActions";
+import AddBatch from "./AddBatch";
 
 type Opt = { v: string; label: string };
 export type B = {
@@ -9,7 +10,7 @@ export type B = {
   status: string; start_date: string | null; end_date: string | null;
   capacity: number | null; enrolled: number; price: number | null;
   currency: string; notes: string | null;
-  price_egp: number | null; price_usd: number | null;
+  price_egp: number | null; price_usd: number | null; kind: string;
 };
 
 function statusMeta(tr: (k: string) => string, status: string) {
@@ -17,40 +18,60 @@ function statusMeta(tr: (k: string) => string, status: string) {
   return { l: tr("batchEnded"), c: "#94A2BB" };
 }
 
-export default function BatchesView({ batches, canManage, diplomaOpts }: {
-  batches: B[]; canManage: boolean; diplomaOpts: Opt[];
+export default function BatchesView({ batches, canManage, diplomaOpts, diplomas = [] }: {
+  batches: B[]; canManage: boolean; diplomaOpts: Opt[]; diplomas?: { id: string; name: string }[];
 }) {
   const tr = useT();
+  const [tab, setTab] = useState<"diploma" | "accreditation" | "project">("diploma");
   const [dip, setDip] = useState("");
   const [status, setStatus] = useState("");
   const [q, setQ] = useState("");
+  const isService = tab !== "diploma";
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
     return batches.filter((b) =>
-      (!dip || b.diploma_id === dip) &&
+      ((b.kind || "diploma") === tab) &&
+      (isService || !dip || b.diploma_id === dip) &&
       (!status || (status === "open" ? (b.status === "open" || !b.status) : (b.status !== "open" && !!b.status))) &&
       (!qq || (b.code || "").toLowerCase().includes(qq))
     );
-  }, [batches, dip, status, q]);
+  }, [batches, tab, isService, dip, status, q]);
 
   const sel: React.CSSProperties = { height: 38, borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", padding: "0 10px", fontSize: 13 };
 
   return (
     <div>
+      {/* تبويبات: باتشات الدبلومات / الاعتمادات / المشاريع */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
+        {([["diploma", tr("tabDiplomaBatches")], ["accreditation", tr("tabAccreditations")], ["project", tr("tabProjects")]] as const).map(([k, lbl]) => (
+          <button key={k} type="button" onClick={() => { setTab(k as any); setDip(""); }}
+            style={{
+              padding: "10px 16px", fontSize: 13.5, fontWeight: 700, background: "none", position: "relative",
+              color: tab === k ? "var(--brand-d)" : "var(--muted)",
+              borderBottom: tab === k ? "2px solid var(--brand)" : "2px solid transparent", marginBottom: -1,
+            }}>
+            {lbl}
+          </button>
+        ))}
+      </div>
+
       {/* شريط الأدوات */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 14 }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr("searchBatchPh")}
-          style={{ ...sel, flex: 1, minWidth: 150 }} dir="ltr" />
-        <select value={dip} onChange={(e) => setDip(e.target.value)} style={sel}>
-          <option value="">{tr("filterDip")}</option>
-          {diplomaOpts.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-        </select>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={isService ? tr("searchServicePh") : tr("searchBatchPh")}
+          style={{ ...sel, flex: 1, minWidth: 150 }} dir="rtl" />
+        {!isService && (
+          <select value={dip} onChange={(e) => setDip(e.target.value)} style={sel}>
+            <option value="">{tr("filterDip")}</option>
+            {diplomaOpts.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+          </select>
+        )}
         <select value={status} onChange={(e) => setStatus(e.target.value)} style={sel}>
           <option value="">{tr("allStatuses")}</option>
           <option value="open">{tr("batchOpen")}</option>
           <option value="closed">{tr("batchEnded")}</option>
         </select>
+        {canManage && <AddBatch kind={tab} diplomas={diplomas} />}
       </div>
 
       {filtered.length === 0 && (
@@ -74,14 +95,24 @@ export default function BatchesView({ batches, canManage, diplomaOpts }: {
                   </div>
                   <span className="stg" style={{ background: st.c + "1a", color: st.c }}>{st.l}</span>
                 </div>
-                <div style={{ margin: "14px 0 6px", display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
-                  <span style={{ color: "var(--muted)" }}>{tr("seats")}</span>
-                  <b className="num">{b.enrolled}/{seats || "—"}</b>
-                </div>
-                <div className="bbar"><i style={{ width: pct + "%" }} /></div>
+                {!isService && (
+                  <>
+                    <div style={{ margin: "14px 0 6px", display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
+                      <span style={{ color: "var(--muted)" }}>{tr("seats")}</span>
+                      <b className="num">{b.enrolled}/{seats || "—"}</b>
+                    </div>
+                    <div className="bbar"><i style={{ width: pct + "%" }} /></div>
+                  </>
+                )}
                 <div style={{ marginTop: 14 }}>
-                  <div className="brow"><span>{tr("startDate")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
-                  <div className="brow"><span>{tr("endDate")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
+                  {isService ? (
+                    <div className="brow"><span>{tr("subscribers")}</span><b className="num">{b.enrolled}</b></div>
+                  ) : (
+                    <>
+                      <div className="brow"><span>{tr("startDate")}</span><b className="num">{b.start_date ? String(b.start_date).slice(0, 10) : "—"}</b></div>
+                      <div className="brow"><span>{tr("endDate")}</span><b className="num">{b.end_date ? String(b.end_date).slice(0, 10) : "—"}</b></div>
+                    </>
+                  )}
                   {(Number(b.price_egp) > 0 || Number(b.price_usd) > 0) && (
                     <div className="brow"><span>{tr("batchPrice")}</span><b className="num" dir="ltr">{new Intl.NumberFormat("en").format(Number(b.price_egp) || 0)} {tr("egpShort")} · {new Intl.NumberFormat("en").format(Number(b.price_usd) || 0)} $</b></div>
                   )}
